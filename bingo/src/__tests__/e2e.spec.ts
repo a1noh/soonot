@@ -118,9 +118,12 @@ describe('bingo end to end', () => {
 
     // end and reveal
     expect((await send(m, 'master:end', { gameId: 'bingo' })).ok).toBe(true);
-    const revealed = (await send(m, 'master:reveal', { gameId: 'bingo', step: 1 }));
-    expect(revealed.ok).toBe(true);
-    expect(revealed.state).toBe('REVEAL');
+    // enter the reveal at 0, then advance one step at a time
+    const entered = await send(m, 'master:reveal', { gameId: 'bingo', step: 0 });
+    expect(entered.ok).toBe(true);
+    expect(entered.state).toBe('REVEAL');
+    expect((await send(m, 'master:reveal', { gameId: 'bingo', step: 1 })).ok).toBe(true);
+    expect((await send(m, 'master:reveal', { gameId: 'bingo', step: 3 })).ok).toBe(false);
   }, 20000);
 
   it('a cell result is unicast — the other 9 players never see it', async () => {

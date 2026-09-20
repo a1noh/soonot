@@ -257,6 +257,16 @@ yutnori on finisher tier then progress (yutnori §11) — and both hand back the
 One reveal component, one `reveal:step` broadcast, one set of animations, one 나의 순위
 band. req §4.2.
 
+**The reveal protocol is sequential, in both games.** From `ENDED`, the first
+`REVEAL` must carry `step: 0` — that is what enters the reveal and shows the holding
+screen — and every step after it must be exactly `revealStep + 1`, up to 4. Skipping is
+rejected with `BAD_REVEAL_STEP`.
+
+윷놀이 was written this way; bingo accepted any step until the two were driven by the same
+console, at which point one shared podium driver could not serve both. Bingo was aligned
+to the stricter rule rather than the reverse: a reveal that can jump straight to 1st is a
+reveal that can be spoiled by a double-tap, in front of the whole room.
+
 ### 3.5 Adding a third game
 
 Implement the interface, add one line to the module registry, add a surface route. The
@@ -504,7 +514,22 @@ and the person stays nameable on other cards (bingo req §7.4). The socket is un
 only if it is still the one in the map, so a reconnect that raced ahead of the disconnect
 event is not unregistered by it.
 
-### 6.4 Per-socket rate limiting
+### 6.4 Projected state on the wire
+
+`project` returns a payload per viewer, so it cannot be broadcast — which is exactly why
+it is **not** sent per action. `pushState` sends one socket its view; `pushStateAll`
+sends every socket watching one game. They are called in two places only:
+
+| When | Who gets it |
+|---|---|
+| A socket joins a surface, or a player joins/rejoins | That socket |
+| A lifecycle transition (`START`, `END`, `REVEAL`, …) | Everyone on that game's surface |
+
+During play the granular emits carry the changes — that is what they are for. A
+per-action projection to 100 players would reintroduce the fan-out problem §6.2 exists to
+prevent, one layer higher up.
+
+### 6.5 Per-socket rate limiting
 
 `host/tokenbucket.ts`: 10 actions/sec, burst 20, one bucket per socket, dropped on
 disconnect (bingo §16.6). A host service, so yutnori is covered for free.
@@ -646,8 +671,9 @@ it.
 | `projector.spec` | host | `'auto'` hold window; lock overrides; switch emits once |
 | `dispatch.spec` | host | Serialization under concurrent master devices; commit-before-broadcast |
 | `emit.spec` | host | **Every bingo emit's audience**, asserted against the §6.2 table |
-| `tokenbucket.spec` | host | Burst, refill, ceiling, retry hint, per-socket isolation (§6.4) |
+| `tokenbucket.spec` | host | Burst, refill, ceiling, retry hint, per-socket isolation (§6.5) |
 | `e2e.spec` | bingo | A full game over real sockets: join → start → fill → bingo → reveal, plus a unicast-leak assertion |
+| `e2e.spec` | yutnori | setup → start → throw → move → undo → end → reveal, driven by a real master socket with a board watching |
 | `persist.spec` | host | Both strategies round-trip; boot recovery with both games `RUNNING` |
 | `two-games.spec` | host | Integration: both `RUNNING`, a bingo fill storm during a yutnori bonus chain, independent locks |
 

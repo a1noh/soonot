@@ -19,6 +19,7 @@ import type { Registry } from '../event/registry.js';
 import { summarize } from '../event/event.js';
 import type { Dispatch } from './dispatch.js';
 import type { Emit } from './emit.js';
+import { STATE_EVENT } from './emit.js';
 import { HostError, toWireError } from './errors.js';
 import type { Viewer } from './module.js';
 import type { Sessions } from '../identity/session.js';
@@ -97,6 +98,7 @@ export function attachNamespaces(deps: NamespaceDeps): void {
   board.on('connection', (socket) => {
     void socket.join(ROOM.game('yutnori'));
     sendSummary(socket, registry);
+    pushState(socket, 'yutnori', registry);
   });
   projector.on('connection', (socket) => {
     for (const id of GAME_IDS) void socket.join(ROOM.game(id));
@@ -159,8 +161,13 @@ function attachPlayer(socket: Socket, deps: NamespaceDeps): void {
       return;
     }
 
+    const before = registry.modules.bingo.lifecycle(registry.require().games.bingo.state);
     dispatch('bingo', action, viewer)
-      .then((result) => reply(ack, { ok: true, playerId: viewer.playerId, state: result.state }))
+      .then((result) => {
+        if (result.state !== before) pushStateAll(deps.io, 'bingo', registry);
+        else pushState(socket, 'bingo', registry);
+        reply(ack, { ok: true, playerId: viewer.playerId, state: result.state });
+      })
       .catch((err: unknown) => {
         // Back to the originating socket only (spec §6.2).
         reply(ack, { ok: false, error: toWireError(err) });
@@ -179,6 +186,31 @@ function attachPlayer(socket: Socket, deps: NamespaceDeps): void {
     // nameable on other cards (bingo §7.4). Illegal in SETUP, hence the catch.
     void dispatch('bingo', { t: 'DISCONNECT', playerId: viewer.playerId }, viewer).catch(() => {});
   });
+}
+
+/**
+ * Send one socket its projected view (spec §3.3, §6.2).
+ *
+ * `project` is per-viewer, so this cannot be a broadcast — which is exactly why
+ * it is **not** sent per action. Granular emits keep a client in sync during
+ * play; the full picture goes out only on join and on a lifecycle transition,
+ * which is what both games' protocol tables mean by "on transition only".
+ */
+export function pushState(socket: Socket, gameId: GameId, registry: Registry): void {
+  const event = registry.current();
+  if (!event) return;
+  const module = registry.modules[gameId];
+  const viewer = (socket.data as SocketData).viewer;
+  socket.emit(STATE_EVENT, module.project(event.games[gameId].state, viewer));
+}
+
+/** The same, for everyone watching one game. Transitions only. */
+export function pushStateAll(io: Server, gameId: GameId, registry: Registry): void {
+  for (const ns of ['/b', '/y', '/p', '/master']) {
+    for (const socket of io.of(ns).sockets.values()) {
+      if (socket.rooms.has(ROOM.game(gameId))) pushState(socket, gameId, registry);
+    }
+  }
 }
 
 function sendSummary(socket: Socket, registry: Registry): void {
@@ -269,6 +301,10 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
     dispatch(gameId, action, viewer)
       .then((result) => {
         broadcastSummary(deps);
+        // START deals, END freezes, REVEAL advances the podium — every surface
+        // needs the new picture, and transitions are rare enough to afford a
+        // per-viewer projection.
+        pushStateAll(deps.io, gameId, registry);
         reply(ack, { ok: true, gameId, state: result.state });
       })
       .catch((err: unknown) => {

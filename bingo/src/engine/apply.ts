@@ -4,7 +4,7 @@
  * Pure: no I/O, no Date.now(), no socket awareness. `now` is an argument, so
  * every rule is testable with a literal state and a literal action.
  */
-import { BASE_ALLOWED, EngineError, type RoomState } from '@soonot/master';
+import { BASE_ALLOWED, EngineError, REVEAL_LAST_STEP, type RoomState } from '@soonot/master';
 import { CELLS, MAX_PLAYERS } from '../shared/constants';
 import { normalizeNickname } from '../shared/hangul';
 import type { Player, Room, Trait } from '../shared/types';
@@ -351,7 +351,18 @@ export function apply(room: Room, action: Action, now: number): Out {
     case 'END':
       return { state: { ...room, state: 'ENDED', endedAt: now }, emits: [] };
 
-    case 'REVEAL':
-      return { state: { ...room, state: 'REVEAL', revealStep: action.step }, emits: [] };
+    case 'REVEAL': {
+      // The same protocol 윷놀이 uses: entering the reveal is step 0, and every
+      // step after that advances by exactly one. One shared podium driver
+      // (master spec §3.4) cannot serve two games that disagree here.
+      if (room.state === 'ENDED') {
+        if (action.step !== 0) throw new EngineError('BAD_REVEAL_STEP');
+        return { state: { ...room, state: 'REVEAL', revealStep: 0 }, emits: [] };
+      }
+      if (action.step !== room.revealStep + 1 || action.step > REVEAL_LAST_STEP) {
+        throw new EngineError('BAD_REVEAL_STEP');
+      }
+      return { state: { ...room, revealStep: action.step }, emits: [] };
+    }
   }
 }
