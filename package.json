@@ -1,0 +1,23 @@
+{
+  "name": "soonot",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Small multiplayer web games for church gatherings. One event, one master user, one process, two games.",
+  "workspaces": [
+    "master",
+    "bingo",
+    "yutnori"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "npm run build -w @soonot/master",
+    "start": "npm run start -w @soonot/master",
+    "dev": "npm run dev -w @soonot/master",
+    "test": "vitest run",
+    "test:master": "npm run test -w @soonot/master",
+    "typecheck": "tsc -b",
+    "hash-passcode": "npm run hash-passcode -w @soonot/master"
+  }
+}

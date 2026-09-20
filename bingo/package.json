@@ -1,0 +1,8 @@
+{
+  "name": "@soonot/bingo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/module.ts",
+  "dependencies": { "@soonot/master": "*" }
+}
