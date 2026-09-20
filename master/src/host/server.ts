@@ -132,13 +132,21 @@ export function createHost(options: HostOptions): Host {
     app.get('/master', (_req: Request, res: Response) => {
       res.sendFile(join(clientDir, 'master.html'));
     });
+    // The 윷놀이 board surface. `/y/:code` and bare `/y` both land here — the
+    // code is cosmetic on a read-only screen, and one active event is the v1
+    // scope (req §1).
+    app.get(['/y', '/y/:code'], (_req: Request, res: Response) => {
+      res.sendFile(join(clientDir, 'board.html'));
+    });
   } else {
-    app.get('/master', (_req: Request, res: Response) => {
+    const unbuilt = (_req: Request, res: Response) => {
       res
         .status(503)
         .type('text/plain')
-        .send('Console not built. Run `npm run build`, or `npm run dev` for the Vite server.');
-    });
+        .send('Client not built. Run `npm run build`, or `npm run dev` for the Vite server.');
+    };
+    app.get('/master', unbuilt);
+    app.get(['/y', '/y/:code'], unbuilt);
   }
 
   return {

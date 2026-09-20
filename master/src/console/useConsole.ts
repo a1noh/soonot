@@ -17,6 +17,8 @@ export interface ConsoleApi {
   auth: AuthState;
   connected: boolean;
   event: EventSummary | null;
+  /** Each game's projected view, as `project()` returned it for the master. */
+  views: Partial<Record<GameId, unknown>>;
   error: string | null;
   signIn(passcode: string): Promise<{ ok: boolean; locked?: boolean }>;
   signOut(everywhere: boolean): Promise<void>;
@@ -37,6 +39,7 @@ export function useConsole(): ConsoleApi {
   const [auth, setAuth] = useState<AuthState>('checking');
   const [connected, setConnected] = useState(false);
   const [event, setEvent] = useState<EventSummary | null>(null);
+  const [views, setViews] = useState<Partial<Record<GameId, unknown>>>({});
   const [error, setError] = useState<string | null>(null);
   const socketRef = useRef<Socket | null>(null);
 
@@ -73,6 +76,9 @@ export function useConsole(): ConsoleApi {
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
     socket.on('event:summary', (summary: EventSummary | null) => setEvent(summary));
+    socket.on('room:state', (msg: { gameId: GameId; view: unknown }) => {
+      setViews((prev) => ({ ...prev, [msg.gameId]: msg.view }));
+    });
     socket.on('error', (err: { message?: string }) => setError(err?.message ?? '문제가 생겼어요'));
     socket.on('connect_error', (err: Error) => {
       // The handshake refused us — the session expired under the open socket.
@@ -142,6 +148,7 @@ export function useConsole(): ConsoleApi {
       auth,
       connected,
       event,
+      views,
       error,
       signIn,
       signOut,
@@ -156,6 +163,6 @@ export function useConsole(): ConsoleApi {
       },
       send,
     }),
-    [auth, connected, event, error, signIn, signOut, send, hostOp],
+    [auth, connected, event, views, error, signIn, signOut, send, hostOp],
   );
 }

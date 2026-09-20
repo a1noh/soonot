@@ -1,0 +1,44 @@
+/* Projector legibility is a font-size and contrast problem (spec §2, req §16). */
+:root { color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #0f1115; color: #f2f4f8;
+  font: 16px/1.4 system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif; }
+
+.board-page { min-height: 100vh; padding: 2vmin 3vmin; display: flex; flex-direction: column; gap: 2vmin; }
+.board-page--empty { align-items: center; justify-content: center; text-align: center; }
+.board-page h1 { font-size: clamp(20px, 3.2vmin, 48px); margin: 0; letter-spacing: -0.01em; }
+.board-page__head { display: flex; align-items: baseline; gap: 3vmin; flex-wrap: wrap; }
+.board-page__turn { font-size: clamp(18px, 3vmin, 44px); color: #ffd166; }
+.clock { font-variant-numeric: tabular-nums; font-size: clamp(20px, 3.6vmin, 56px); font-weight: 700; }
+.clock--paused { color: #8b93a7; }
+
+.board-page__grid { flex: 1; display: grid; grid-template-columns: minmax(0,1.3fr) minmax(260px,0.7fr); gap: 3vmin; align-items: center; }
+@media (max-width: 860px) { .board-page__grid { grid-template-columns: 1fr; } }
+
+.board { width: 100%; height: auto; max-height: 82vh; }
+.board__bg { fill: transparent; }
+.board__ring { fill: none; stroke: #2b3242; stroke-width: 1.1; }
+.board__station { fill: #1b2130; stroke: #39415a; stroke-width: 0.5; }
+.board__label { fill: #8b93a7; font-size: 3.4px; text-anchor: middle; }
+.board__mal { stroke: #0f1115; stroke-width: 0.7; }
+.board__malnum { fill: #fff; font-size: 3.2px; font-weight: 700; text-anchor: middle; }
+
+.trays { list-style: none; margin: 0 0 2vmin; padding: 0; display: grid; gap: 0.8vmin; }
+.tray { display: flex; align-items: center; gap: 1vmin; font-size: clamp(14px, 1.9vmin, 26px); }
+.tray__dot { width: 1.6em; height: 1.6em; border-radius: 50%; display: grid; place-items: center;
+  color: #fff; font-weight: 700; font-size: 0.8em; }
+.tray__name { flex: 1; }
+.tray__counts { color: #9aa3b8; font-variant-numeric: tabular-nums; }
+.tray__counts b { color: #6ee7a8; }
+
+.board-page__side h2 { font-size: clamp(15px, 2vmin, 28px); color: #8b93a7; margin: 0 0 0.6vmin; }
+.standings { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6vmin; }
+.standings__row { display: grid; grid-template-columns: 2.2em 1fr auto; gap: 1vmin; align-items: baseline;
+  font-size: clamp(14px, 2vmin, 28px); padding: 0.5vmin 0; border-top: 1px solid #222937; }
+.standings__rank { font-weight: 700; color: #ffd166; }
+.standings__detail { color: #9aa3b8; font-variant-numeric: tabular-nums; }
+
+.board-page__flash { position: fixed; inset: auto 0 12vh 0; text-align: center;
+  font-size: clamp(28px, 7vmin, 96px); font-weight: 800; color: #ff6b6b; text-shadow: 0 0.2em 1em #000; }
+.board-page__offline { position: fixed; top: 0; left: 0; right: 0; background: #7f1d1d;
+  text-align: center; padding: 0.6em; font-weight: 600; }

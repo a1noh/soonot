@@ -201,7 +201,9 @@ export function pushState(socket: Socket, gameId: GameId, registry: Registry): v
   if (!event) return;
   const module = registry.modules[gameId];
   const viewer = (socket.data as SocketData).viewer;
-  socket.emit(STATE_EVENT, module.project(event.games[gameId].state, viewer));
+  // Tagged with its game: one console socket mirrors both, and the payload
+  // itself carries nothing that identifies which game produced it.
+  socket.emit(STATE_EVENT, { gameId, view: module.project(event.games[gameId].state, viewer) });
 }
 
 /** The same, for everyone watching one game. Transitions only. */

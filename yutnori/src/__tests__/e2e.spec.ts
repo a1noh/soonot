@@ -90,7 +90,8 @@ describe('yutnori end to end', () => {
 
     const started = once(board, 'room:state');
     expect((await send(m, 'master:start', { gameId: 'yutnori' })).ok).toBe(true);
-    const view = await started;
+    const { gameId, view } = await started;
+    expect(gameId).toBe('yutnori');
     expect(view.state).toBe('RUNNING');
     expect(view.teams).toHaveLength(3);
     expect(view.turnTeamName).toBe('청년 1조');
@@ -142,7 +143,7 @@ describe('yutnori end to end', () => {
 
     const state = once(board, 'room:state');
     await send(m, 'master:pause', { gameId: 'yutnori' });
-    const view = await state;
+    const { view } = await state;
     expect(view.teams.every((t: any) => t.mal.every((x: any) => x.progress === 0))).toBe(true);
   });
 

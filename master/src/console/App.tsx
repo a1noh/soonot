@@ -11,6 +11,7 @@ import { t } from '../shared/i18n.js';
 import { useConsole } from './useConsole.js';
 import { EventBar } from './EventBar.js';
 import { GamePane } from './GamePane.js';
+import { YutnoriMasterPane } from '@soonot/yutnori/src/client/MasterPane.js';
 import '../shared/tokens.css';
 import './console.css';
 
@@ -120,7 +121,21 @@ export function App() {
             focused={focus === gameId}
             onFocus={() => setFocus(gameId)}
             onToggleEnabled={(next) => void api.enableGame(gameId, next)}
-          />
+            blocking={
+              gameId === 'yutnori'
+                ? (api.views.yutnori as { blocking?: boolean } | undefined)?.blocking
+                : undefined
+            }
+          >
+            {gameId === 'yutnori' ? (
+              <YutnoriMasterPane
+                view={(api.views.yutnori as never) ?? null}
+                send={(ev, payload) => api.send('yutnori', ev, payload)}
+              />
+            ) : (
+              <p className="pane__hint">빙고 콘솔은 곧 추가됩니다 (bingo §11.3)</p>
+            )}
+          </GamePane>
         ))}
       </div>
 

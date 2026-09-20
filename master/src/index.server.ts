@@ -1,15 +1,16 @@
 /**
  * The process entry point (spec §12). `npm start`.
  *
- * Milestones 1–2 boot the host with **stub modules** in both slots: identity,
- * namespaces and the console shell are real, and the games plug in at
- * milestones 3 and 4 by swapping these two lines.
+ * Both games are plugged in: 윷놀이 at milestone 3, bingo at milestone 4.
+ * One process, one port — the HTTP surface, the four socket namespaces and
+ * the built client assets all live here.
  */
 
 import { loadConfig, requirePasscodeHash } from './config.js';
 import { hashPasscode } from './identity/passcode.js';
 import { createHost } from './host/server.js';
-import { createStubModule } from './__tests__/stub-module.js';
+import { bingoModule } from '@soonot/bingo/src/module.js';
+import { yutnoriModule } from '@soonot/yutnori/src/module.js';
 
 const config = loadConfig();
 const passcodeHash = requirePasscodeHash(config, hashPasscode);
@@ -17,10 +18,7 @@ const passcodeHash = requirePasscodeHash(config, hashPasscode);
 const host = createHost({
   config,
   passcodeHash,
-  modules: {
-    bingo: createStubModule('bingo'), // → @soonot/bingo at milestone 4
-    yutnori: createStubModule('yutnori'), // → @soonot/yutnori at milestone 3
-  },
+  modules: { bingo: bingoModule, yutnori: yutnoriModule },
 });
 
 const port = await host.listen();
