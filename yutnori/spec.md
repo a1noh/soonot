@@ -193,11 +193,18 @@ function undo(room: Room): Room {
 }
 ```
 
-`setupOf` extracts the immutable `SETUP`-time subset of `Room` — `eventId`, team
-names/colors/order, `malPerTeam`, `timeLimitMs`, `createdAt`. (It no longer carries a code
-or a passcode hash: both moved to the event and the host. **(host)**) Every other field in
-req §5 is derived, which is exactly why replay is total. Undo takes no `now`: it moves
-backwards, so it invents no new timestamps.
+`setupOf` extracts everything **no `TurnEvent` can determine**: `eventId`, team
+names/colors/order and 말 ids, `malPerTeam`, the clock (`timeLimitMs`, `startedAt`,
+`pausedAt`, `totalPausedMs`) and the lifecycle (`state`, `endedAt`, `endReason`,
+`revealStep`, `createdAt`). (It no longer carries a code or a passcode hash: both moved to
+the event and the host. **(host)**) What the log *does* determine — 말 positions,
+`finishedAt`, `lastProgressAt`, `turnIndex`, `throwQueue`, `history` — is rebuilt from
+대기 upward.
+
+The clock belongs in the carried set, not the derived one: a paused timer is not a
+consequence of any throw, and a replay that "derived" it would silently reset it.
+
+Undo takes no `now` — it moves backwards, so it invents no new timestamps.
 
 The alternative — writing an inverse for every event — means hand-maintaining a second,
 subtly different implementation of the rules, and it is where undo bugs live: a restored
@@ -525,7 +532,7 @@ that actually matters on the day.
 
 | # | Milestone | Done when |
 |---|---|---|
-| 1 | `shared/` + `engine/` + tests | A full game can be played in a test file. No server, no UI. |
+| 1 ✅ | `shared/` + `engine/` + tests | **Done.** A full game plays in `game.spec.ts`; 83 tests green, `tsc -b` clean. |
 | 2 | `module.ts` against the host contract | The host drives a full game; ugly console pane |
 | 3 | Board view + SVG geometry | A second tab mirrors the game live |
 | 4 | Clock, end, ranking, reveal | A game ends by itself; the **shared** podium reveals 3rd → 2nd → 1st off `rank()` |

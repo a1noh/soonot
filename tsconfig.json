@@ -1,4 +1,4 @@
 {
   "files": [],
-  "references": [{ "path": "./master" }, { "path": "./bingo" }]
+  "references": [{ "path": "./master" }, { "path": "./bingo" }, { "path": "./yutnori" }]
 }

@@ -5,7 +5,7 @@ process, two games.**
 
 | Project | What it is | Status |
 |---|---|---|
-| [`master/`](./master) | 마스터 — the shared master user and event host: identity, the event code, the lifecycle and reveal machines, dispatch, persistence, the projector, deployment | Spec complete, no code yet |
+| [`master/`](./master) | 마스터 — the shared master user and event host: identity, the event code, the lifecycle and reveal machines, dispatch, persistence, the projector, deployment | **Milestones 1–2 built** — contract, dispatch, identity, namespaces, console shell |
 | [`bingo/`](./bingo) | 교회 사람 빙고 — a real-time 9×9 human-bingo icebreaker for 100+ people | Spec complete, no code yet |
 | [`yutnori/`](./yutnori) | 윷놀이 한마당 — a projector-driven board and scoreboard, run from the stage | Spec complete, no code yet |
 
@@ -13,6 +13,20 @@ Bingo and yutnori are **game modules**; `master/` is the host they plug into. Th
 signs in once and runs both games simultaneously from one console, against one 4-character
 code, out of one process. See [`master/req.md`](./master/req.md) §9 for what that shares
 and [`master/spec.md`](./master/spec.md) §3 for the contract that makes it possible.
+
+## Running it
+
+Node 20 or newer.
+
+```sh
+npm install
+npm run hash-passcode          # prints MASTER_PASSCODE_HASH=...
+MASTER_PASSCODE_HASH=... npm start   # host on :3000, console at /master
+npm test                       # the whole workspace
+```
+
+Milestones 1–2 boot the host with stub game modules in both slots; the real games plug in
+at milestones 3 and 4 by swapping two lines in `master/src/index.server.ts`.
 
 ## Document convention
 

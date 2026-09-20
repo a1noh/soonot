@@ -295,6 +295,11 @@ Reverting the last `TurnEvent` restores, exactly:
 - `turnIndex`, if the event had ended the turn
 - `finishedAt` on the team, if that event had completed it
 
+If a throw has been entered but no 말 chosen yet, `되돌리기` cancels **that throw** and
+returns it to the queue. This is the mis-tap caught in time, and it is the common case:
+the master sees the sticks, taps 모 by accident, and notices before choosing a 말. Nothing
+was logged, so nothing is reverted.
+
 Undo is **repeatable** — walk back several events in a row. It is available in `RUNNING`
 only; undoing the end of a game is `게임 재개` instead (§10).
 
@@ -332,6 +337,8 @@ when there is no choice to make.
 - `progress >= 20` → 집. Finishing grants **no** bonus throw.
 - When every 말 of a team is home: set `finishedAt`, broadcast `team:finished`, celebrate
   on the board, and skip that team in the turn order from then on.
+- **Any bonus throws still owed to that team are forfeit**, and the turn passes. A team
+  that finishes on a 윷 has nothing left to move, so the bonus cannot be spent.
 - **A team finishing does not end the game** (§10).
 
 ---
@@ -590,6 +597,8 @@ Korean-first, with an English toggle in the header.
 | Case | Behavior |
 |---|---|
 | Master taps the wrong 도/개/걸/윷/모 | `되돌리기` reverts the whole event; re-enter it |
+| Wrong roll tapped, noticed before a 말 is chosen | `되돌리기` cancels the pending throw and returns it to the queue (§7.1) |
+| Team finishes while still owed a bonus throw | The bonus is forfeit and the turn passes — there is nothing left to move (§8.3) |
 | `되돌리기` with no events yet | Button disabled |
 | Undo of a capturing move | Captured 말 return to their **exact** prior progress, and the bonus throw is removed from the queue |
 | Undo of a move that sent a 말 home | 말 returns to the board; `finishedAt` cleared; team re-enters the turn order |

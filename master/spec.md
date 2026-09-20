@@ -140,6 +140,18 @@ export interface GameModule<S, A extends { t: string }> {
   /** The rules. Pure: no I/O, no Date.now(), no socket awareness. */
   apply(state: S, action: A, now: number): { state: S; emits: Emit[] };
 
+  /**
+   * Where the host reads the shared lifecycle out of opaque game state.
+   *
+   * The host must answer "what state is this game in?" to apply the §5 guard
+   * table and the two §5.1 rules, but game state is deliberately opaque to it
+   * (req §4.1). One accessor is the whole of the host's read access into a
+   * module — strictly less than the alternative, which is the host owning a
+   * `RoomState` field it would then have to keep in sync with the game's own
+   * idea of itself.
+   */
+  lifecycle(state: S): RoomState;
+
   /** req §4.2 — per-state action whitelist, merged with the host's base table. */
   readonly allowed: Record<RoomState, A['t'][]>;
 
@@ -162,6 +174,11 @@ export interface GameModule<S, A extends { t: string }> {
 
 Two modules implement it: `@soonot/bingo` and `@soonot/yutnori`. The host's only knowledge
 of either game is this shape.
+
+`EngineError` — the error a module throws from `apply` — lives in `shared/`, not `host/`,
+because **games throw it**. A game importing it from `host/` would invert the one
+dependency rule (§2) that keeps req §9.1 true. `HostError` stays in `host/`, where no game
+can reach it.
 
 ### 3.1 Why `apply` and not "a service class"
 
@@ -197,6 +214,14 @@ route(ev, p, viewer) {
 `null` → `error { code: 'NOT_MASTER' | 'UNKNOWN_EVENT' }` from the host. The master check
 lives in one place per game rather than being repeated on every handler, and the player
 namespaces have no master handlers registered at all (req §8).
+
+**On `/master`, every game action carries `gameId`.** Both protocol tables use
+`master:start`, `master:end` and `master:reveal` (bingo §10, yutnori §12) — unambiguous
+when each game had its own console, ambiguous the moment one console drives both. The host
+consults the named module alone rather than offering the event to each in turn and taking
+the first action back, and an action without a `gameId` is refused `BAD_PAYLOAD`. On `/b`
+and `/y` the namespace already names the game, so nothing changes there — and, crucially,
+**neither game had to rename an event**. The discriminator is the envelope's, not theirs.
 
 ### 3.3 `project` — audience-scoped state
 
@@ -348,13 +373,14 @@ async function dispatch(gameId: GameId, action: Action, viewer: Viewer) {
     const now  = Date.now();                         // the ONLY clock read (req §9.1)
     const hand = event.games[gameId];
 
-    hostGuards(event, hand, action);                 // §5.1
-    assertAllowed(hand.state, action, mod);          // §5
+    hostGuards(event, gameId, action, modules);      // §5.1
+    assertAllowed(mod.lifecycle(hand.state), action, mod);   // §5
 
     const { state, emits } = mod.apply(hand.state, action, now);
     if (DEV) mod.invariants(state);
 
     commit(gameId, state);
+    releaseProjectorLock(event, gameId, mod.lifecycle(state));  // §5.1
     persist.enqueue(gameId, state, action, emits);   // §8
     route(emits, gameId, state);                     // §6.2 — after commit, never before
   });
@@ -368,6 +394,8 @@ async function dispatch(gameId: GameId, action: Action, viewer: Viewer) {
   property of the architecture rather than a rule to remember.
 - Broadcast strictly after commit and persist-enqueue, so no client can observe an event a
   reconnect would not reproduce (yutnori spec §5.1).
+- The lock chains onto its tail **regardless of how the previous action settled**, so one
+  rejected action cannot wedge a game for the rest of the event.
 
 ### 6.2 Emit routing — bingo's fan-out discipline, enforced centrally
 
@@ -608,15 +636,33 @@ req §10, so nothing is left as a silent mismatch:
 Where this spec is silent, the game documents are authoritative. Changes to a game's
 *behavior* start in its `req.md`; changes to *structure* start here.
 
+### 11.1 Refinements found while building milestones 1–2
+
+Four, all structural, all folded back into the sections above rather than left as drift:
+
+| Refinement | Why | Now in |
+|---|---|---|
+| `GameModule.lifecycle(state)` | The host has to read a game's `RoomState` to guard it, but game state is opaque. One accessor beats the host owning a duplicate field it must keep in sync. | §3 |
+| `gameId` on every `/master` action | Both games use `master:start`, `master:end`, `master:reveal`. One console driving two games cannot disambiguate them by name. | §3.2 |
+| `EngineError` moved to `shared/` | Games throw it; a game importing from `host/` would invert the §2 dependency rule. | §3 |
+| Node 20 is a hard floor | Vite, Vitest and Socket.IO 4 all require ≥18; the repo's toolchain had 15. | §12 |
+
+None touches a game rule, and none required either game to rename an event or change a
+behavior — which is the evidence that the §1 boundary is in the right place.
+
 ---
 
 ## 12. Config & deployment
 
 One process. One port. One SQLite file. `npm run build && npm start`.
 
+**Node 20 or newer**, enforced by `engines` in the workspace root. Vite, Vitest and
+Socket.IO 4 all require ≥18; this is not a preference.
+
 | Env var | Default | Notes |
 |---|---|---|
 | `PORT` | `3000` | Express + Socket.IO + static assets, all of it |
+| `TLS` | `false` | `true` adds `Secure` to the session cookie (§4.1) |
 | `DB_PATH` | `./soonot.db` | Delete between events; nothing is meant to survive |
 | `MASTER_PASSCODE_HASH` | — | **Required.** `npm run hash-passcode` prints it. |
 | `SESSION_SECRET` | generated | Persisted to `host_config` on first boot if unset (§4.1) |

@@ -1,0 +1,69 @@
+/*
+ * One set of design tokens for every surface (req §9.1).
+ *
+ * The projector values are the demanding ones — "readable at 10 m on a 720p
+ * projection" (yutnori §16) is a type-size and contrast problem, not a
+ * framework problem — so they are stated here once rather than re-tuned per
+ * venue or per app.
+ */
+
+:root {
+  color-scheme: dark;
+
+  --bg: #0d1117;
+  --bg-raised: #161b22;
+  --bg-sunken: #010409;
+  --line: #30363d;
+  --line-strong: #484f58;
+
+  --text: #e6edf3;
+  --text-dim: #9198a1;
+
+  --accent: #4493f8;
+  --accent-ink: #ffffff;
+  --ok: #3fb950;
+  --warn: #d29922;
+  --danger: #f85149;
+
+  /* Game identity is colour PLUS a shape or numeral, never colour alone
+     (req §11, yutnori §16). These are the colour half only. */
+  --game-bingo: #a371f7;
+  --game-yutnori: #2f81f7;
+
+  --radius: 10px;
+  --gap: 12px;
+
+  /* Never below 44px: the master may be tapping this on a phone beside the
+     stage (req §11). */
+  --tap: 44px;
+
+  --font: ui-sans-serif, system-ui, -apple-system, 'Apple SD Gothic Neo',
+    'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    color-scheme: light;
+    --bg: #ffffff;
+    --bg-raised: #f6f8fa;
+    --bg-sunken: #eaeef2;
+    --line: #d1d9e0;
+    --line-strong: #b7bfc7;
+    --text: #1f2328;
+    --text-dim: #59636e;
+    --accent-ink: #ffffff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  -webkit-text-size-adjust: 100%;
+}
