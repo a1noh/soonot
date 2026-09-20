@@ -64,11 +64,14 @@ SOONOT/
         namespaces.ts       # /master /b /y /p wiring (§6.3)
         dispatch.ts         # the one loop: lock → apply → invariants → persist → emit (§6.1)
         emit.ts             # Emit union + audience routing (§6.2)
+        tokenbucket.ts      # per-socket action rate limiting (§6.4)
         clock.ts            # one interval; serverNow piggyback; per-game tick opt-in (§7)
         persist/
+          strategy.ts       # the two strategy interfaces (§8.2, §8.3)
           db.ts             # one SQLite file, WAL, migrations
-          snapshot.ts       # strategy A (bingo) (§8.2)
-          eventlog.ts       # strategy B (yutnori) (§8.3)
+        # Each game implements its own strategy — bingo/src/persist.ts,
+        # yutnori/src/persist.ts — because the policy is game-specific (§8.1)
+        # while the plumbing here is not.
         module.ts           # the GameModule contract (§3) — the load-bearing file
       console/
         App.tsx             # /master — sign-in + two panes (req §7)
@@ -308,6 +311,32 @@ io.use((socket, next) => {
   is no upgrade path, so there is no upgrade bug (req §3.3).
 - `master:auth` does not exist. It is deleted from both games' protocols.
 
+### 4.4 Player identity, adopted at join
+
+The handshake cannot identify a bingo player: a phone opening the link has
+nothing to present. So `/b` connects anonymously (`playerId: ''`) and identity is
+**adopted on the first action**:
+
+| Event | What the host does |
+|---|---|
+| `room:join` | Issues `playerId = randomUUID()`, sets it on `socket.data.viewer`, registers it in the `playerId → socket` map, returns it in the ack |
+| `room:rejoin` | Adopts the `playerId` the client presents, and re-registers the socket |
+
+The client keeps the id in `localStorage` and presents it on every reconnect
+(bingo req §13). **Possession is identity** — there is no proof of ownership, and
+deliberately so: a church icebreaker does not warrant auth, and player numbers
+are public by design (bingo req §7.0). The failure mode, a cleared
+`localStorage` orphaning a card, is documented in bingo req §13.
+
+Two consequences, both load-bearing:
+
+1. **The map is what makes unicast work at all.** `createRouter` resolves
+   `to: 'player'` through it (§6.2); without registration at join every
+   `cell:result` is silently dropped, and the game looks broken in a way no
+   engine test can see.
+2. **An action before join is refused**, not queued — `먼저 입장해주세요`. `route`
+   cannot build an action without a `playerId`.
+
 ---
 
 ## 5. Event & lifecycle
@@ -462,12 +491,28 @@ Coalescing is a host service too: `roster:delta` declares a 500 ms coalescing wi
 | Namespace | Viewer | Registered handlers |
 |---|---|---|
 | `/master` | `{ kind: 'master' }` | both modules' `route`, plus host ops (projector, event, sign-out) |
-| `/b` | `{ kind: 'player', playerId }` | bingo's `route` only |
+| `/b` | `{ kind: 'player', playerId }` | bingo's `route`, plus identity adoption (§4.4) and `disconnect` |
 | `/y` | `{ kind: 'spectator' }` | **none** — subscribe only (yutnori §3) |
 | `/p` | `{ kind: 'spectator' }` | **none** — subscribe only; cookie ignored (§4.3) |
 
 A namespace with no handlers cannot be driven, which is stronger than a namespace whose
-handlers check a flag.
+handlers check a flag. `/b` is the one exception, and must be: bingo players fill their
+own cells, so that surface is driven by design. `/y` and `/p` genuinely register nothing.
+
+A `/b` disconnect dispatches `DISCONNECT` rather than deleting the player — fills stand
+and the person stays nameable on other cards (bingo req §7.4). The socket is unregistered
+only if it is still the one in the map, so a reconnect that raced ahead of the disconnect
+event is not unregistered by it.
+
+### 6.4 Per-socket rate limiting
+
+`host/tokenbucket.ts`: 10 actions/sec, burst 20, one bucket per socket, dropped on
+disconnect (bingo §16.6). A host service, so yutnori is covered for free.
+
+Excess is **dropped with a retry hint, never answered with an error**. The realistic
+threat is not malice but one client retry-looping against a rejected fill, multiplied by
+a room full of phones — and an error reply to such a client is itself traffic, which is
+the thing being defended against.
 
 ---
 
@@ -601,8 +646,14 @@ it.
 | `projector.spec` | host | `'auto'` hold window; lock overrides; switch emits once |
 | `dispatch.spec` | host | Serialization under concurrent master devices; commit-before-broadcast |
 | `emit.spec` | host | **Every bingo emit's audience**, asserted against the §6.2 table |
+| `tokenbucket.spec` | host | Burst, refill, ceiling, retry hint, per-socket isolation (§6.4) |
+| `e2e.spec` | bingo | A full game over real sockets: join → start → fill → bingo → reveal, plus a unicast-leak assertion |
 | `persist.spec` | host | Both strategies round-trip; boot recovery with both games `RUNNING` |
 | `two-games.spec` | host | Integration: both `RUNNING`, a bingo fill storm during a yutnori bonus chain, independent locks |
+
+`e2e.spec` earns its place beside it: every engine test passed while `/b` was wired
+subscribe-only and the game was literally unplayable. A test that drives real sockets is
+the only kind that catches an unplugged surface.
 
 `emit.spec` is the highest-value host test: it is the automated form of bingo §16.2, the
 one mistake that would break the event, and it fails loudly the day someone changes a

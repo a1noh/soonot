@@ -23,6 +23,8 @@ import { HostError, toWireError } from './errors.js';
 import type { Viewer } from './module.js';
 import type { Sessions } from '../identity/session.js';
 import { decideHandshake } from '../identity/guard.js';
+import { createBucketRegistry, type BucketRegistry } from './tokenbucket.js';
+import { randomUUID } from 'node:crypto';
 
 export interface SocketData {
   master: boolean;
@@ -35,6 +37,12 @@ export interface NamespaceDeps {
   dispatch: Dispatch;
   sessions: Sessions;
   now: () => number;
+  /**
+   * `playerId` → socket, for unicast (spec §6.2). Owned by the caller because
+   * `createRouter` reads the same map; populated here, at join.
+   */
+  playerSockets?: Map<string, Socket>;
+  buckets?: BucketRegistry;
 }
 
 /** Rooms the emit router targets. One per game surface, one for the masters. */
@@ -75,12 +83,17 @@ export function attachNamespaces(deps: NamespaceDeps): void {
 
   master.on('connection', (socket) => attachMaster(socket, deps));
 
+  // `/b` is the one player-driven surface (spec §6.3): bingo's `route`, and
+  // nothing else. Players fill their own cells, so this namespace cannot be
+  // subscribe-only the way `/y` and `/p` are.
+  player.on('connection', (socket) => {
+    void socket.join(ROOM.game('bingo'));
+    sendSummary(socket, registry);
+    attachPlayer(socket, deps);
+  });
+
   // Subscribe-only namespaces. No `socket.on(...)` beyond joining a room —
   // there is nothing here to drive.
-  player.on('connection', (socket) => {
-    for (const id of GAME_IDS) if (id === 'bingo') void socket.join(ROOM.game(id));
-    sendSummary(socket, registry);
-  });
   board.on('connection', (socket) => {
     void socket.join(ROOM.game('yutnori'));
     sendSummary(socket, registry);
@@ -92,6 +105,80 @@ export function attachNamespaces(deps: NamespaceDeps): void {
   });
 
   void dispatch; // used by attachMaster below
+}
+
+/**
+ * Bingo players, on `/b`.
+ *
+ * Identity is adopted here rather than at the handshake: a phone opening the
+ * link has nothing to present yet. The host issues `playerId` on first join
+ * (req §13) and the client keeps it in `localStorage`; possession is identity
+ * thereafter, which is the documented model for a church icebreaker (§4.3).
+ */
+function attachPlayer(socket: Socket, deps: NamespaceDeps): void {
+  const { registry, dispatch, now } = deps;
+  const players = deps.playerSockets;
+  const buckets = deps.buckets ?? (deps.buckets = createBucketRegistry());
+  const data = socket.data as SocketData;
+
+  const reply = (ack: unknown, value: unknown) => {
+    if (typeof ack === 'function') (ack as (v: unknown) => void)(value);
+  };
+
+  const adopt = (playerId: string): void => {
+    data.viewer = { kind: 'player', playerId };
+    players?.set(playerId, socket);
+  };
+
+  socket.onAny((ev: string, payload: unknown, ack: unknown) => {
+    // Identity first: `route` needs a playerId before it can build an action.
+    if (ev === 'room:join' && (data.viewer.kind !== 'player' || !data.viewer.playerId)) {
+      adopt(randomUUID());
+    } else if (ev === 'room:rejoin') {
+      const claimed = (payload as { playerId?: unknown } | null)?.playerId;
+      if (typeof claimed === 'string' && claimed.length > 0) adopt(claimed);
+    }
+
+    const viewer = data.viewer;
+    if (viewer.kind !== 'player' || !viewer.playerId) {
+      const err = new HostError('BAD_PAYLOAD', '먼저 입장해주세요');
+      reply(ack, { ok: false, error: toWireError(err) });
+      return;
+    }
+
+    // Silent drop with a hint, never an error reply — see tokenbucket.ts.
+    const at = now();
+    if (!buckets.for(socket.id).take(at)) {
+      reply(ack, { ok: false, throttled: true, retryAfterMs: buckets.for(socket.id).retryAfterMs(at) });
+      return;
+    }
+
+    const action = registry.modules.bingo.route(ev, payload, viewer);
+    if (!action) {
+      reply(ack, { ok: false, error: { code: 'UNKNOWN_EVENT', message: '알 수 없는 요청이에요' } });
+      return;
+    }
+
+    dispatch('bingo', action, viewer)
+      .then((result) => reply(ack, { ok: true, playerId: viewer.playerId, state: result.state }))
+      .catch((err: unknown) => {
+        // Back to the originating socket only (spec §6.2).
+        reply(ack, { ok: false, error: toWireError(err) });
+        socket.emit('error', toWireError(err));
+      });
+  });
+
+  socket.on('disconnect', () => {
+    buckets.drop(socket.id);
+    const viewer = data.viewer;
+    if (viewer.kind !== 'player' || !viewer.playerId) return;
+    // Only forget the socket if it is still the one registered — a reconnect
+    // that raced ahead of this event must not be unregistered by it.
+    if (players?.get(viewer.playerId) === socket) players.delete(viewer.playerId);
+    // A disconnect never deletes the player: their fills stand and they stay
+    // nameable on other cards (bingo §7.4). Illegal in SETUP, hence the catch.
+    void dispatch('bingo', { t: 'DISCONNECT', playerId: viewer.playerId }, viewer).catch(() => {});
+  });
 }
 
 function sendSummary(socket: Socket, registry: Registry): void {

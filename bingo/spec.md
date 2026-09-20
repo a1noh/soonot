@@ -99,6 +99,8 @@ bingo/                          # @soonot/bingo
   package.json
   src/
     module.ts          # the GameModule export (master spec §3) — the only host-facing file
+    project.ts         # audience-scoped state (master spec §3.3) — §7.6
+    persist.ts         # the SnapshotStrategy (master spec §8.2) — §8
     shared/
       types.ts          # req §5 verbatim: Room, Player, Trait, BingoEvent, …
       hangul.ts         # NFC normalization + 초성 decomposition (req §7.1, §12)
@@ -482,6 +484,23 @@ combined. 윷놀이 sets `ticks: true`; the same interval serves both, at zero c
 
 ---
 
+### 7.6 `project` — why card privacy is structural
+
+`project.ts` returns a different payload per viewer (master spec §3.3):
+
+| Viewer | Sees |
+|---|---|
+| `player` | The 81 trait strings, the roster, and **their own card only** |
+| `master` | Counts, the roster, and the live top 10 |
+| `spectator` | Counts alone — no cards, no roster, no traits |
+
+req §3 says "players can never see another player's card". Implemented as a
+discipline that would be one careless broadcast away from false; implemented as
+`project`, it is **structural** — the host only ever sends what `project`
+returned for that viewer, so a card has no path into a room-wide emit.
+
+---
+
 ## 8. Persistence
 
 ### 8.1 Schema
@@ -611,8 +630,8 @@ in latency, and that is the whole point of §1.2.
 
 | # | Milestone | Done when |
 |---|---|---|
-| 1 | `shared/` + `engine/` + tests | A full 100-player game can be played in a test file. No host, no UI. |
-| 2 | `module.ts` against the host contract | The host drives a full game; ugly card UI in two tabs |
+| 1 | ✅ `shared/` + `engine/` + tests | A full 100-player game can be played in a test file. No host, no UI. |
+| 2 | ✅ `module.ts` against the host contract | The host drives a full game over real sockets (`e2e.spec`) |
 | 3 | Card grid + cell sheet + search | Usable on an actual phone, with 초성 search |
 | 4 | Trait curator + dashboard pane + shared reveal | A game runs start to finish on the projector; the podium renders off `rank()` |
 | 5 | `SnapshotStrategy` + recovery | `kill -9` mid-game, restart, every card is intact |

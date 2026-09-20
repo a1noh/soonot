@@ -71,7 +71,7 @@ export function createHost(options: HostOptions): Host {
     checkInvariants: !config.production,
   });
 
-  attachNamespaces({ io, registry, dispatch, sessions, now });
+  attachNamespaces({ io, registry, dispatch, sessions, now, playerSockets });
 
   // ---- Identity routes (spec §4.2) ------------------------------------------
   const limiter = createAttemptLimiter();
