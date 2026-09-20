@@ -17,13 +17,15 @@
     "hash-passcode": "tsx scripts/hash-passcode.ts"
   },
   "dependencies": {
+    "@soonot/bingo": "*",
+    "@soonot/yutnori": "*",
+    "better-sqlite3": "^11.10.0",
     "cookie": "^0.6.0",
     "express": "^4.19.2",
-    "socket.io": "^4.7.5",
-    "@soonot/bingo": "*",
-    "@soonot/yutnori": "*"
+    "socket.io": "^4.7.5"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
     "@types/cookie": "^0.6.0",
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.9",

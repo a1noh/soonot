@@ -15,7 +15,10 @@ import type { GameId } from '../shared/lifecycle.js';
 import type { AnyGameModule } from './module.js';
 import { createRegistry, type Registry } from '../event/registry.js';
 import { createDispatch, type Dispatch } from './dispatch.js';
-import { createNullPersistence, type Persistence } from './persist/strategy.js';
+import { type Persistence } from './persist/strategy.js';
+import { openDb, type OpenedDb } from './persist/db.js';
+import { createSqlitePersistence } from './persist/persistence.js';
+import { recoverEvent, writeEventRow } from './persist/recover.js';
 import { attachNamespaces, createRouter } from './namespaces.js';
 import { createSessions, createMemorySecretStore, sessionCookie, clearedCookie, type Sessions } from '../identity/session.js';
 import { verifyPasscode } from '../identity/passcode.js';
@@ -30,6 +33,7 @@ export interface Host {
   registry: Registry;
   dispatch: Dispatch;
   sessions: Sessions;
+  persistence: Persistence;
   listen(port?: number): Promise<number>;
   close(): Promise<void>;
 }
@@ -45,7 +49,15 @@ export interface HostOptions {
 export function createHost(options: HostOptions): Host {
   const { config, modules, passcodeHash } = options;
   const now = options.now ?? (() => Date.now());
-  const persistence = options.persistence ?? createNullPersistence();
+
+  // One SQLite file for the whole host (spec §8.1). Each game contributes its
+  // own schema; the host owns the connection, the WAL and the write order.
+  const opened: OpenedDb | null = options.persistence
+    ? null
+    : openDb(
+        config.dbPath,
+        Object.values(modules).map((m) => m.persistence.schema),
+      );
 
   const app = express();
   app.use(express.json({ limit: '32kb' }));
@@ -59,6 +71,26 @@ export function createHost(options: HostOptions): Host {
 
   const sessions = createSessions(createMemorySecretStore(config.sessionSecret ?? undefined));
   const registry = createRegistry(modules);
+
+  const persistence: Persistence =
+    options.persistence ??
+    createSqlitePersistence({
+      db: opened!.db,
+      modules,
+      event: () => registry.current(),
+      now,
+    });
+
+  // Recovery, before a single socket is accepted: a client that reconnects
+  // into a half-restored host would see a game that never existed (spec §8.4).
+  if (opened) {
+    const restored = recoverEvent(opened.db, modules, now());
+    if (restored) {
+      registry.adopt(restored);
+      // eslint-disable-next-line no-console
+      console.log(`[master] recovered event ${restored.code} — ${restored.title}`);
+    }
+  }
 
   const playerSockets = new Map<string, import('socket.io').Socket>();
   const router = createRouter(io, (id) => playerSockets.get(id));
@@ -156,6 +188,7 @@ export function createHost(options: HostOptions): Host {
     registry,
     dispatch,
     sessions,
+    persistence,
     listen(port = config.port) {
       return new Promise<number>((resolve) => {
         http.listen(port, () => {
@@ -165,6 +198,8 @@ export function createHost(options: HostOptions): Host {
       });
     },
     close() {
+      persistence.dispose?.() ?? persistence.flush();
+      opened?.close();
       return new Promise<void>((resolve) => {
         io.close(() => http.close(() => resolve()));
       });

@@ -27,7 +27,7 @@ afterEach(async () => {
 
 async function boot() {
   host = createHost({
-    config: { ...loadConfig({}), production: false, tls: false },
+    config: { ...loadConfig({}), production: false, tls: false, dbPath: ':memory:' },
     passcodeHash: hashPasscode(PASSCODE),
     modules: { bingo: createStubModule('bingo'), yutnori: createStubModule('yutnori') },
   });

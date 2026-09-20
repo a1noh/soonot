@@ -78,6 +78,21 @@ export interface GameModule<S = unknown, A extends Action = Action> {
    * elapsed clock to 100 clients costs more than the rest of the game combined.
    */
   readonly ticks: boolean;
+
+  /**
+   * May the host re-`project` to **everyone on this game's surface** after every
+   * action, or only on a lifecycle transition? (spec §6.4)
+   *
+   * 윷놀이 says yes: one writer, an action every few seconds, and a board that
+   * is meaningless unless it moves as the sticks land.
+   *
+   * Bingo says no. ~8,100 fills × 100 players is the 810,000-message mistake
+   * §6.2 exists to prevent, arrived at from a different direction. Its crowd
+   * stays current from unicast `cell:result` and coalesced `roster:delta`
+   * instead. The master console and the projector are a handful of screens and
+   * are refreshed after every action either way.
+   */
+  readonly liveProjection: boolean;
 }
 
 /**

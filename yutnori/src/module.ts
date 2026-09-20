@@ -162,6 +162,9 @@ export const yutnoriModule: GameModule<Room, Action> = {
    * (req §10). Bingo opts out — see master spec §7.
    */
   ticks: true,
+
+  /** One writer, an action every few seconds — the board must move live. */
+  liveProjection: true,
 };
 
 export default yutnoriModule;

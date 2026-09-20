@@ -17,6 +17,12 @@ export interface Registry {
   current(): EventRecord | null;
   require(): EventRecord;
   open(input: Omit<CreateEventInput, 'modules'>): EventRecord;
+  /**
+   * Install an event restored from disk (spec §8.4). Distinct from `open`:
+   * it assigns no id and generates no code — both already exist, and a
+   * reconnecting phone is holding the old ones.
+   */
+  adopt(event: EventRecord): void;
   close(now: number): void;
   commit(gameId: GameId, state: unknown): void;
   /**
@@ -52,6 +58,10 @@ export function createRegistry(modules: Readonly<Record<GameId, AnyGameModule>>)
       }
       event = createEvent({ ...input, modules });
       return event;
+    },
+
+    adopt(restored) {
+      event = restored;
     },
 
     close(now) {

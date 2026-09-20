@@ -107,6 +107,13 @@ export const bingoModule: GameModule<Room, Action> = {
    * host already piggybacks on every message.
    */
   ticks: false,
+
+  /**
+   * ~8,100 fills to 100 players would be the 810,000-message mistake again
+   * (req §16.2). The crowd stays current from unicast cell:result and
+   * coalesced roster:delta; only the console and projector re-project.
+   */
+  liveProjection: false,
 };
 
 export default bingoModule;

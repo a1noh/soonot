@@ -104,6 +104,7 @@ function hydrate(eventId: string, room: Omit<Room, 'players' | 'byNumber' | 'nam
 
 export const snapshot: SnapshotStrategy<Room> = {
   kind: 'snapshot',
+  schema: SCHEMA,
 
   triggers: {
     onTransition: true,

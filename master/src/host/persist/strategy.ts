@@ -24,6 +24,8 @@ export interface HostDb {
 
 export interface SnapshotStrategy<S> {
   readonly kind: 'snapshot';
+  /** DDL for this game's tables. The host runs it at boot (spec §8.1). */
+  readonly schema: string;
   write(db: HostDb, eventId: string, state: S): void;
   read(db: HostDb, eventId: string): S | null;
   readonly triggers: {
@@ -38,10 +40,21 @@ export interface SnapshotStrategy<S> {
 
 export interface EventLogStrategy<S, A> {
   readonly kind: 'eventlog';
-  append(db: HostDb, eventId: string, action: A, at: number): void;
-  /** Undo: drop everything at or after `seq` (yutnori spec §4.4). */
-  truncate(db: HostDb, eventId: string, seq: number): void;
+  /** DDL for this game's tables. The host runs it at boot (spec §8.1). */
+  readonly schema: string;
+  /**
+   * Persist the immutable setup plus the derived log.
+   *
+   * Deliberately takes **state, not an action**. A single yutnori `THROW` with
+   * one candidate auto-applies its `MOVE` (req §8.1), so the log cannot be
+   * rebuilt from the action stream — but it is always exactly `state.history`.
+   * The strategy also drops anything past that history, which is what makes
+   * undo (yutnori spec §4.4) an ordinary write rather than a special case.
+   */
+  writeState(db: HostDb, eventId: string, state: S): void;
   replay(db: HostDb, eventId: string): S | null;
+  /** Never read by the host; keeps the action type on the interface. */
+  readonly _action?: A;
 }
 
 export type PersistenceStrategy<S, A> = SnapshotStrategy<S> | EventLogStrategy<S, A>;
@@ -51,6 +64,8 @@ export type PersistenceStrategy<S, A> = SnapshotStrategy<S> | EventLogStrategy<S
  * a module never touches the database directly.
  */
 export interface Persistence {
+  /** Flush anything pending and stop all timers. Called on host shutdown. */
+  dispose?(): void;
   enqueue(input: {
     gameId: string;
     state: unknown;

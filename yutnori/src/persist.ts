@@ -8,7 +8,7 @@
 import type { EventLogStrategy, HostDb } from '@soonot/master';
 import type { Action } from './engine/actions';
 import type { Room, RoomSetup, TurnEvent } from './shared/types';
-import { replay } from './engine/replay';
+import { replay, setupOf } from './engine/replay';
 
 export const SCHEMA = `
 CREATE TABLE IF NOT EXISTS yut_rooms (
@@ -47,16 +47,21 @@ export function writeEvents(db: HostDb, eventId: string, history: readonly TurnE
 
 export const eventlog: EventLogStrategy<Room, Action> = {
   kind: 'eventlog',
+  schema: SCHEMA,
 
-  append(_db: HostDb, _eventId: string, _action: Action, _at: number): void {
-    // The module writes the whole history on commit (see `persistNow` in
-    // module.ts) because an Action is not a TurnEvent: a single THROW with one
-    // candidate produces a MOVE too (req §8.1), so the log cannot be built from
-    // actions alone without re-deriving them.
-  },
-
-  truncate(db: HostDb, eventId: string, seq: number): void {
-    db.prepare(`DELETE FROM yut_turn_events WHERE event_id = ? AND seq >= ?`).run(eventId, seq);
+  /**
+   * Setup plus the derived log, in one call. 말 positions are never written —
+   * `replay` derives them, which is the same code path as undo (spec §4.4,
+   * §8.3), so recovery is exercised by every undo test rather than only by a
+   * disaster.
+   */
+  writeState(db: HostDb, eventId: string, state: Room): void {
+    writeSetup(db, eventId, setupOf(state), state.createdAt);
+    // An undo shortens `history`; drop anything past its new tail so the log
+    // and the state can never disagree.
+    const tail = state.history.length;
+    db.prepare(`DELETE FROM yut_turn_events WHERE event_id = ? AND seq > ?`).run(eventId, tail);
+    writeEvents(db, eventId, state.history);
   },
 
   replay(db: HostDb, eventId: string): Room | null {

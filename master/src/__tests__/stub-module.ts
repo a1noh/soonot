@@ -151,11 +151,13 @@ export function createStubModule(id: GameId): GameModule<StubState, StubAction> 
 
     persistence: {
       kind: 'snapshot',
+    schema: '',
       write: () => undefined,
       read: () => null,
       triggers: { onTransition: true, onEmits: ['game:ended'], debounceMs: 1000 },
     },
 
     ticks: false,
+    liveProjection: true,
   };
 }

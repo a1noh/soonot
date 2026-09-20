@@ -164,8 +164,16 @@ function attachPlayer(socket: Socket, deps: NamespaceDeps): void {
     const before = registry.modules.bingo.lifecycle(registry.require().games.bingo.state);
     dispatch('bingo', action, viewer)
       .then((result) => {
-        if (result.state !== before) pushStateAll(deps.io, 'bingo', registry);
-        else pushState(socket, 'bingo', registry);
+        pushStateAll(
+          deps.io,
+          'bingo',
+          registry,
+          result.state !== before || registry.modules.bingo.liveProjection
+            ? 'everyone'
+            : 'controls',
+        );
+        // The acting player always gets their own picture back.
+        pushState(socket, 'bingo', registry);
         reply(ack, { ok: true, playerId: viewer.playerId, state: result.state });
       })
       .catch((err: unknown) => {
@@ -206,9 +214,26 @@ export function pushState(socket: Socket, gameId: GameId, registry: Registry): v
   socket.emit(STATE_EVENT, { gameId, view: module.project(event.games[gameId].state, viewer) });
 }
 
-/** The same, for everyone watching one game. Transitions only. */
-export function pushStateAll(io: Server, gameId: GameId, registry: Registry): void {
-  for (const ns of ['/b', '/y', '/p', '/master']) {
+/**
+ * Re-project to the screens watching one game.
+ *
+ * `scope: 'controls'` reaches the console and the projector — a handful of
+ * screens, refreshed after every action so counts and clocks stay honest.
+ * `scope: 'everyone'` additionally reaches the crowd on `/b` or `/y`, and is
+ * used on a lifecycle transition, or after every action for a game whose
+ * module sets `liveProjection` (spec §6.4).
+ *
+ * The split is the whole reason bingo can have a live console while 100 phones
+ * are not sent 8,100 projections.
+ */
+export function pushStateAll(
+  io: Server,
+  gameId: GameId,
+  registry: Registry,
+  scope: 'controls' | 'everyone' = 'everyone',
+): void {
+  const namespaces = scope === 'everyone' ? ['/b', '/y', '/p', '/master'] : ['/p', '/master'];
+  for (const ns of namespaces) {
     for (const socket of io.of(ns).sockets.values()) {
       if (socket.rooms.has(ROOM.game(gameId))) pushState(socket, gameId, registry);
     }
@@ -300,13 +325,21 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       return;
     }
 
+    const before = registry.modules[gameId].lifecycle(registry.require().games[gameId].state);
     dispatch(gameId, action, viewer)
       .then((result) => {
         broadcastSummary(deps);
-        // START deals, END freezes, REVEAL advances the podium — every surface
-        // needs the new picture, and transitions are rare enough to afford a
-        // per-viewer projection.
-        pushStateAll(deps.io, gameId, registry);
+        // A transition (START deals, END freezes, REVEAL advances) always
+        // reaches everyone. Otherwise the crowd is included only for a game
+        // that can afford it — 윷놀이 can, bingo cannot (spec §6.4).
+        pushStateAll(
+          deps.io,
+          gameId,
+          registry,
+          result.state !== before || registry.modules[gameId].liveProjection
+            ? 'everyone'
+            : 'controls',
+        );
         reply(ack, { ok: true, gameId, state: result.state });
       })
       .catch((err: unknown) => {
