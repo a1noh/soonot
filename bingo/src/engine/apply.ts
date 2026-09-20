@@ -4,7 +4,7 @@
  * Pure: no I/O, no Date.now(), no socket awareness. `now` is an argument, so
  * every rule is testable with a literal state and a literal action.
  */
-import { BASE_ALLOWED, EngineError, REVEAL_LAST_STEP, type RoomState } from '@soonot/master';
+import { BASE_ALLOWED, EngineError, MAX_REVEAL_STEP, type RoomState } from '@soonot/master';
 import { CELLS, MAX_PLAYERS } from '../shared/constants';
 import { normalizeNickname } from '../shared/hangul';
 import type { Player, Room, Trait } from '../shared/types';
@@ -359,7 +359,7 @@ export function apply(room: Room, action: Action, now: number): Out {
         if (action.step !== 0) throw new EngineError('BAD_REVEAL_STEP');
         return { state: { ...room, state: 'REVEAL', revealStep: 0 }, emits: [] };
       }
-      if (action.step !== room.revealStep + 1 || action.step > REVEAL_LAST_STEP) {
+      if (action.step !== room.revealStep + 1 || action.step > MAX_REVEAL_STEP) {
         throw new EngineError('BAD_REVEAL_STEP');
       }
       return { state: { ...room, revealStep: action.step }, emits: [] };

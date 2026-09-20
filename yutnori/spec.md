@@ -533,7 +533,7 @@ that actually matters on the day.
 | # | Milestone | Done when |
 |---|---|---|
 | 1 ✅ | `shared/` + `engine/` + tests | **Done.** A full game plays in `game.spec.ts`; 83 tests green, `tsc -b` clean. |
-| 2 | `module.ts` against the host contract | The host drives a full game; ugly console pane |
+| 2 | ✅ `module.ts` against the host contract | The host drives a full game; ugly console pane |
 | 3 | Board view + SVG geometry | A second tab mirrors the game live |
 | 4 | Clock, end, ranking, reveal | A game ends by itself; the **shared** podium reveals 3rd → 2nd → 1st off `rank()` |
 | 5 | `EventLogStrategy` + recovery | `kill -9` mid-game, restart, board is intact |
