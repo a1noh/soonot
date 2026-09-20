@@ -14,7 +14,12 @@ import { newlyCompleted } from './bingo';
 import { resolve } from './resolve';
 import { makePermutation } from './shuffle';
 
-export const ALLOWED: Partial<Record<RoomState, readonly ActionType[]>> = {
+/**
+ * The module's own whitelist. The host unions this with BASE_ALLOWED and
+ * enforces the result (master spec §5); every RoomState is listed because the
+ * contract wants a total record, not a partial one.
+ */
+export const ALLOWED: Readonly<Record<RoomState, readonly ActionType[]>> = {
   SETUP: ['SET_TRAITS'],
   LOBBY: ['JOIN', 'REJOIN', 'DISCONNECT'],
   RUNNING: ['JOIN', 'REJOIN', 'DISCONNECT', 'FILL', 'FILL_PICK', 'CLEAR'],
@@ -164,7 +169,7 @@ function commitFill(
  * the engine is total on its own and testable without a host.
  */
 function allowedHere(state: RoomState, t: ActionType): boolean {
-  return BASE_ALLOWED[state].includes(t) || (ALLOWED[state] ?? []).includes(t);
+  return BASE_ALLOWED[state].includes(t) || ALLOWED[state].includes(t);
 }
 
 export function apply(room: Room, action: Action, now: number): Out {
