@@ -12,12 +12,13 @@
     "node": ">=18"
   },
   "scripts": {
-    "build": "npm run build -w @soonot/master",
-    "start": "npm run start -w @soonot/master",
+    "build": "npm --workspace @soonot/master run build",
+    "start": "npm --workspace @soonot/master run start",
     "dev": "npm run dev -w @soonot/master",
     "test": "vitest run",
     "test:master": "npm run test -w @soonot/master",
     "typecheck": "tsc -b",
-    "hash-passcode": "npm run hash-passcode -w @soonot/master"
+    "hash-passcode": "npm run hash-passcode -w @soonot/master",
+    "verify": "bash scripts/verify.sh"
   }
 }
