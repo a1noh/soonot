@@ -4,9 +4,18 @@ _Last updated: 2026-09-21._
 
 ## TL;DR
 Everything builds and **282 tests pass** (`npm run verify`). The app is feature-complete for a
-church 한마당 and **deploy-ready** (Dockerfile + Fly config + GitHub Actions). The former
-follow-ups (fullscreen + 참여 코드 gate) are now **done**; the only thing left before going live is
-the one-time Fly setup (see "To go live").
+church 한마당 and **is LIVE**: **https://soonot-hanmadang.fly.dev** (master passcode `soonot`).
+Deployed to Fly.io (Tokyo/nrt), one always-on machine + a 1GB SQLite volume.
+
+### Live site
+- Operator: https://soonot-hanmadang.fly.dev/master  (passcode `soonot`)
+- Projector: https://soonot-hanmadang.fly.dev/p
+- Players:  https://soonot-hanmadang.fly.dev/b  (or scan the projector QR → `/{참여코드}`)
+- Redeploy: `flyctl deploy --remote-only --app soonot-hanmadang` (or push to main once
+  `DEPLOY_ENABLED=true` + `FLY_API_TOKEN` are set).
+- Cost control: it's **always-on (~$3/mo)**. To stop billing between events:
+  `flyctl scale count 0 --app soonot-hanmadang` (and `scale count 1` to bring it back), or
+  `flyctl apps destroy soonot-hanmadang` to remove it entirely.
 
 ## What works (verified)
 - **윷놀이** — authentic **29-밭 윷판** with real **지름길**: 20 outer 밭 + two diagonals

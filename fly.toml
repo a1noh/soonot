@@ -1,6 +1,6 @@
 # Fly.io deployment (spec §11). Rename `app`, then: fly launch --no-deploy → fly deploy.
 # One always-on machine (WebSockets + a live event), one persistent volume for SQLite.
-app = "soonot"                 # <-- change to your unique app name
+app = "soonot-hanmadang"       # created on Fly (soonot was taken globally)
 primary_region = "nrt"         # Tokyo — nearest Fly region to Korea
 
 [build]
