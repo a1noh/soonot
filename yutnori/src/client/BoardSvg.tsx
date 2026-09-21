@@ -118,8 +118,12 @@ export function BoardSvg({ view }: { view: BoardView }) {
             className={`board__malwrap${isTurn ? ' is-turn' : ''}`}
             style={{ transform: `translate(${pos.x.toFixed(2)}px, ${pos.y.toFixed(2)}px)` }}
           >
-            <circle r={3.4} fill={m.team.color} className="board__mal" filter="url(#malShadow)" />
-            <text y={1.2} className="board__malnum">{view.teams.indexOf(m.team) + 1}</text>
+            {/* inner group so the entrance pop (scale) doesn't fight the wrapper's
+                position transform, nor the is-turn stroke pulse on the circle */}
+            <g className="board__malin">
+              <circle r={3.4} fill={m.team.color} className="board__mal" filter="url(#malShadow)" />
+              <text y={1.2} className="board__malnum">{view.teams.indexOf(m.team) + 1}</text>
+            </g>
           </g>
         );
       })}
