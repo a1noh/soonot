@@ -115,6 +115,13 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 .tray__name { font-weight: 700; }
 .tray__counts { color: var(--ink-dim); margin-left: auto; }
 .tray__counts b { color: var(--green); }
+/* waiting 말 drawn as real pieces + the current team highlighted */
+.tray__mals { display: inline-flex; gap: 0.5vmin; }
+.tray__mal { width: 2vmin; height: 2vmin; min-width: 16px; min-height: 16px; border-radius: 999px;
+  border: 1px solid rgba(0,0,0,0.35); box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+.tray__turn { font-weight: 800; color: var(--gold); font-size: 0.9em; }
+.tray--turn { background: rgba(244,201,93,0.14); border-radius: 10px; padding: 0.4vmin 0.8vmin; }
+.tray--turn .tray__mal { animation: mal-turn 1.1s ease-in-out infinite; }
 .standings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.8vmin; }
 .standings__row { display: flex; align-items: center; gap: 1.4vmin; font-size: clamp(14px, 2vmin, 28px); }
 .standings__rank { width: 2.4vmin; min-width: 20px; text-align: center; color: var(--gold); font-weight: 800; }

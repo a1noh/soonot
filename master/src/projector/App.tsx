@@ -319,7 +319,7 @@ export function App() {
       return undefined;
     }
     setMgShow(false);
-    const t = setTimeout(() => setMgShow(true), 1700);
+    const t = setTimeout(() => setMgShow(true), 2000); // callout (~1.6s) fully clears first
     return () => clearTimeout(t);
   }, [mgPending]);
 

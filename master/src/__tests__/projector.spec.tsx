@@ -133,7 +133,7 @@ describe('projector presentation mode', () => {
       // the roulette card is NOT up yet.
       expect(screen.queryByText('제기차기')).toBeNull();
       // After the callout finishes, the roulette pops in.
-      act(() => vi.advanceTimersByTime(1800));
+      act(() => vi.advanceTimersByTime(2200));
       expect(screen.getByText('제기차기')).toBeTruthy();
     } finally {
       vi.useRealTimers();

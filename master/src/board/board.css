@@ -30,6 +30,11 @@ body { margin: 0; background: #0f1115; color: #f2f4f8;
 .tray__name { flex: 1; }
 .tray__counts { color: #9aa3b8; font-variant-numeric: tabular-nums; }
 .tray__counts b { color: #6ee7a8; }
+/* waiting 말 as real pieces + current-team highlight */
+.tray__mals { display: inline-flex; gap: 3px; }
+.tray__mal { width: 14px; height: 14px; border-radius: 999px; border: 1px solid rgba(0,0,0,0.4); }
+.tray__turn { font-weight: 800; color: #f4c95d; font-size: 0.85em; }
+.tray--turn { background: rgba(244,201,93,0.15); border-radius: 8px; padding: 2px 6px; }
 
 .board-page__side h2 { font-size: clamp(15px, 2vmin, 28px); color: #8b93a7; margin: 0 0 0.6vmin; }
 .standings { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6vmin; }

@@ -131,17 +131,27 @@ export function BoardSvg({ view }: { view: BoardView }) {
   );
 }
 
-/** 대기 and 집 live off the ring, in per-team trays. */
+/** 대기 and 집 live off the ring, in per-team trays. The waiting 말 are drawn as
+ *  actual pieces (not just a count) and the team whose turn it is is highlighted,
+ *  so even on the very first turn — before anything is on the board — the room can
+ *  see each team's 말 and whose turn it is. */
 export function HomeTray({ view }: { view: BoardView }) {
   return (
     <ul className="trays">
       {view.teams.map((t, i) => {
         const waiting = t.mal.filter((m) => m.progress === 0).length;
         const home = t.mal.filter((m) => m.progress === 20).length;
+        const isTurn = view.turnTeamId === t.id;
         return (
-          <li key={t.id} className="tray">
+          <li key={t.id} className={`tray${isTurn ? ' tray--turn' : ''}`}>
             <span className="tray__dot" style={{ background: t.color }}>{i + 1}</span>
             <span className="tray__name">{t.name}</span>
+            {isTurn ? <span className="tray__turn">차례</span> : null}
+            <span className="tray__mals" aria-hidden="true">
+              {Array.from({ length: waiting }).map((_, k) => (
+                <span key={k} className="tray__mal" style={{ background: t.color }} />
+              ))}
+            </span>
             <span className="tray__counts">
               대기 {waiting} · 집 <b>{home}</b>
             </span>
