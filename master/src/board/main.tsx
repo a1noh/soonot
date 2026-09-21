@@ -52,7 +52,7 @@ function Board() {
   if (!view) {
     return (
       <main className="board-page board-page--empty">
-        <h1>윷놀이 한마당</h1>
+        <h1>윷놀이</h1>
         <p>{connected ? '게임을 기다리는 중…' : '연결 중…'}</p>
       </main>
     );
@@ -61,7 +61,7 @@ function Board() {
   return (
     <main className="board-page">
       <header className="board-page__head">
-        <h1>윷놀이 한마당</h1>
+        <h1>윷놀이</h1>
         <Clock ms={view.remainingMs} paused={view.paused} />
         {view.pendingMiniGame ? (
           <strong className="board-page__turn">🎡 {view.pendingMiniGame.teamName} 미니게임!</strong>

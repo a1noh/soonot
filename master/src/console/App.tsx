@@ -79,7 +79,7 @@ function NewEvent({ onCreate }: { onCreate(title: string): Promise<void> }) {
             className="field__input"
             value={title}
             autoFocus
-            placeholder="2026 가을 교회 한마당"
+            placeholder="예) SOONOT — 온누리 Win2 순장 OT"
             onChange={(e) => setTitle(e.currentTarget.value)}
           />
         </label>

@@ -37,7 +37,7 @@ function Standby({ summary, joinable, theme }: { summary: EventSummary | null; j
   return (
     <Stage kind="standby" theme={theme}>
       <div className="standby">
-        <div className="standby__kicker">교회 한마당</div>
+        <div className="standby__kicker">온누리 Win2</div>
         <h1 className="standby__title">{summary?.title ?? 'SOONOT'}</h1>
         {summary ? (
           <div className="join">
@@ -129,7 +129,7 @@ function YutnoriBoard({ view }: { view: BoardView }) {
   return (
     <Stage kind="yut">
       <header className="board-head">
-        <h1 className="board-head__title">윷놀이 한마당</h1>
+        <h1 className="board-head__title">윷놀이</h1>
         {running ? <Clock ms={view.remainingMs} paused={view.paused} /> : null}
         <strong className="board-head__turn">{label}</strong>
       </header>
@@ -150,7 +150,7 @@ function BingoScreen({ view, summary, flash }: { view: BingoView; summary: Event
     <Stage kind="bingo" theme="bingo">
       <div className="bingo-stage">
         <div className="bingo-stage__kicker">교회 사람 빙고</div>
-        <h1 className="bingo-stage__title">{summary?.title ?? '한마당'}</h1>
+        <h1 className="bingo-stage__title">{summary?.title ?? 'SOONOT'}</h1>
         <div className="bstats">
           <Big value={view.connectedCount} label="접속" />
           <Big value={view.playerCount} label="참가" />

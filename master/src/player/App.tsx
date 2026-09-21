@@ -51,7 +51,7 @@ function JoinForm({ api }: { api: PlayerApi }) {
         }}
       >
         <h1 className="join__title">교회 사람 빙고</h1>
-        <p className="join__sub">{api.summary?.title ?? '한마당'}</p>
+        <p className="join__sub">{api.summary?.title ?? 'SOONOT'}</p>
         <label className="field">
           <span className="field__label">닉네임</span>
           <input
@@ -93,7 +93,7 @@ function CodeGate({ api }: { api: PlayerApi }) {
         }}
       >
         <h1 className="join__title">교회 사람 빙고</h1>
-        <p className="join__sub">{api.summary?.title ?? '한마당'}</p>
+        <p className="join__sub">{api.summary?.title ?? 'SOONOT'}</p>
         <label className="field">
           <span className="field__label">참여 코드</span>
           <input
@@ -433,13 +433,13 @@ export function App() {
     case 'need-code':
       return <CodeGate api={api} />;
     case 'setup-wait':
-      return <Waiting title={api.summary?.title ?? '한마당'} line="곧 시작해요" sub="준비 중입니다" />;
+      return <Waiting title={api.summary?.title ?? 'SOONOT'} line="곧 시작해요" sub="준비 중입니다" />;
     case 'need-join':
       return <JoinForm api={api} />;
     case 'lobby':
       return (
         <Waiting
-          title={api.summary?.title ?? '한마당'}
+          title={api.summary?.title ?? 'SOONOT'}
           line={`입장 완료! 당신은 #${api.me?.number ?? '—'}`}
           sub={`${api.counts.playerCount}명 참가 중 · 시작을 기다려주세요`}
         />
