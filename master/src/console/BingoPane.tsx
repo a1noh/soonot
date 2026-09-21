@@ -95,25 +95,24 @@ function Stat({ label, value, highlight }: { label: string; value: string; highl
   );
 }
 
-/** Who's here right now (req §7): the roster with a live online dot. */
+/** Who's here right now (req §7): only the CONNECTED players — offline folks (incl.
+ *  ghosts recovered from a previous session) are not shown, so the list is always
+ *  "who's actually here". A game reset clears them entirely. */
 function Online({ view }: { view: MasterView }) {
-  const online = view.roster.filter((p) => p.conn).length;
+  const online = view.roster.filter((p) => p.conn).sort((a, b) => a.n - b.n);
   return (
     <details className="online" open>
       <summary className="online__summary">
-        접속 <b>{online}</b>/{view.roster.length}명
+        접속 <b>{online.length}</b>명
       </summary>
       <ul className="online__list">
-        {[...view.roster]
-          .sort((a, b) => Number(b.conn) - Number(a.conn) || a.n - b.n)
-          .map((p) => (
-            <li key={p.id} className={`online__row${p.conn ? ' is-on' : ''}`}>
-              <span className="online__dot" aria-hidden="true" />
-              <span className="online__name">{p.name}</span>
-              <span className="online__num">#{p.n}</span>
-              {!p.conn ? <span className="online__off">오프라인</span> : null}
-            </li>
-          ))}
+        {online.map((p) => (
+          <li key={p.id} className="online__row is-on">
+            <span className="online__dot" aria-hidden="true" />
+            <span className="online__name">{p.name}</span>
+            <span className="online__num">#{p.n}</span>
+          </li>
+        ))}
       </ul>
     </details>
   );

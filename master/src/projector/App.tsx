@@ -322,20 +322,26 @@ function JoinChip({ code }: { code: string }) {
   );
 }
 
-/** A persistent bottom-left box of who's connected right now (Kahoot-style). */
+/** A persistent bottom-left box of who's connected right now (Kahoot-style).
+ *  On the bingo screen it lists names; on the 윷놀이 board it's just a small count
+ *  so it never covers the map. Only CONNECTED players count — offline ghosts and
+ *  people who left never appear. */
 function OnlineBox({ roster, bingo }: { roster: { n: number; id: string; name: string; conn: boolean }[]; bingo?: boolean }) {
   const online = roster.filter((p) => p.conn);
+  if (online.length === 0) return null;
   return (
-    <div className={`onlinebox${bingo ? ' onlinebox--bingo' : ''}`}>
+    <div className={`onlinebox${bingo ? ' onlinebox--bingo' : ' onlinebox--compact'}`}>
       <div className="onlinebox__head">🟢 접속 {online.length}명</div>
-      <ul className="onlinebox__list">
-        {online.map((p) => (
-          <li key={p.id} className="onlinebox__row">
-            <span className="onlinebox__name">{p.name}</span>
-            <span className="onlinebox__num">#{p.n}</span>
-          </li>
-        ))}
-      </ul>
+      {bingo ? (
+        <ul className="onlinebox__list">
+          {online.map((p) => (
+            <li key={p.id} className="onlinebox__row">
+              <span className="onlinebox__name">{p.name}</span>
+              <span className="onlinebox__num">#{p.n}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

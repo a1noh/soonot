@@ -5,7 +5,7 @@ import { rankPlayers } from '../engine/ranking';
 import { LINES } from '../shared/lines';
 import { CELLS, GRID } from '../shared/constants';
 import { createFakeDb } from './fakedb';
-import { running, step, fillLine } from '../engine/__tests__/helpers';
+import { running, lobby, step, fillLine } from '../engine/__tests__/helpers';
 
 /** A game with history: fills, a bingo, and a disconnect. */
 function played() {
@@ -85,6 +85,18 @@ describe('snapshot strategy (master spec §8.2)', () => {
     snapshot.write(db, 'ev1', played());
     const after = snapshot.read(db, 'ev1')!;
     expect([...after.players.values()].every((p) => !p.connected)).toBe(true);
+  });
+
+  it('does not resurrect a not-yet-started lobby roster on restart (clean slate)', () => {
+    const db = createFakeDb();
+    const before = lobby(5);
+    expect(before.state).toBe('LOBBY');
+    expect(before.players.size).toBe(5);
+    snapshot.write(db, 'ev1', before);
+
+    const after = snapshot.read(db, 'ev1')!;
+    expect(after.players.size).toBe(0); // ghosts from a previous session are gone
+    expect(after.traits.length).toBe(CELLS); // but the trait list is kept
   });
 
   it('a second write overwrites rather than duplicating', () => {

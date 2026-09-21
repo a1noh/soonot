@@ -3,7 +3,7 @@
 _Last updated: 2026-09-21._
 
 ## TL;DR
-Everything builds and **282 tests pass** (`npm run verify`). The app is feature-complete for a
+Everything builds and **284 tests pass** (`npm run verify`). The app is feature-complete for a
 church 한마당 and **is LIVE**: **https://soonot-hanmadang.fly.dev** (master passcode `soonot`).
 Deployed to Fly.io (Tokyo/nrt), one always-on machine + a 1GB SQLite volume.
 
@@ -33,7 +33,18 @@ Deployed to Fly.io (Tokyo/nrt), one always-on machine + a 1GB SQLite volume.
   per-socket throttle and a global cap on the host. `/y` aliases `/p`.
 - **Join by 참여 코드** — the projector QR encodes `/{code}`; scanning goes straight to the
   nickname screen. Opening bare `/b` first asks for the 참여 코드 shown on the projector, so
-  random visitors can't wander into a live event.
+  random visitors can't wander into a live event. A persistent QR + code chip on the bingo screen
+  lets latecomers join mid-game.
+- **Anonymous bingo suspense** — a bingo flashes the projector green + updates a live **anonymous
+  chart** (1줄 N명 / 2줄 N명 …, no names) so identities stay secret until the reveal. The
+  projector's bingo screens are kawaii-pastel (matching `/b`); 윷놀이 stays gold-paper.
+- **Who's online = connected only** — offline players (incl. ghosts recovered from a previous
+  session) never show. Console lists connected names; the projector shows a name list on bingo and a
+  compact 접속 N명 count on the 윷놀이 board (so it never covers the map). A bingo **다시 하기**
+  also bounces connected phones back to waiting.
+- **Clean-slate restart** — a bingo game that never started (setup/lobby) recovers its trait list
+  but a fresh roster, so a new server never resurrects old players; an in-progress game still fully
+  recovers (roster + podium).
 - **Open the projector from the console** — the master top bar has a **🖥 발표 화면 열기**
   button that opens `/p` in a new window (then one tap of ⛶ there goes fullscreen).
 - **Master console** — drives both games; per-game **다시 하기** reset + **새 행사**; the

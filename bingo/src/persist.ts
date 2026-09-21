@@ -177,9 +177,14 @@ export const snapshot: SnapshotStrategy<Room> = {
     const events = db
       .prepare(`SELECT * FROM bingo_events WHERE event_id = ? ORDER BY seq`)
       .all(eventId) as unknown as { seq: number; player_id: string; line_id: string; at: number; line_count: number }[];
-    const players = db
-      .prepare(`SELECT * FROM bingo_players WHERE event_id = ? ORDER BY number`)
-      .all(eventId) as unknown as PlayerRow[];
+    // A game that never actually started (SETUP/LOBBY) has no podium to preserve,
+    // so its roster is not worth resurrecting — dropping it gives a clean slate on
+    // restart instead of a lobby full of ghosts from a previous session. A real
+    // in-progress game (RUNNING/ENDED/REVEAL) is still fully recovered.
+    const started = r.state === 'RUNNING' || r.state === 'ENDED' || r.state === 'REVEAL';
+    const players = started
+      ? (db.prepare(`SELECT * FROM bingo_players WHERE event_id = ? ORDER BY number`).all(eventId) as unknown as PlayerRow[])
+      : [];
 
     return hydrate(
       eventId,

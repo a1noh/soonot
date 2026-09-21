@@ -275,6 +275,10 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 }
 .onlinebox__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .onlinebox__num { color: var(--ink-dim); font-variant-numeric: tabular-nums; flex: none; }
+/* compact (count-only) variant — used on the 윷놀이 board so it never covers the map */
+.onlinebox--compact { width: auto; }
+.onlinebox--compact .onlinebox__head { border-bottom: none; padding: 0.8vmin 1.4vmin; }
+
 /* pastel variant, so the box matches the kawaii bingo stage */
 .onlinebox--bingo { background: rgba(255,255,255,0.9); border-color: #ffd6ea; }
 .onlinebox--bingo .onlinebox__head { color: #5c4658; border-bottom-color: #ffd6ea; }
