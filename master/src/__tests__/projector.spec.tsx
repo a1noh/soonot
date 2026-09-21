@@ -116,18 +116,27 @@ describe('projector presentation mode', () => {
     expect(flying[0]!.textContent).toBe('🎉');
   });
 
-  it('shows the mini-game roulette when a team is playing one', () => {
-    render(<App />);
-    const sock = sockets[0]!;
-    act(() => {
-      sock.fire('connect');
-      sock.fire('event:summary', summary);
-      sock.fire('room:state', {
-        gameId: 'yutnori',
-        view: yutView({ pendingMiniGame: { teamId: 't1', teamName: 'A조', station: 8, gameId: 'jegi' } }),
+  it('plays the 미니게임! callout first, then reveals the roulette', () => {
+    vi.useFakeTimers();
+    try {
+      render(<App />);
+      const sock = sockets[0]!;
+      act(() => {
+        sock.fire('connect');
+        sock.fire('event:summary', summary);
+        sock.fire('room:state', {
+          gameId: 'yutnori',
+          view: yutView({ pendingMiniGame: { teamId: 't1', teamName: 'A조', station: 8, gameId: 'jegi' } }),
+        });
       });
-    });
-    expect(screen.getByText(/미니게임/)).toBeTruthy();
-    expect(screen.getByText('제기차기')).toBeTruthy();
+      // During the hold the board is still shown (the callout plays over it) —
+      // the roulette card is NOT up yet.
+      expect(screen.queryByText('제기차기')).toBeNull();
+      // After the callout finishes, the roulette pops in.
+      act(() => vi.advanceTimersByTime(1800));
+      expect(screen.getByText('제기차기')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

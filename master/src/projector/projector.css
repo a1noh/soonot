@@ -171,7 +171,9 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
   font-size: clamp(20px, 3.4vmin, 54px); color: var(--ink); font-weight: 700;
   background: rgba(0,0,0,0.42); padding: 0.6vmin 2.2vmin; border-radius: 999px;
 }
-.yutfx--capture .yutfx__text { color: var(--red); }
+.yutfx--capture .yutfx__text,
+.yutfx--cancel .yutfx__text { color: var(--red); }
+.yutfx--pass .yutfx__text { color: var(--green); }
 @keyframes yutfx {
   0% { opacity: 0; transform: scale(0.4) rotate(-6deg); }
   14% { opacity: 1; transform: scale(1.12) rotate(2deg); }

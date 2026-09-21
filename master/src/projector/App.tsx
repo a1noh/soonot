@@ -233,6 +233,7 @@ export function App() {
   const [fx, setFx] = useState<{ id: number; kind: string; text: string; sub?: string } | null>(null);
   const [autoGame, setAutoGame] = useState<GameId>('yutnori');
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
+  const [mgShow, setMgShow] = useState(false); // hold the roulette until the 미니게임! callout finishes
   const lastActivity = useRef<Record<GameId, number>>({ yutnori: 0, bingo: 0 });
   const reactId = useRef(0);
   const fxId = useRef(0);
@@ -278,6 +279,16 @@ export function App() {
       bump('yutnori');
       showFx('minigame', '🎡 미니게임!', '룰렛을 돌려요');
     });
+    socket.on('minigame:resolved', (d: { success?: boolean }) => {
+      bump('yutnori');
+      const ok = d?.success === true;
+      // Delay so the roulette closes and the board is back FIRST, then the
+      // 이동 취소 / 통과 callout plays over the board (not over the roulette).
+      setTimeout(
+        () => showFx(ok ? 'pass' : 'cancel', ok ? '통과! ✅' : '이동 취소!', ok ? '미니게임 성공' : '미니게임 실패 · 말 제자리로'),
+        260,
+      );
+    });
     socket.on('bingo:announced', () => {
       // Anonymous on purpose: the room sees a bingo happened + a green flash, but
       // NOT who — identities stay secret until the reveal (builds suspense).
@@ -299,10 +310,25 @@ export function App() {
 
   const removeReaction = (id: number) => setReactions((prev) => prev.filter((r) => r.id !== id));
 
+  // When a 말 lands on a ★ station, play the "미니게임!" callout over the board
+  // FIRST, then reveal the roulette once it has finished (not both at once).
+  const mgPending = !!(yView && yView.pendingMiniGame);
+  useEffect(() => {
+    if (!mgPending) {
+      setMgShow(false);
+      return undefined;
+    }
+    setMgShow(false);
+    const t = setTimeout(() => setMgShow(true), 1700);
+    return () => clearTimeout(t);
+  }, [mgPending]);
+
   const screen = (() => {
     if (!summary) return <Standby summary={null} joinable={false} />;
     if (active === 'yutnori') {
-      if (yView?.pendingMiniGame) return <MiniGameStage pending={yView.pendingMiniGame} games={yView.miniGames} />;
+      // During the hold, fall through to the board so the 미니게임! callout plays
+      // over it; the roulette only appears once the callout has finished (mgShow).
+      if (yView?.pendingMiniGame && mgShow) return <MiniGameStage pending={yView.pendingMiniGame} games={yView.miniGames} />;
       if (yView && (yView.state === 'REVEAL' || yView.state === 'ENDED')) {
         return <Podium ranked={yutRank(yView.standings)} step={yView.state === 'ENDED' ? 0 : yView.revealStep} title="윷놀이" />;
       }

@@ -93,8 +93,14 @@ await send('game:reset', { gameId: 'yutnori' });
 await setupYut();
 await throwOnly('모'); await move();   // 대기→5 (모 gives a bonus throw, still 청년부)
 await throwOnly('도'); await move();   // 5→6 (★) → mini-game
-await wait(450);
-await p.screenshot({ path: `${OUT}/fx-minigame.png` }); // roulette zoomed in
+await wait(500);
+await p.screenshot({ path: `${OUT}/fx-minigame-callout.png` }); // 미니게임! callout over the board (first)
+await wait(1600);
+await p.screenshot({ path: `${OUT}/fx-minigame.png` }); // roulette pops in AFTER the callout finishes
+// resolve as FAIL → screen switches back to the board, THEN the 이동 취소 callout plays
+await send('master:minigame:resolve', { gameId: 'yutnori', success: false });
+await wait(650);
+await p.screenshot({ path: `${OUT}/fx-cancel.png` });
 
 // ---- 잡기 callout (both teams to node 3) -----------------------------------
 await send('game:reset', { gameId: 'yutnori' });
