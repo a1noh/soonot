@@ -159,9 +159,29 @@ function BingoScreen({ view, summary, flash }: { view: BingoView; summary: Event
         <p className="bingo-stage__hint">
           {view.state === 'LOBBY' ? '휴대폰으로 스캔해서 참여하세요' : '특징에 맞는 사람을 찾아 칸을 채우세요'}
         </p>
+        {view.bingoBreakdown && view.bingoBreakdown.length > 0 ? <BingoChart data={view.bingoBreakdown} /> : null}
       </div>
       {flash ? <div className="stage__flash">{flash}</div> : null}
     </Stage>
+  );
+}
+
+/** Anonymous live bingo distribution — how many hold each line count, no names. */
+function BingoChart({ data }: { data: { lines: number; count: number }[] }) {
+  const max = Math.max(...data.map((d) => d.count), 1);
+  return (
+    <div className="bchart">
+      <div className="bchart__cap">🎉 빙고 현황 · 누구인지는 발표 때!</div>
+      {data.map((d) => (
+        <div key={d.lines} className="bchart__row">
+          <span className="bchart__lines">{d.lines}줄</span>
+          <span className="bchart__track">
+            <span className="bchart__bar" style={{ width: `${(d.count / max) * 100}%` }} />
+          </span>
+          <span className="bchart__count">{d.count}명</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -200,6 +220,7 @@ export function App() {
   const [yView, setYView] = useState<BoardView | null>(null);
   const [bView, setBView] = useState<BingoView | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [greenKey, setGreenKey] = useState(0); // bump to retrigger the green bingo flash
   const [autoGame, setAutoGame] = useState<GameId>('yutnori');
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const lastActivity = useRef<Record<GameId, number>>({ yutnori: 0, bingo: 0 });
@@ -231,10 +252,13 @@ export function App() {
     socket.on('board:update', () => bump('yutnori'));
     socket.on('throw:recorded', () => bump('yutnori'));
     socket.on('capture:announced', () => bump('yutnori'));
-    socket.on('bingo:announced', (d: { number: number; nickname: string }) => {
+    socket.on('bingo:announced', () => {
+      // Anonymous on purpose: the room sees a bingo happened + a green flash, but
+      // NOT who — identities stay secret until the reveal (builds suspense).
       bump('bingo');
-      setFlash(`🎉 #${d.number} ${d.nickname} 빙고!`);
-      setTimeout(() => setFlash(null), 3000);
+      setFlash('🎉 빙고 완성!');
+      setGreenKey((k) => k + 1);
+      setTimeout(() => setFlash(null), 2500);
     });
     return () => {
       socket.close();
@@ -279,6 +303,7 @@ export function App() {
       <Reactions items={reactions} onDone={removeReaction} />
       {bView && bView.roster.length > 0 ? <OnlineBox roster={bView.roster} bingo={active === 'bingo'} /> : null}
       {showJoinChip ? <JoinChip code={summary.code} /> : null}
+      {greenKey > 0 ? <div key={greenKey} className="greenflash" aria-hidden="true" /> : null}
       <FullscreenButton />
     </>
   );

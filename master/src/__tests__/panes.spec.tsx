@@ -46,6 +46,7 @@ const bingoView = (o: Partial<MasterView> = {}): MasterView => ({
   revealStep: 0,
   traitCount: 0,
   standings: [],
+  bingoBreakdown: [],
   roster: [],
   leaders: [],
   ...o,

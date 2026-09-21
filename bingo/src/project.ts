@@ -34,6 +34,12 @@ export interface PublicView {
    * is ENDED or REVEAL.
    */
   standings: RankEntry[];
+  /**
+   * Anonymous bingo distribution: how many players hold exactly N lines, for
+   * N >= 1, ascending. Counts only — NO names — so it's safe to show live on the
+   * projector for suspense while identities stay private until the reveal.
+   */
+  bingoBreakdown: { lines: number; count: number }[];
 }
 
 /** Is the ranking public yet? (Only at reveal — see `PublicView.standings`.) */
@@ -76,10 +82,18 @@ export type BingoView = PlayerView | MasterView | SpectatorView;
 function publicOf(room: Room): PublicView {
   let connected = 0;
   let bingos = 0;
+  const byLines = new Map<number, number>();
   for (const p of room.players.values()) {
     if (p.connected) connected++;
-    if (p.firstBingoAt !== null) bingos++;
+    const n = p.completedLines.length;
+    if (n >= 1) {
+      bingos++;
+      byLines.set(n, (byLines.get(n) ?? 0) + 1);
+    }
   }
+  const bingoBreakdown = [...byLines.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([lines, count]) => ({ lines, count }));
   return {
     state: room.state,
     playerCount: room.players.size,
@@ -90,6 +104,7 @@ function publicOf(room: Room): PublicView {
     revealStep: room.revealStep,
     traitCount: room.traits.length,
     standings: revealPhase(room) ? rank(room) : [],
+    bingoBreakdown,
   };
 }
 
