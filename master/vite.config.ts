@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 
 /**
- * Four entries, one build (spec §2, §9). `console` and `board` ship now; the
- * projector and player entries join at milestones 5 and 4.
+ * Four entries, one build (spec §2, §9): the master console, the 윷놀이 board,
+ * the bingo player card, and the projector switcher.
  */
 export default defineConfig({
   plugins: [react()],
@@ -16,6 +16,8 @@ export default defineConfig({
       input: {
         console: resolve(__dirname, 'master.html'),
         board: resolve(__dirname, 'board.html'),
+        player: resolve(__dirname, 'player.html'),
+        projector: resolve(__dirname, 'projector.html'),
       },
     },
   },

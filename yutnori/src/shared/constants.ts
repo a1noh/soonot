@@ -7,6 +7,19 @@ export const STATION_COUNT = 20;
 export const WAITING = 0;   // 대기 — off-board, uncatchable
 export const HOME = 20;     // 집   — finished, uncatchable
 
+/**
+ * 미니게임 칸 — landing a 말 exactly on one of these stations triggers a mini-game
+ * (a roulette picks one; the team plays it in the room; a fail cancels the move).
+ * One on each side of the 20-station ring, away from the corners.
+ */
+// All ≥ 6 on purpose: a 말 leaving 대기 moves at most 5 (모), so it can never hit
+// a mini-game on its first step — a fail then only ever reverts an already-on-board
+// 말 to where it was, never all the way back to 대기.
+export const MINIGAME_STATIONS: readonly number[] = [6, 8, 11, 13, 16, 18];
+export function isMiniGameStation(progress: number): boolean {
+  return MINIGAME_STATIONS.includes(progress);
+}
+
 export const MS_PER_MIN = 60_000;
 
 /** req §7 — five values, no 백도. */

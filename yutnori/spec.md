@@ -370,14 +370,27 @@ A reconnecting client gets `room:state` alone — no replayed animations.
 
 ## 7. Client
 
-### 7.1 Board geometry
+### 7.1 Board geometry & the 29-밭 graph
 
-Stations are computed, never hand-placed. Corners at 0, 5, 10, 15; movement
-counter-clockwise from 참 at the bottom right (req §6):
+`shared/board.ts` is the authentic 윷판 as a **node graph** (req §6). Positions are 밭
+ids so `Mal.progress` stays a number: `0`=대기, `1..19` outer (corners 0/5/10/15;
+5=모, 10=뒷모, 15=모동), `20`=집, `21..29` inner (두 대각선 4밭씩 + 방=23).
+
+- `defaultNext(node)` — the single onward 밭 when flowing along the current path
+  (방 flows to the 참 exit; the 15-arm rejoins the ring).
+- `firstOptions(node)` — the branch 밭 (5/10/23) return **two** first-step options
+  (지름길/바깥길, or 방's exit/continue); every other 밭 returns one.
+- `destinations(from, steps)` — walk `steps`, taking a branch option only on the first
+  step (landing exactly opens the 지름길); overshoot → 집. Returns 1 or 2 밭.
+- `advancementOf(node)` — shortcut-aware distance for ranking; `nodeXY(node)` — unit-square
+  coordinates (outer = the square below, inner = corner↔centre interpolation), shared with
+  the SVG.
+
+Corners at 0, 5, 10, 15; movement counter-clockwise from 참 at the bottom right:
 
 ```ts
-// shared/board.ts — unit square, [0,0] top-left
-export function stationXY(i: number): [number, number] {
+// outer ring, unit square, [0,0] top-left
+function outerXY(i: number): [number, number] {
   const side = Math.floor(i / 5);
   const t = (i % 5) / 5;
   switch (side) {
@@ -388,6 +401,9 @@ export function stationXY(i: number): [number, number] {
   }
 }
 ```
+
+A `MOVE` on a branch 밭 carries `to` (which of the two destinations); `candidates()` is the
+single source of truth and `replay` re-picks by `to`, so shortcuts are deterministic.
 
 The SVG uses `viewBox="0 0 100 100"` with `preserveAspectRatio`, so the same markup fills a
 1280×720 projector and a phone with no breakpoints. Font sizes are in `viewBox` units,

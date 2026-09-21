@@ -21,11 +21,12 @@ export interface GamePaneProps {
   blocking?: boolean;
   onFocus(): void;
   onToggleEnabled(next: boolean): void;
+  onReset(): void;
   children?: ReactNode;
 }
 
 export function GamePane(props: GamePaneProps) {
-  const { gameId, state, enabled, focused, blocking, onFocus, onToggleEnabled } = props;
+  const { gameId, state, enabled, focused, blocking, onFocus, onToggleEnabled, onReset } = props;
 
   return (
     <section
@@ -58,6 +59,21 @@ export function GamePane(props: GamePaneProps) {
           />
           <span>{enabled ? t('host.console.enable') : t('host.console.disabled')}</span>
         </label>
+
+        {/* Reset this game back to setup — a fresh round without touching the
+            other game or the event. */}
+        {state !== 'SETUP' ? (
+          <button
+            type="button"
+            className="btn btn--ghost pane__reset"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm(`${t(`host.game.${gameId}`)}을(를) 처음부터 다시 시작할까요?`)) onReset();
+            }}
+          >
+            다시 하기
+          </button>
+        ) : null}
       </header>
 
       <div className="pane__body">

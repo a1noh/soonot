@@ -63,7 +63,9 @@ function Board() {
       <header className="board-page__head">
         <h1>윷놀이 한마당</h1>
         <Clock ms={view.remainingMs} paused={view.paused} />
-        {view.state === 'RUNNING' && view.turnTeamName ? (
+        {view.pendingMiniGame ? (
+          <strong className="board-page__turn">🎡 {view.pendingMiniGame.teamName} 미니게임!</strong>
+        ) : view.state === 'RUNNING' && view.turnTeamName ? (
           <strong className="board-page__turn">{view.turnTeamName} 차례</strong>
         ) : (
           <strong className="board-page__turn">{view.state}</strong>

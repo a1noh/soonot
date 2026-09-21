@@ -24,6 +24,8 @@ export interface Registry {
    */
   adopt(event: EventRecord): void;
   close(now: number): void;
+  /** Drop the active event entirely (a full reset back to "no event"). */
+  clear(): void;
   commit(gameId: GameId, state: unknown): void;
   /**
    * Serializes actions **per game**, so a bingo cell fill never waits on a
@@ -66,6 +68,10 @@ export function createRegistry(modules: Readonly<Record<GameId, AnyGameModule>>)
 
     close(now) {
       if (event) event.closedAt = now;
+    },
+
+    clear() {
+      event = null;
     },
 
     commit(gameId, state) {

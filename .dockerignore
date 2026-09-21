@@ -1,0 +1,11 @@
+node_modules
+**/node_modules
+**/dist
+*.db
+*.db-wal
+*.db-shm
+scripts/shots
+.git
+.github
+*.tsbuildinfo
+.claude

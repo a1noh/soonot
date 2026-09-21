@@ -37,6 +37,8 @@ export interface NamespaceDeps {
   registry: Registry;
   dispatch: Dispatch;
   sessions: Sessions;
+  /** For persisting a reset (event close / fresh game state) off the action path. */
+  persistence?: import('./persist/strategy.js').Persistence;
   now: () => number;
   /**
    * `playerId` → socket, for unicast (spec §6.2). Owned by the caller because
@@ -44,6 +46,28 @@ export interface NamespaceDeps {
    */
   playerSockets?: Map<string, Socket>;
   buckets?: BucketRegistry;
+}
+
+/** The emojis a phone may fling onto the projector (Kahoot-style reactions). */
+export const REACTION_EMOJI: ReadonlySet<string> = new Set([
+  '❤️', '👏', '🎉', '😂', '🔥', '👍', '🙏', '😮',
+]);
+
+/**
+ * Global reaction rate cap (anti-spam / "도배" guard), on top of the per-phone
+ * throttle. No more than this many reactions reach the projector per second,
+ * across everyone — a rolling 1-second window.
+ */
+const REACTIONS_PER_SEC = 12;
+const reactionWindow = { since: 0, count: 0 };
+function reactionAllowed(now: number): boolean {
+  if (now - reactionWindow.since >= 1000) {
+    reactionWindow.since = now;
+    reactionWindow.count = 0;
+  }
+  if (reactionWindow.count >= REACTIONS_PER_SEC) return false;
+  reactionWindow.count += 1;
+  return true;
 }
 
 /** Rooms the emit router targets. One per game surface, one for the masters. */
@@ -90,6 +114,10 @@ export function attachNamespaces(deps: NamespaceDeps): void {
   player.on('connection', (socket) => {
     void socket.join(ROOM.game('bingo'));
     sendSummary(socket, registry);
+    // Initial projection on connect, exactly as the board does below: a phone
+    // opening the card must see the current counts and (after join) its own
+    // fills without waiting for its first action.
+    pushState(socket, 'bingo', registry);
     attachPlayer(socket, deps);
   });
 
@@ -104,6 +132,9 @@ export function attachNamespaces(deps: NamespaceDeps): void {
     for (const id of GAME_IDS) void socket.join(ROOM.game(id));
     void socket.join(ROOM.projector);
     sendSummary(socket, registry);
+    // Both games' initial views on connect, so the switcher can show either the
+    // instant it loads (the board and console do the same).
+    for (const id of GAME_IDS) pushState(socket, id, registry);
   });
 
   void dispatch; // used by attachMaster below
@@ -126,6 +157,21 @@ function attachPlayer(socket: Socket, deps: NamespaceDeps): void {
   const reply = (ack: unknown, value: unknown) => {
     if (typeof ack === 'function') (ack as (v: unknown) => void)(value);
   };
+
+  // Kahoot-style reactions: a phone taps an emoji and it floats up on the
+  // projector. Ephemeral — no state, no persistence, no identity needed — so it
+  // is a plain relay to `/p`, lightly throttled against spam. Not a game emit.
+  let lastReactAt = 0;
+  socket.on('react', (payload: unknown) => {
+    const at = now();
+    if (at - lastReactAt < 700) return; // per-phone: ~1.4/sec
+    const p = payload as { emoji?: unknown; name?: unknown } | null;
+    if (typeof p?.emoji !== 'string' || !REACTION_EMOJI.has(p.emoji)) return;
+    if (!reactionAllowed(at)) return; // global anti-flood cap
+    lastReactAt = at;
+    const name = typeof p.name === 'string' ? p.name.trim().slice(0, 20) : '';
+    deps.io.of('/p').emit('reaction', { emoji: p.emoji, name });
+  });
 
   const adopt = (playerId: string): void => {
     data.viewer = { kind: 'player', playerId };
@@ -161,7 +207,15 @@ function attachPlayer(socket: Socket, deps: NamespaceDeps): void {
       return;
     }
 
-    const before = registry.modules.bingo.lifecycle(registry.require().games.bingo.state);
+    // A phone can (re)connect and act before the master has opened an event — a
+    // reconnecting tab replays `room:rejoin` on its own. Answer, never throw: an
+    // uncaught throw here crashes the whole process (both games).
+    const current = registry.current();
+    if (!current || current.closedAt !== null) {
+      reply(ack, { ok: false, error: toWireError(new HostError('NO_EVENT', '아직 행사가 없어요')) });
+      return;
+    }
+    const before = registry.modules.bingo.lifecycle(current.games.bingo.state);
     dispatch('bingo', action, viewer)
       .then((result) => {
         pushStateAll(
@@ -250,6 +304,12 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
   void socket.join(ROOM.master);
   for (const id of GAME_IDS) void socket.join(ROOM.game(id));
   sendSummary(socket, registry);
+  // The console must have each game's view the instant it connects — otherwise
+  // the yutnori pane (setup form, throw pad, move picker) and the bingo pane sit
+  // blank until the master happens to act, which they cannot do without it. The
+  // board on `/y` already pushes on connect; the console was the one surface
+  // that did not.
+  for (const id of GAME_IDS) pushState(socket, id, registry);
 
   const reply = (ack: unknown, value: unknown) => {
     if (typeof ack === 'function') (ack as (v: unknown) => void)(value);
@@ -262,6 +322,10 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       if (!title) throw new HostError('BAD_PAYLOAD', '행사 이름을 입력해주세요');
       const event = registry.open({ title, now: now() });
       broadcastSummary(deps);
+      // Push the new event's game views to every surface — the console needs
+      // them to render each pane's setup form; without this it hangs on
+      // "불러오는 중…" because a fresh master connected before the event existed.
+      for (const id of GAME_IDS) pushStateAll(deps.io, id, registry, 'everyone');
       reply(ack, { ok: true, event: summarize(event, registry.modules) });
     } catch (err) {
       reply(ack, { ok: false, error: toWireError(err) });
@@ -288,6 +352,45 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       if (!isGameId(gameId) || typeof enabled !== 'boolean') throw new HostError('BAD_PAYLOAD');
       registry.require().games[gameId].enabled = enabled;
       broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /** Reset one game back to a fresh SETUP — "다시 하기", keeping the event and the
+   *  sibling game untouched. */
+  socket.on('game:reset', (payload: unknown, ack: unknown) => {
+    try {
+      const gameId = (payload as { gameId?: unknown } | null)?.gameId;
+      if (!isGameId(gameId)) throw new HostError('BAD_PAYLOAD', '어느 게임인지 지정해주세요');
+      const event = registry.require();
+      const at = now();
+      const fresh = registry.modules[gameId].create(event.id, at);
+      registry.commit(gameId, fresh);
+      if (event.projectorLock === gameId) event.projectorLock = null;
+      deps.persistence?.enqueue({ gameId, state: fresh, action: { t: 'RESET' }, emits: [], at });
+      broadcastSummary(deps);
+      pushStateAll(deps.io, gameId, registry, 'everyone');
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /** Reset the whole event — "새 행사". Closes the current one (so a restart will
+   *  not recover it) and returns to the create screen. */
+  socket.on('event:reset', (_payload: unknown, ack: unknown) => {
+    try {
+      const current = registry.current();
+      if (current) {
+        current.closedAt = now();
+        deps.persistence?.closeEvent?.(current);
+      }
+      registry.clear();
+      broadcastSummary(deps); // now null everywhere
       reply(ack, { ok: true });
     } catch (err) {
       reply(ack, { ok: false, error: toWireError(err) });
@@ -325,7 +428,15 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       return;
     }
 
-    const before = registry.modules[gameId].lifecycle(registry.require().games[gameId].state);
+    // Answer, never throw, if there is no open event yet (a reconnecting console
+    // could act before `event:create`): an uncaught throw crashes the process.
+    const current = registry.current();
+    if (!current || current.closedAt !== null) {
+      const err = new HostError('NO_EVENT', '아직 행사가 없어요');
+      reply(ack, { ok: false, error: toWireError(err) });
+      return;
+    }
+    const before = registry.modules[gameId].lifecycle(current.games[gameId].state);
     dispatch(gameId, action, viewer)
       .then((result) => {
         broadcastSummary(deps);

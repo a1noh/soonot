@@ -279,3 +279,106 @@
   background: var(--bg-sunken);
   border-top: 1px solid var(--line);
 }
+
+/* ---- shared button variants (used by both game panes) -------------------- */
+.btn--big { min-height: 52px; font-size: 17px; font-weight: 600; }
+.btn--danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.ok { color: var(--ok); }
+.warn { color: var(--warn); }
+
+/* ---- 윷놀이 pane -------------------------------------------------------- */
+.yut { display: flex; flex-direction: column; gap: 12px; }
+.yut__status { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.yut__turn { font-size: 18px; }
+.yut__owed { color: var(--warn); font-size: 14px; }
+.yut__prompt { margin: 0; color: var(--text-dim); }
+.throwpad { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+.throwpad__key {
+  min-height: 56px; font-size: 20px; font-weight: 700;
+  border: 1px solid var(--line-strong); border-radius: 10px;
+  background: var(--bg-raised); color: var(--text); cursor: pointer;
+}
+.throwpad__key:disabled { opacity: 0.4; cursor: default; }
+.malpicker { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.malpicker__key {
+  display: flex; align-items: center; gap: 6px; justify-content: center;
+  min-height: 56px; padding: 8px; border: 1px solid var(--line-strong);
+  border-radius: 10px; background: var(--bg-raised); color: var(--text);
+  font-size: 15px; cursor: pointer; flex-wrap: wrap;
+}
+.malpicker__key.is-capture { border-color: var(--danger); }
+.malpicker__key.is-finish { border-color: var(--ok); }
+.malpicker__key em { font-style: normal; font-size: 12px; color: var(--text-dim); }
+.malpicker__from, .malpicker__to { font-weight: 700; }
+.yut__controls { display: flex; gap: 8px; flex-wrap: wrap; }
+.yut-setup { display: flex; flex-direction: column; gap: 12px; }
+.yut-setup__row { display: flex; gap: 12px; }
+.yut-setup__row .field { flex: 1; }
+
+/* ---- 빙고 pane --------------------------------------------------------- */
+.bingo { display: flex; flex-direction: column; gap: 12px; }
+.bingo__stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bingo__stat {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg-sunken);
+}
+.bingo__stat.is-hot { border-color: var(--ok); }
+.bingo__stat-val { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.bingo__stat-label { font-size: 12px; color: var(--text-dim); }
+.bingo__prompt { margin: 0; color: var(--text-dim); }
+.bingo__leaders { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.bingo__leaders li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; }
+.bingo__rank { width: 22px; height: 22px; display: grid; place-items: center; border-radius: 999px; background: var(--game-bingo); color: #fff; font-weight: 700; font-size: 13px; }
+.bingo__leader-name { font-weight: 600; }
+.bingo__num { color: var(--text-dim); font-weight: 400; }
+.bingo__lines { margin-left: auto; color: var(--ok); font-weight: 700; }
+.bingo-setup { display: flex; flex-direction: column; gap: 10px; }
+.bingo-setup__area { font-family: var(--mono); font-size: 13px; resize: vertical; }
+.bingo-setup__row { display: flex; gap: 10px; }
+
+/* ---- who's online (bingo console) --------------------------------------- */
+.online { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: var(--bg-sunken); }
+.online__summary { cursor: pointer; font-size: 14px; color: var(--text-dim); }
+.online__summary b { color: var(--ok); }
+.online__list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 3px; max-height: 180px; overflow: auto; }
+.online__row { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.online__dot { width: 8px; height: 8px; border-radius: 999px; background: var(--line-strong); flex: none; }
+.online__row.is-on .online__dot { background: var(--ok); }
+.online__name { font-weight: 600; }
+.online__num { color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.online__off { margin-left: auto; font-size: 12px; color: var(--warn); }
+
+/* ---- 윷놀이 move labels + mini-game panel -------------------------------- */
+.malpicker__key { flex-direction: column; gap: 4px; padding: 10px; }
+.malpicker__mal { font-size: 15px; }
+.malpicker__path { display: flex; align-items: center; gap: 6px; }
+.tag-capture { color: var(--danger); font-style: normal; font-size: 12px; font-weight: 700; }
+.tag-finish { color: var(--ok); font-style: normal; font-size: 12px; font-weight: 700; }
+
+.minigame { display: flex; flex-direction: column; gap: 12px; padding: 12px; border: 2px solid var(--warn); border-radius: 12px; background: color-mix(in srgb, var(--warn) 12%, var(--bg-raised)); }
+.minigame__flag { margin: 0; font-weight: 800; font-size: 18px; }
+.minigame__reel { min-height: 48px; display: grid; place-items: center; font-size: 22px; font-weight: 800; border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--bg-sunken); }
+.minigame__reel.is-spin { color: var(--warn); }
+.minigame__card { display: flex; flex-direction: column; gap: 4px; align-items: center; text-align: center; padding: 12px; border-radius: 10px; background: var(--bg-sunken); }
+.minigame__name { font-size: 24px; }
+.minigame__inst { color: var(--text-dim); }
+.minigame__timer { margin-top: 6px; font-variant-numeric: tabular-nums; font-weight: 800; font-size: 20px; color: var(--accent); }
+.minigame__timer.is-up { color: var(--danger); }
+.minigame__judge { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.yut-setup__check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-dim); }
+
+.pane__reset { margin-left: 8px; font-size: 13px; min-height: 32px; padding: 0 10px; }
+
+/* ---- reveal ranking on the console (suspense) ---------------------------- */
+.rankbox { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--bg-sunken); }
+.rankbox__head { margin: 0 0 6px; font-weight: 700; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.rankbox__hint { font-size: 12px; font-weight: 400; color: var(--text-dim); }
+.rankbox__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.rankbox__row { display: flex; align-items: center; gap: 10px; padding: 5px 8px; border-radius: 8px; opacity: 0.55; }
+.rankbox__row.is-shown { opacity: 1; background: color-mix(in srgb, var(--warn) 14%, transparent); }
+.rankbox__row.is-self { outline: 2px solid var(--accent); }
+.rankbox__rank { width: 24px; text-align: center; font-weight: 800; }
+.rankbox__name { font-weight: 600; }
+.rankbox__detail { margin-left: auto; color: var(--text-dim); font-size: 13px; font-variant-numeric: tabular-nums; }
+.rankbox__live { font-size: 11px; color: var(--warn); border: 1px solid var(--warn); border-radius: 999px; padding: 0 6px; }

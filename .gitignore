@@ -6,3 +6,5 @@ dist/
 .DS_Store
 coverage/
 *.tsbuildinfo
+scripts/shots/
+.claude/

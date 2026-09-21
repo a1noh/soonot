@@ -66,6 +66,11 @@ export type PersistenceStrategy<S, A> = SnapshotStrategy<S> | EventLogStrategy<S
 export interface Persistence {
   /** Flush anything pending and stop all timers. Called on host shutdown. */
   dispose?(): void;
+  /**
+   * Persist an event row synchronously — used to record `closedAt` when the
+   * master resets the event, so a restart does not recover the old one.
+   */
+  closeEvent?(event: unknown): void;
   enqueue(input: {
     gameId: string;
     state: unknown;

@@ -104,12 +104,12 @@ describe('bingo end to end', () => {
     for (const c of cards) expect(c.permutation).toHaveLength(CELLS);
     expect(new Set(cards.map((c: any) => c.number)).size).toBe(10);
 
-    // player 1 fills a whole row; the ninth cell announces a bingo room-wide
+    // player 1 fills a whole row; the last cell announces a bingo room-wide
     const p1 = ps[0]!;
     const row = LINES[0]!.cells;
     const announced = once(ps[1]!, 'bingo:announced');
-    for (let i = 0; i < 9; i++) {
-      const ack = await send(p1, 'cell:fill', { cellIndex: row[i], query: String(i + 2) });
+    for (let i = 0; i < row.length; i++) {
+      const ack = await send(p1, 'cell:fill', { cellIndex: row[i]!, query: String(i + 2) });
       expect(ack.ok).toBe(true);
     }
     const bingo = await announced;

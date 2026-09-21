@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { LINES } from '../../shared/lines';
+import { GRID } from '../../shared/constants';
 import { running, step, fillLine, emitsOf } from './helpers';
 
 describe('win detection (req §8)', () => {
-  it('every one of the 20 lines can be completed and announced', () => {
+  it('every line can be completed and announced', () => {
     for (const line of LINES) {
       let r = running(10);
       r = fillLine(r, 'p1', line.cells);
@@ -13,10 +14,10 @@ describe('win detection (req §8)', () => {
     }
   });
 
-  it('8 of 9 cells is not a bingo', () => {
+  it('GRID-1 of GRID cells is not a bingo', () => {
     const line = LINES[0]!;
     let r = running(10);
-    r = fillLine(r, 'p1', line.cells.slice(0, 8));
+    r = fillLine(r, 'p1', line.cells.slice(0, GRID - 1));
     expect(r.players.get('p1')!.completedLines).toHaveLength(0);
     expect(r.players.get('p1')!.firstBingoAt).toBeNull();
   });
@@ -24,8 +25,8 @@ describe('win detection (req §8)', () => {
   it('announces to the ROOM, while the fill result stays unicast', () => {
     const line = LINES[0]!;
     let r = running(10);
-    r = fillLine(r, 'p1', line.cells.slice(0, 8));
-    const emits = emitsOf(r, { t: 'FILL', playerId: 'p1', cellIndex: line.cells[8]!, query: '10' });
+    r = fillLine(r, 'p1', line.cells.slice(0, GRID - 1));
+    const emits = emitsOf(r, { t: 'FILL', playerId: 'p1', cellIndex: line.cells[GRID - 1]!, query: '10' });
     expect(emits.map((e) => [e.to, e.ev])).toEqual([
       ['player', 'cell:result'],
       ['room', 'bingo:announced'],
@@ -57,7 +58,7 @@ describe('win detection (req §8)', () => {
     let r = running(40);
     const main = LINES.find((l) => l.id === 'diag:main')!;
     const anti = LINES.find((l) => l.id === 'diag:anti')!;
-    const centre = 40;
+    const centre = Math.floor(GRID / 2) * GRID + Math.floor(GRID / 2);
     const cells = [...new Set([...main.cells, ...anti.cells])].filter((c) => c !== centre);
     r = fillLine(r, 'p1', cells);
     expect(r.players.get('p1')!.completedLines).toHaveLength(0);

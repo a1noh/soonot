@@ -77,6 +77,7 @@ async function setupGame(base: string) {
     teams: [{ name: '청년 1조' }, { name: '청년 2조' }, { name: '장년부' }],
     malPerTeam: 2,
     timeLimitMin: 30,
+    miniGames: false, // this suite drives core throw/move/undo, not mini-games
   });
   expect(ack.ok).toBe(true);
   return m;

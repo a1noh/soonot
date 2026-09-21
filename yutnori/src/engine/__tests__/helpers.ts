@@ -17,7 +17,12 @@ export function act(room: Room, action: Action, now = T0): Room {
   return step(room, action, now).state;
 }
 
-export function started(opts?: { teams?: number; malPerTeam?: 1 | 2; timeLimitMin?: number }): Room {
+export function started(opts?: {
+  teams?: number;
+  malPerTeam?: 1 | 2;
+  timeLimitMin?: number;
+  miniGames?: boolean;
+}): Room {
   const teams = opts?.teams ?? 2;
   let r = newRoom({ id: 'r1', eventId: 'e1', createdAt: T0 });
   r = act(r, {
@@ -25,6 +30,7 @@ export function started(opts?: { teams?: number; malPerTeam?: 1 | 2; timeLimitMi
     teams: Array.from({ length: teams }, (_, i) => ({ name: `조${i + 1}` })),
     malPerTeam: opts?.malPerTeam ?? 2,
     timeLimitMin: opts?.timeLimitMin ?? 20,
+    miniGames: opts?.miniGames ?? false,
   });
   return act(r, { t: 'START' });
 }

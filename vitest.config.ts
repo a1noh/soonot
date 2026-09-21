@@ -16,8 +16,11 @@ export default defineConfig({
     ],
   },
   test: {
-    include: ['**/src/**/*.spec.ts'],
+    include: ['**/src/**/*.spec.{ts,tsx}'],
+    // Node by default; UI specs opt into jsdom with a `// @vitest-environment
+    // jsdom` docblock. CSS imports in components are stubbed rather than parsed.
     environment: 'node',
+    css: false,
     testTimeout: 20000,
   },
 });

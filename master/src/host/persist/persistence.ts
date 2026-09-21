@@ -84,6 +84,11 @@ export function createSqlitePersistence(deps: SqlitePersistenceDeps): Persistenc
   return {
     writes,
 
+    closeEvent(event) {
+      if (disposed) return;
+      writeEventRow(db, event as EventRecord);
+    },
+
     enqueue({ gameId, state, emits }) {
       const id = gameId as GameId;
       const strategy = modules[id].persistence;

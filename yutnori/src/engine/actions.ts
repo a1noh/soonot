@@ -2,10 +2,10 @@ import type { EndReason, MoveCandidate, Roll, TurnEvent } from '../shared/types'
 
 /** spec §4.2 — the complete action union. */
 export type Action =
-  | { t: 'SETUP'; teams: { name: string; roster?: string | null }[]; malPerTeam: 1 | 2; timeLimitMin: number }
+  | { t: 'SETUP'; teams: { name: string; roster?: string | null }[]; malPerTeam: 1 | 2; timeLimitMin: number; miniGames?: boolean; miniGameSet?: { id: string; name: string; instruction: string; seconds?: number }[] }
   | { t: 'START' }
   | { t: 'THROW'; roll: Roll }
-  | { t: 'MOVE'; malId: string }
+  | { t: 'MOVE'; malId: string; to?: number }
   | { t: 'UNDO' }
   | { t: 'PAUSE' }
   | { t: 'RESUME' }
@@ -13,7 +13,9 @@ export type Action =
   | { t: 'END'; reason: EndReason }
   | { t: 'RESUME_FROM_ENDED' }
   | { t: 'REVEAL'; step: number }
-  | { t: 'TICK' };
+  | { t: 'TICK' }
+  | { t: 'MINIGAME_SPIN'; gameId: string }
+  | { t: 'MINIGAME_RESOLVE'; success: boolean };
 
 /**
  * spec §6 — what the engine says happened. The server maps these onto the req §12
@@ -28,7 +30,10 @@ export type Emit =
   | { e: 'team:finished'; teamId: string; teamName: string; at: number; rankAmongFinishers: number }
   | { e: 'undo:applied'; revertedSeq: number }
   | { e: 'game:ended'; endedAt: number; reason: EndReason }
-  | { e: 'reveal:step'; step: number };
+  | { e: 'reveal:step'; step: number }
+  | { e: 'minigame:triggered'; teamId: string; teamName: string; station: number }
+  | { e: 'minigame:spun'; gameId: string }
+  | { e: 'minigame:resolved'; success: boolean };
 
 export type EngineErrorCode =
   | 'ILLEGAL_ACTION'
@@ -45,7 +50,9 @@ export type EngineErrorCode =
   | 'NOT_PAUSED'
   | 'ALREADY_PAUSED'
   | 'REVEAL_STARTED'
-  | 'BAD_REVEAL_STEP';
+  | 'BAD_REVEAL_STEP'
+  | 'MINIGAME_PENDING'
+  | 'NO_MINIGAME';
 
 /** spec §4.3 — the engine never silently no-ops on an illegal action. */
 export class EngineError extends Error {

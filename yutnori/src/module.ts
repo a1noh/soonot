@@ -28,7 +28,7 @@ const ROLLS: readonly Roll[] = ['도', '개', '걸', '윷', '모'];
 export const ALLOWED: Readonly<Record<RoomState, readonly Action['t'][]>> = {
   SETUP: ['SETUP'],
   LOBBY: ['START'],
-  RUNNING: ['THROW', 'MOVE', 'UNDO', 'PAUSE', 'RESUME', 'EXTEND', 'TICK'],
+  RUNNING: ['THROW', 'MOVE', 'UNDO', 'PAUSE', 'RESUME', 'EXTEND', 'TICK', 'MINIGAME_SPIN', 'MINIGAME_RESOLVE'],
   ENDED: ['RESUME_FROM_ENDED'],
   REVEAL: [],
 };
@@ -73,7 +73,21 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
         .filter((t): t is { name: string; roster: string | null } => t !== null);
       const malPerTeam = p.malPerTeam === 1 || p.malPerTeam === 2 ? p.malPerTeam : 2;
       const timeLimitMin = typeof p.timeLimitMin === 'number' ? p.timeLimitMin : 30;
-      return { t: 'SETUP', teams, malPerTeam, timeLimitMin };
+      // Mario-Party mode is the default for real play; the console can turn it off.
+      const miniGames = (p as { miniGames?: unknown }).miniGames !== false;
+      // The editable 미니게임 데이터베이스 for this event, if the console sent one.
+      const rawSet = (p as { miniGameSet?: unknown }).miniGameSet;
+      const miniGameSet = Array.isArray(rawSet)
+        ? rawSet
+            .map((g, i) => {
+              const name = typeof g?.name === 'string' ? g.name.trim() : '';
+              const instruction = typeof g?.instruction === 'string' ? g.instruction.trim() : '';
+              const id = typeof g?.id === 'string' && g.id ? g.id : `g${i + 1}`;
+              return name ? { id, name, instruction } : null;
+            })
+            .filter((g): g is { id: string; name: string; instruction: string } => g !== null)
+        : undefined;
+      return { t: 'SETUP', teams, malPerTeam, timeLimitMin, miniGames, miniGameSet };
     }
     case 'master:start':
       return { t: 'START' };
@@ -83,7 +97,9 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
     }
     case 'master:move': {
       const malId = str(payload, 'malId');
-      return malId === null ? null : { t: 'MOVE', malId };
+      if (malId === null) return null;
+      const to = int(payload, 'to'); // which 밭 (지름길 vs 바깥길) when a branch offers two
+      return to === null ? { t: 'MOVE', malId } : { t: 'MOVE', malId, to };
     }
     case 'master:undo':
       return { t: 'UNDO' };
@@ -105,6 +121,16 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
     }
     case 'master:tick':
       return { t: 'TICK' };
+    case 'master:minigame:spin': {
+      // `gameId` in the envelope names the *game module* (host routing); the
+      // mini-game id rides in `game` to avoid colliding with it.
+      const gameId = str(payload, 'game');
+      return gameId === null ? null : { t: 'MINIGAME_SPIN', gameId };
+    }
+    case 'master:minigame:resolve': {
+      const success = (payload as { success?: unknown } | null)?.success;
+      return typeof success === 'boolean' ? { t: 'MINIGAME_RESOLVE', success } : null;
+    }
     default:
       return null;
   }

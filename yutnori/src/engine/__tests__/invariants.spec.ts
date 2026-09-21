@@ -49,9 +49,9 @@ describe('invariants (spec §4.5)', () => {
     if (final.state === 'ENDED') expect(final.endReason).not.toBeNull();
   });
 
-  it('catches a 말 pushed outside 0..20', () => {
+  it('catches a 말 on an invalid 밭', () => {
     const r = started();
-    r.teams[0]!.mal[0]!.progress = 21;
+    r.teams[0]!.mal[0]!.progress = 99; // not a real 밭 (valid ids are 0..29)
     expect(() => assertInvariants(r)).toThrow(InvariantError);
   });
 

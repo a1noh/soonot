@@ -19,7 +19,8 @@ import { type Persistence } from './persist/strategy.js';
 import { openDb, type OpenedDb } from './persist/db.js';
 import { createSqlitePersistence } from './persist/persistence.js';
 import { recoverEvent, writeEventRow } from './persist/recover.js';
-import { attachNamespaces, createRouter } from './namespaces.js';
+import { attachNamespaces, createRouter, pushStateAll } from './namespaces.js';
+import { GAME_IDS } from '../shared/lifecycle.js';
 import { createSessions, createMemorySecretStore, sessionCookie, clearedCookie, type Sessions } from '../identity/session.js';
 import { verifyPasscode } from '../identity/passcode.js';
 import { createAttemptLimiter } from '../identity/ratelimit.js';
@@ -44,6 +45,12 @@ export interface HostOptions {
   passcodeHash: string;
   persistence?: Persistence;
   now?: () => number;
+  /**
+   * Run the shared 1 Hz clock (spec §7). Off by default so tests drive time
+   * deterministically; the real process (`index.server.ts`) turns it on. Games
+   * opt in per module via `ticks` — only 윷놀이 does.
+   */
+  autoTick?: boolean;
 }
 
 export function createHost(options: HostOptions): Host {
@@ -103,7 +110,35 @@ export function createHost(options: HostOptions): Host {
     checkInvariants: !config.production,
   });
 
-  attachNamespaces({ io, registry, dispatch, sessions, now, playerSockets });
+  attachNamespaces({ io, registry, dispatch, sessions, persistence, now, playerSockets });
+
+  // The shared 1 Hz clock (spec §7). Re-projecting each second is what actually
+  // moves the countdown on the board and console; dispatching TICK is what lets
+  // a game end itself on time expiry. Only modules with `ticks` participate
+  // (윷놀이 opts in, bingo opts out), and only while a game is RUNNING. TICK is
+  // a no-op until expiry, so this never grows the event log.
+  let ticker: ReturnType<typeof setInterval> | null = null;
+  if (options.autoTick) {
+    ticker = setInterval(() => {
+      const event = registry.current();
+      if (!event || event.closedAt !== null) return;
+      for (const gameId of GAME_IDS) {
+        const module = modules[gameId];
+        if (!module.ticks) continue;
+        const handle = event.games[gameId];
+        if (!handle.enabled) continue;
+        if (module.lifecycle(handle.state) !== 'RUNNING') continue;
+        dispatch(gameId, { t: 'TICK' } as never, { kind: 'master' })
+          .then(() => {
+            pushStateAll(io, gameId, registry, module.liveProjection ? 'everyone' : 'controls');
+          })
+          .catch(() => {
+            /* a tick that races a shutdown or a lost event is harmless */
+          });
+      }
+    }, 1000);
+    if (typeof ticker.unref === 'function') ticker.unref();
+  }
 
   // ---- Identity routes (spec §4.2) ------------------------------------------
   const limiter = createAttemptLimiter();
@@ -161,15 +196,21 @@ export function createHost(options: HostOptions): Host {
   const clientDir = fileURLToPath(new URL('../../dist/client/', import.meta.url));
   if (existsSync(clientDir)) {
     app.use('/assets', express.static(join(clientDir, 'assets'), { immutable: true, maxAge: '1y' }));
-    app.get('/master', (_req: Request, res: Response) => {
-      res.sendFile(join(clientDir, 'master.html'));
-    });
-    // The 윷놀이 board surface. `/y/:code` and bare `/y` both land here — the
-    // code is cosmetic on a read-only screen, and one active event is the v1
-    // scope (req §1).
-    app.get(['/y', '/y/:code'], (_req: Request, res: Response) => {
-      res.sendFile(join(clientDir, 'board.html'));
-    });
+    // The HTML shells are tiny and reference hashed assets. They must NOT be
+    // cached, or a redeploy leaves a phone/projector loading yesterday's bundle
+    // (the "I don't see my change" trap). Assets above stay immutable (hashed).
+    const html = (file: string) => (_req: Request, res: Response) => {
+      res.set('Cache-Control', 'no-cache');
+      res.sendFile(join(clientDir, file));
+    };
+    app.get('/master', html('master.html'));
+    // The projector (spec §9) is now THE presentation screen — it shows the full
+    // 윷놀이 board plus the roulette, podium and reactions. `/y` is kept as an
+    // alias so old links/bookmarks still land on the same screen.
+    app.get(['/p', '/p/:code', '/y', '/y/:code'], html('projector.html'));
+    // The bingo player card (bingo §16.5): a static asset ~100 phones hit in a
+    // minute. `/b` is the canonical player URL; `/` and `/:code` also land here.
+    app.get(['/b', '/', '/:code'], html('player.html'));
   } else {
     const unbuilt = (_req: Request, res: Response) => {
       res
@@ -179,6 +220,8 @@ export function createHost(options: HostOptions): Host {
     };
     app.get('/master', unbuilt);
     app.get(['/y', '/y/:code'], unbuilt);
+    app.get(['/p', '/p/:code'], unbuilt);
+    app.get(['/b', '/', '/:code'], unbuilt);
   }
 
   return {
@@ -198,6 +241,7 @@ export function createHost(options: HostOptions): Host {
       });
     },
     close() {
+      if (ticker) clearInterval(ticker);
       persistence.dispose?.() ?? persistence.flush();
       opened?.close();
       return new Promise<void>((resolve) => {

@@ -17,18 +17,16 @@ describe('ranking (req §11)', () => {
     expect(order(rank(r))).toEqual(['t1', 't2']);
   });
 
-  it('prefers one 말 all the way home over the same distance split across two', () => {
-    // Both total 20. 조1 has committed a 말; 조2 has not.
+  it('prefers a 말 that is home over one that is not (말 home is the first tiebreak)', () => {
     const r = place(started({ teams: 2, malPerTeam: 2 }), { t1m1: 20, t1m2: 0, t2m1: 10, t2m2: 10 });
     const standings = rank(r);
-    expect(standings[0]!.teamId).toBe('t1');
-    expect(standings[0]!.totalProgress).toBe(standings[1]!.totalProgress);
+    expect(standings[0]!.teamId).toBe('t1'); // 1 말 home beats 0, whatever the distance
     expect(standings[0]!.malHome).toBe(1);
   });
 
   it('falls back to total progress when 말 home is level', () => {
-    const r = place(started({ teams: 2, malPerTeam: 2 }), { t1m1: 4, t1m2: 3, t2m1: 9, t2m2: 1 });
-    expect(order(rank(r))).toEqual(['t2', 't1']);
+    const r = place(started({ teams: 2, malPerTeam: 2 }), { t1m1: 4, t1m2: 3, t2m1: 19, t2m2: 1 });
+    expect(order(rank(r))).toEqual(['t2', 't1']); // t2 has a 말 nearly home
   });
 
   it('breaks a total-progress tie in favour of whoever got there earlier', () => {
@@ -50,6 +48,6 @@ describe('ranking (req §11)', () => {
     const r = place(started({ teams: 2, malPerTeam: 2 }), { t1m1: 20, t1m2: 7 });
     const s = rank(r).find((x) => x.teamId === 't1')!;
     expect(s.malHome).toBe(1);
-    expect(s.totalProgress).toBe(27);
+    expect(s.totalProgress).toBe(13); // adv(20)=11 + adv(7)=2 (shortcut-aware)
   });
 });

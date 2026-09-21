@@ -1,4 +1,5 @@
 import { HOME } from '../shared/constants';
+import { advancementOf } from '../shared/board';
 import type { Room, Team } from '../shared/types';
 
 export interface Standing {
@@ -10,8 +11,9 @@ export interface Standing {
   finishedAt: number | null;
 }
 
-const malHome = (t: Team) => t.mal.filter((m) => m.progress >= HOME).length;
-const totalProgress = (t: Team) => t.mal.reduce((s, m) => s + m.progress, 0);
+const malHome = (t: Team) => t.mal.filter((m) => m.progress === HOME).length;
+// Distance along the board (0..20), shortcut-aware, so ranking reflects true progress.
+const totalProgress = (t: Team) => t.mal.reduce((s, m) => s + advancementOf(m.progress), 0);
 
 /**
  * req §11 — ranked on the state at the moment the game ended.

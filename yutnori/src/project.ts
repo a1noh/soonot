@@ -25,6 +25,10 @@ export interface BoardView {
   turnTeamName: string | null;
   throwQueue: number;
   pending: { teamId: string; roll: Roll; candidates: MoveCandidate[] } | null;
+  /** A team is playing a mini-game right now (the turn is frozen). */
+  pendingMiniGame: { teamId: string; teamName: string; station: number; gameId: string | null } | null;
+  /** This event's mini-game catalog — the roulette + the reveal render from it. */
+  miniGames: { id: string; name: string; instruction: string; seconds?: number }[];
   remainingMs: number;
   paused: boolean;
   revealStep: number;
@@ -59,6 +63,15 @@ export function project(room: Room, viewer: Viewer, now = Date.now()): BoardView
           candidates: room.pendingThrow.candidates,
         }
       : null,
+    pendingMiniGame: room.pendingMiniGame
+      ? {
+          teamId: room.pendingMiniGame.teamId,
+          teamName: room.teams.find((t) => t.id === room.pendingMiniGame!.teamId)?.name ?? '',
+          station: room.pendingMiniGame.station,
+          gameId: room.pendingMiniGame.gameId,
+        }
+      : null,
+    miniGames: room.miniGameSet.map((g) => ({ id: g.id, name: g.name, instruction: g.instruction, seconds: g.seconds })),
     remainingMs: remainingMs(room, now),
     paused: room.pausedAt !== null,
     revealStep: room.revealStep,
@@ -69,7 +82,8 @@ export function project(room: Room, viewer: Viewer, now = Date.now()): BoardView
   if (viewer.kind === 'master') {
     // The console's blocking badge is derived from `project`, so the host needs
     // no extra concept for it (master spec §9).
-    base.blocking = room.state === 'RUNNING' && room.pendingThrow !== null;
+    base.blocking =
+      room.state === 'RUNNING' && (room.pendingThrow !== null || room.pendingMiniGame !== null);
     base.canUndo = room.history.length > 0;
   }
   return base;

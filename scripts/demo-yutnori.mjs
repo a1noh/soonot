@@ -28,6 +28,7 @@ log('setup', await send('master:setup', {
   teams: [{ name: '청년 1조' }, { name: '청년 2조' }, { name: '장년부' }],
   malPerTeam: 2,
   timeLimitMin: 20,
+  miniGames: false, // scripted throws; play from /master to see mini-games
 }));
 log('start', await send('master:start', { gameId: 'yutnori' }));
 

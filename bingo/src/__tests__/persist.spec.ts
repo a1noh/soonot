@@ -3,7 +3,7 @@ import { snapshot } from '../persist';
 import { assertInvariants } from '../engine/invariants';
 import { rankPlayers } from '../engine/ranking';
 import { LINES } from '../shared/lines';
-import { CELLS } from '../shared/constants';
+import { CELLS, GRID } from '../shared/constants';
 import { createFakeDb } from './fakedb';
 import { running, step, fillLine } from '../engine/__tests__/helpers';
 
@@ -67,7 +67,7 @@ describe('snapshot strategy (master spec §8.2)', () => {
     const after = snapshot.read(db, 'ev1')!;
 
     expect(after.byNumber.size).toBe(after.players.size);
-    expect(after.players.get('p1')!.usedPlayerIds.size).toBe(9);
+    expect(after.players.get('p1')!.usedPlayerIds.size).toBe(GRID); // one full row
     expect(after.nameIndex.get(after.players.get('p1')!.nicknameKey)).toContain('p1');
   });
 

@@ -88,13 +88,18 @@ describe('project (master spec §3.3)', () => {
     expect(JSON.stringify(others)).not.toContain('permutation');
   });
 
-  it('a spectator sees counts but no cards, no roster, no traits', () => {
+  it('a spectator sees counts and a name-only roster (for the projector), but no cards, no fills, no traits', () => {
     const v = M.project(running(3), spectator) as Record<string, unknown>;
     expect(v['kind']).toBe('spectator');
     expect(v['playerCount']).toBe(3);
     expect(v['me']).toBeUndefined();
-    expect(v['roster']).toBeUndefined();
     expect(v['traits']).toBeUndefined();
+    // The projector's "who's online" box needs names + connected flags — but never
+    // any card data (permutations/fills stay private).
+    const roster = v['roster'] as { id: string; name: string; conn: boolean }[];
+    expect(roster).toHaveLength(3);
+    expect(JSON.stringify(roster)).not.toContain('permutation');
+    expect(JSON.stringify(roster)).not.toContain('fills');
   });
 
   it('the master sees the roster and a top-10 leaderboard, not 100 rows', () => {

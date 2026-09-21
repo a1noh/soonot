@@ -25,6 +25,10 @@ export interface ConsoleApi {
   createEvent(title: string): Promise<void>;
   setProjector(setting: GameId | 'auto'): Promise<void>;
   enableGame(gameId: GameId, enabled: boolean): Promise<void>;
+  /** Reset one game back to SETUP, keeping the event and the other game. */
+  resetGame(gameId: GameId): Promise<void>;
+  /** Close the current event and return to the create screen. */
+  resetEvent(): Promise<void>;
   /** Every game action names its game — both games share `master:start` etc. */
   send(gameId: GameId, ev: string, payload?: Record<string, unknown>): Promise<unknown>;
 }
@@ -160,6 +164,13 @@ export function useConsole(): ConsoleApi {
       },
       enableGame: async (gameId, enabled) => {
         await hostOp('game:enable', { gameId, enabled });
+      },
+      resetGame: async (gameId) => {
+        await hostOp('game:reset', { gameId });
+      },
+      resetEvent: async () => {
+        await hostOp('event:reset');
+        setEvent(null);
       },
       send,
     }),

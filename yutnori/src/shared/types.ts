@@ -1,5 +1,7 @@
 // req §5 — the data model, verbatim. Shared by engine, server and client.
 
+import type { MiniGame } from './minigames';
+
 export type RoomState = 'SETUP' | 'LOBBY' | 'RUNNING' | 'ENDED' | 'REVEAL';
 export type Roll = '도' | '개' | '걸' | '윷' | '모';
 export type EndReason = 'timeup' | 'master' | 'allFinished';
@@ -11,10 +13,20 @@ export interface Room {
 
   teams: Team[];              // ordered — this IS the turn order
   malPerTeam: 1 | 2;
+  /** Mario-Party mode: landing on a 미니게임 칸 triggers a mini-game (set at SETUP). */
+  miniGames: boolean;
+  /** The editable mini-game catalog for this event (the roulette picks from it). */
+  miniGameSet: readonly MiniGame[];
   turnIndex: number;
   throwQueue: number;         // throws still owed to the current team
 
   pendingThrow: PendingThrow | null;
+  /**
+   * A 말 landed on a 미니게임 칸 and the turn is frozen until the master judges it.
+   * Transient turn state (like `pendingThrow`); not in `RoomSetup` — a crash
+   * mid-challenge recovers as if it had succeeded (the move stands).
+   */
+  pendingMiniGame: PendingMiniGame | null;
   history: TurnEvent[];       // append-only; the undo stack and the audit trail
 
   timeLimitMs: number;
@@ -58,6 +70,14 @@ export interface MoveCandidate {
   finishes: boolean;
 }
 
+export interface PendingMiniGame {
+  teamId: string;
+  malId: string;
+  station: number;
+  /** The game the roulette landed on; null until the spin (MINIGAME_SPIN). */
+  gameId: string | null;
+}
+
 export interface TurnEvent {
   seq: number;                // 1-based, contiguous
   teamId: string;
@@ -69,6 +89,12 @@ export interface TurnEvent {
   bonusGranted: number;       // 윷/모 → 1, plus 1 more for a catch
   finishedTeam: boolean;
   at: number;
+  /**
+   * Set when this move landed on a 미니게임 칸. `success:false` means the move was
+   * cancelled — replay applies it as a spent turn with no advancement. Recorded so
+   * the random pick + judgment survive replay/recovery.
+   */
+  miniGame?: { gameId: string; success: boolean };
 }
 
 /**
@@ -81,6 +107,8 @@ export interface RoomSetup {
   eventId: string;
   state: RoomState;
   malPerTeam: 1 | 2;
+  miniGames: boolean;
+  miniGameSet: readonly MiniGame[];
   teams: TeamSetup[];
   timeLimitMs: number;
   startedAt: number | null;

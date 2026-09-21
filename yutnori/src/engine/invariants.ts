@@ -1,5 +1,8 @@
-import { HOME, WAITING } from '../shared/constants';
+import { HOME } from '../shared/constants';
+import { ALL_NODES } from '../shared/board';
 import type { Room } from '../shared/types';
+
+const VALID = new Set(ALL_NODES);
 
 export class InvariantError extends Error {
   constructor(message: string) {
@@ -23,11 +26,9 @@ export function assertInvariants(room: Room): void {
       fail(`team ${team.id} has ${team.mal.length} 말, expected ${room.malPerTeam}`);
     }
     for (const m of team.mal) {
-      if (!Number.isInteger(m.progress) || m.progress < WAITING || m.progress > HOME) {
-        fail(`말 ${m.id} progress ${m.progress} outside 0..${HOME}`);
-      }
+      if (!VALID.has(m.progress)) fail(`말 ${m.id} on invalid 밭 ${m.progress}`);
     }
-    const allHome = team.mal.every((m) => m.progress >= HOME);
+    const allHome = team.mal.every((m) => m.progress === HOME);
     if (allHome && team.finishedAt === null) fail(`team ${team.id} is all home but has no finishedAt`);
     if (!allHome && team.finishedAt !== null) fail(`team ${team.id} has finishedAt but 말 on the board`);
   }
@@ -38,12 +39,17 @@ export function assertInvariants(room: Room): void {
     fail(`pendingThrow while ${room.state}`);
   }
 
+  if (room.pendingMiniGame !== null) {
+    if (room.state !== 'RUNNING') fail(`pendingMiniGame while ${room.state}`);
+    if (room.pendingThrow !== null) fail('pendingThrow and pendingMiniGame at once');
+  }
+
   if (room.state === 'RUNNING' && room.teams.length > 0) {
     const everyoneDone = room.teams.every((t) => t.finishedAt !== null);
     if (!everyoneDone) {
       const current = room.teams[room.turnIndex];
       if (!current) fail(`turnIndex ${room.turnIndex} out of range`);
-      else if (current.mal.every((m) => m.progress >= HOME)) {
+      else if (current.mal.every((m) => m.progress === HOME)) {
         fail(`turnIndex points at finished team ${current.id}`);
       }
     }

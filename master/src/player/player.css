@@ -1,0 +1,350 @@
+/* 교회 사람 빙고 — the player's card. Phone-first: an 81-tile grid is
+   `grid-template-columns: repeat(9, 1fr)`, not a framework problem (spec §2). */
+
+.screen {
+  min-height: 100dvh;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.screen--center {
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- join / waiting ------------------------------------------------------ */
+.join,
+.wait {
+  width: min(420px, 100%);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.join__title,
+.wait__title {
+  font-size: clamp(24px, 7vw, 34px);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.join__sub {
+  margin: -8px 0 4px;
+  color: var(--text-dim);
+}
+.join__hint,
+.wait__sub {
+  color: var(--text-dim);
+  font-size: 14px;
+  margin: 0;
+}
+.wait__line {
+  font-size: clamp(18px, 5vw, 22px);
+  font-weight: 600;
+  margin: 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+}
+.field__label {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.field__input {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 12px;
+  font-size: 18px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+}
+.field__input:focus {
+  outline: 2px solid var(--accent);
+  border-color: var(--accent);
+}
+.field__input--code {
+  text-transform: uppercase;
+  letter-spacing: 0.35em;
+  text-align: center;
+  font-weight: 700;
+  font-size: 26px;
+}
+.field__error {
+  color: var(--danger);
+  margin: 0;
+  font-size: 14px;
+}
+
+.btn {
+  min-height: var(--tap);
+  padding: 10px 16px;
+  font-size: 16px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+  cursor: pointer;
+}
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.btn--big {
+  min-height: 52px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
+.btn--danger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* ---- header -------------------------------------------------------------- */
+.hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 2px;
+}
+.hdr__id {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.hdr__num {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--game-bingo);
+}
+.hdr__clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+.hdr__stats {
+  display: flex;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+.hdr__stats .is-bingo {
+  color: var(--ok);
+  font-weight: 700;
+}
+.hdr__off {
+  color: var(--warn);
+}
+
+.banner {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--radius);
+  text-align: center;
+  font-weight: 600;
+}
+.banner--ended {
+  background: color-mix(in srgb, var(--warn) 20%, var(--bg-raised));
+}
+.banner--reveal {
+  background: color-mix(in srgb, var(--game-bingo) 24%, var(--bg-raised));
+}
+
+/* ---- the grid ------------------------------------------------------------ */
+.grid {
+  display: grid;
+  gap: 3px;
+  flex: 1;
+  align-content: start;
+}
+.cell {
+  position: relative;
+  aspect-ratio: 1;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: var(--bg-raised);
+  color: var(--text);
+  font-size: clamp(7px, 1.7vw, 11px);
+  line-height: 1.05;
+  padding: 2px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.cell:disabled {
+  cursor: default;
+}
+.cell__text {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.cell__mark {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(14px, 4vw, 22px);
+  font-weight: 800;
+}
+.cell[data-state='filled'] {
+  background: color-mix(in srgb, var(--ok) 30%, var(--bg-raised));
+  border-color: var(--ok);
+}
+.cell[data-state='filled'] .cell__text {
+  opacity: 0.35;
+}
+.cell[data-state='filled'] .cell__mark {
+  color: var(--ok);
+}
+.cell[data-state='pending'] {
+  background: color-mix(in srgb, var(--ok) 15%, var(--bg-raised));
+  border-color: color-mix(in srgb, var(--ok) 50%, var(--line));
+}
+.cell[data-state='error'] {
+  border-color: var(--danger);
+  animation: shake 0.3s;
+}
+.cell--line {
+  box-shadow: inset 0 0 0 2px var(--warn);
+}
+.cell--line .cell__mark {
+  color: var(--warn);
+}
+@keyframes shake {
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* ---- cell sheet / picker ------------------------------------------------- */
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 20;
+}
+.sheet {
+  width: min(480px, 100%);
+  max-height: 82dvh;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: auto;
+}
+.sheet__trait {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+.sheet__ask,
+.sheet__filledby {
+  margin: 0;
+  color: var(--text-dim);
+}
+.results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: auto;
+}
+.results__empty {
+  color: var(--text-dim);
+  padding: 8px;
+  text-align: center;
+}
+.results__row {
+  width: 100%;
+  min-height: var(--tap);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  color: var(--text);
+  font-size: 16px;
+  cursor: pointer;
+}
+.results__row:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.results__name {
+  font-weight: 600;
+}
+.results__num {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.results__tag {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.flash {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--game-bingo);
+  color: #fff;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 999px;
+  z-index: 30;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ---- emoji reaction bar ------------------------------------------------- */
+.screen { padding-bottom: 68px; } /* room for the fixed bar */
+.reactbar {
+  position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%);
+  display: flex; gap: 6px; padding: 6px; z-index: 15;
+  background: color-mix(in srgb, var(--bg-raised) 88%, transparent);
+  border: 1px solid var(--line); border-radius: 999px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); backdrop-filter: blur(6px);
+}
+.reactbar__btn {
+  width: 42px; height: 42px; border: none; border-radius: 999px; background: transparent;
+  font-size: 22px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s;
+}
+.reactbar__btn:active { transform: scale(1.4); }
+.reactbar__btn:disabled { cursor: default; opacity: 0.35; transform: none; }
+.reactbar--wait { opacity: 0.85; }
+.reactbar__hint {
+  align-self: center; padding: 0 8px; font-size: 12px; white-space: nowrap;
+  color: var(--muted, #9aa);
+}

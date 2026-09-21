@@ -31,7 +31,7 @@ The participants never touch a device. They throw sticks and shout.
 
 ### Non-goals (v1)
 
-- Not a yutnori simulator. No 지름길, no 업기, no 백도 — see §18.
+- Authentic 29-밭 board **with 지름길** (§6). Still no 업기, no 백도 — see §18.
 - Not a dice game. **The app contains no randomness at all.** Four sticks on a stage are
   the random number generator.
 - Not multi-tenant. **One active event at a time** is acceptable. The event also holds a
@@ -227,7 +227,13 @@ anything that affects the countdown or the ranking.
 
 ## 6. Board model
 
-One loop. Twenty stations. No shortcuts, no diagonals.
+**The authentic 29-밭 윷판.** 20 outer stations + two diagonals (4 밭 each) crossing at
+the centre 방. Landing EXACTLY on 모(5th), 뒷모(10th) or 방 opens a **지름길**: the next
+move offers both the diagonal and the outer path (player's choice). Shortest course out is
+11칸 (모→방→참); the outer loop is 20. Overshoot goes home (no exact count). Still **no
+업기, no 백도** (§18). Implemented as a node graph in `shared/board.ts`; `Mal.progress` is
+the 밭 id (0=대기, 1–19 outer, 20=집, 21–29 inner). *(Was: a single 20-station loop, no
+diagonals — upgraded to the real board on request.)*
 
 ```
               10  11  12  13  14
@@ -627,7 +633,8 @@ Korean-first, with an English toggle in the header.
 
 ## 18. Out of scope for v1
 
-- **지름길 / 대각선** (the shortcut diagonals). Fixed single 20-station loop.
+- ~~**지름길 / 대각선**~~ — **now implemented** (§6): the full 29-밭 board with diagonal
+  shortcuts (choice-based) and the centre 방.
 - **업기** (stacking 말 to travel together).
 - **백도** (the reverse-one throw).
 - **Exact-count finishing.** Overshoot goes home (§6).

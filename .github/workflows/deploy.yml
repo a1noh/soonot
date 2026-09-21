@@ -1,0 +1,32 @@
+name: Deploy (Fly.io)
+
+# Deploys to Fly AFTER CI passes on main — but ONLY once you opt in by setting the
+# repo variable DEPLOY_ENABLED=true (Settings → Secrets and variables → Actions →
+# Variables). Until then every push runs CI green and this job simply skips, so the
+# repo is never red just because Fly isn't set up yet.
+#
+# To go live you need:
+#   - repo VARIABLE  DEPLOY_ENABLED = true
+#   - repo SECRET    FLY_API_TOKEN  = `fly tokens create deploy`
+#   - Fly SECRET (via CLI, NOT GitHub):
+#       fly secrets set MASTER_PASSCODE_HASH="$(npm run -s hash-passcode <<< 'yourpass')"
+#   - the Fly app + /data volume created (see DEPLOY.md)
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    # Only deploy if CI succeeded AND the operator has opted in via DEPLOY_ENABLED.
+    if: ${{ github.event.workflow_run.conclusion == 'success' && vars.DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    concurrency: deploy-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

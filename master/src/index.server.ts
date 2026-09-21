@@ -19,6 +19,9 @@ const host = createHost({
   config,
   passcodeHash,
   modules: { bingo: bingoModule, yutnori: yutnoriModule },
+  // The real process runs the shared 1 Hz clock; tests leave it off and drive
+  // time deterministically.
+  autoTick: true,
 });
 
 const port = await host.listen();

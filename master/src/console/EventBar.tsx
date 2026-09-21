@@ -15,11 +15,12 @@ export interface EventBarProps {
   connected: boolean;
   onSetProjector(setting: GameId | 'auto'): void;
   onSignOut(everywhere: boolean): void;
+  onResetEvent(): void;
 }
 
 const CHANNELS: readonly (GameId | 'auto')[] = ['auto', 'bingo', 'yutnori'];
 
-export function EventBar({ event, connected, onSetProjector, onSignOut }: EventBarProps) {
+export function EventBar({ event, connected, onSetProjector, onSignOut, onResetEvent }: EventBarProps) {
   return (
     <header className="bar">
       <div className="bar__id">
@@ -73,6 +74,27 @@ export function EventBar({ event, connected, onSetProjector, onSignOut }: EventB
         ) : null}
 
         <div className="bar__out">
+          {event ? (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              title="발표 화면(/p)을 새 창으로 엽니다 — 그 화면의 ⛶ 버튼으로 전체화면"
+              onClick={() => window.open('/p', 'soonot-projector', 'noopener')}
+            >
+              🖥 발표 화면 열기
+            </button>
+          ) : null}
+          {event ? (
+            <button
+              type="button"
+              className="btn btn--ghost"
+              onClick={() => {
+                if (confirm('현재 행사를 초기화하고 새로 시작할까요? 두 게임 모두 지워집니다.')) onResetEvent();
+              }}
+            >
+              새 행사
+            </button>
+          ) : null}
           <button type="button" className="btn" onClick={() => onSignOut(false)}>
             {t('host.console.signout')}
           </button>

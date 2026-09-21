@@ -13,6 +13,8 @@ export function setupOf(room: Room): RoomSetup {
     eventId: room.eventId,
     state: room.state,
     malPerTeam: room.malPerTeam,
+    miniGames: room.miniGames,
+    miniGameSet: room.miniGameSet,
     teams: room.teams.map((t) => ({
       id: t.id,
       name: t.name,
@@ -48,9 +50,12 @@ function freshRunning(setup: RoomSetup): Room {
       lastProgressAt: t0,
     })),
     malPerTeam: setup.malPerTeam,
+    miniGames: setup.miniGames,
+    miniGameSet: setup.miniGameSet,
     turnIndex: 0,
     throwQueue: 1,
     pendingThrow: null,
+    pendingMiniGame: null,
     history: [],
     timeLimitMs: setup.timeLimitMs,
     startedAt: setup.startedAt,
@@ -78,9 +83,18 @@ export function replay(setup: RoomSetup, events: readonly TurnEvent[]): Room {
 
   for (const ev of events) {
     room = apply(room, { t: 'THROW', roll: ev.roll }, ev.at).state;
-    // A single-candidate throw is auto-applied by THROW itself (req §8.1).
+    // A single-candidate throw is auto-applied by THROW itself (req §8.1). `to`
+    // disambiguates a branch 밭's two candidates so replay picks the same path.
     if (room.pendingThrow !== null) {
-      room = apply(room, { t: 'MOVE', malId: ev.malId }, ev.at).state;
+      room = apply(room, { t: 'MOVE', malId: ev.malId, to: ev.to }, ev.at).state;
+    }
+    // If the move landed on a 미니게임 칸, replay the recorded outcome so positions
+    // (and a failed move's cancellation) come back exactly. An event with no
+    // `miniGame` recorded — a crash mid-challenge — resolves as a success.
+    if (room.pendingMiniGame !== null) {
+      const gameId = ev.miniGame?.gameId ?? '';
+      if (gameId) room = apply(room, { t: 'MINIGAME_SPIN', gameId }, ev.at).state;
+      room = apply(room, { t: 'MINIGAME_RESOLVE', success: ev.miniGame?.success ?? true }, ev.at).state;
     }
   }
 

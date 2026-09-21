@@ -3,9 +3,9 @@ import { LINES, linesThrough, rowColOf } from '../../shared/lines';
 import { CELLS, GRID, LINE_COUNT } from '../../shared/constants';
 
 describe('lines', () => {
-  it('has exactly 20 lines of 9 cells', () => {
+  it('has exactly LINE_COUNT lines of GRID cells', () => {
     expect(LINES).toHaveLength(LINE_COUNT);
-    expect(LINES).toHaveLength(20);
+    expect(LINES).toHaveLength(2 * GRID + 2);
     for (const l of LINES) expect(l.cells).toHaveLength(GRID);
   });
 
@@ -21,7 +21,8 @@ describe('lines', () => {
       const onAnti = row + col === GRID - 1;
       expect(n).toBe(2 + (onMain ? 1 : 0) + (onAnti ? 1 : 0));
     }
-    expect(linesThrough(40)).toHaveLength(4); // centre of a 9x9
+    const centre = Math.floor(GRID / 2) * GRID + Math.floor(GRID / 2);
+    expect(linesThrough(centre)).toHaveLength(4); // centre sits on both diagonals
   });
 
   it('linesThrough agrees with LINES membership', () => {
@@ -31,15 +32,15 @@ describe('lines', () => {
     }
   });
 
-  it('diagonals only at r===c and r+c===8', () => {
+  it('diagonals only at r===c and r+c===GRID-1', () => {
     const main = LINES.find((l) => l.id === 'diag:main')!;
     const anti = LINES.find((l) => l.id === 'diag:anti')!;
-    expect(main.cells).toEqual([0, 10, 20, 30, 40, 50, 60, 70, 80]);
-    expect(anti.cells).toEqual([8, 16, 24, 32, 40, 48, 56, 64, 72]);
+    expect(main.cells).toEqual(Array.from({ length: GRID }, (_, i) => i * GRID + i));
+    expect(anti.cells).toEqual(Array.from({ length: GRID }, (_, i) => i * GRID + (GRID - 1 - i)));
   });
 
   it('rejects an out-of-range index', () => {
-    expect(() => linesThrough(81)).toThrow(RangeError);
+    expect(() => linesThrough(CELLS)).toThrow(RangeError);
     expect(() => linesThrough(-1)).toThrow(RangeError);
   });
 });

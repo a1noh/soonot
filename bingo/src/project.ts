@@ -5,9 +5,10 @@
  * structural rather than a discipline: the host only ever sends what `project`
  * returned for that viewer, so a card cannot leak into a broadcast by accident.
  */
-import type { Viewer } from '@soonot/master';
+import type { RankEntry, Viewer } from '@soonot/master';
 import type { Room } from './shared/types';
 import { filledCount, bestLineProgress } from './engine/bingo';
+import { rank } from './engine/ranking';
 
 export interface RosterEntry {
   n: number;
@@ -26,6 +27,18 @@ export interface PublicView {
   endedAt: number | null;
   revealStep: number;
   traitCount: number;
+  /**
+   * The official ranking, for the shared podium (master spec §3.4). Empty
+   * during play — a card and its standing are private until the reveal, which
+   * is the one moment they are meant to be public. Populated only once the game
+   * is ENDED or REVEAL.
+   */
+  standings: RankEntry[];
+}
+
+/** Is the ranking public yet? (Only at reveal — see `PublicView.standings`.) */
+function revealPhase(room: Room): boolean {
+  return room.state === 'ENDED' || room.state === 'REVEAL';
 }
 
 export interface PlayerView extends PublicView {
@@ -54,6 +67,8 @@ export interface MasterView extends PublicView {
 
 export interface SpectatorView extends PublicView {
   kind: 'spectator';
+  /** Names + connected flag for the projector's "who's online" box — no cards. */
+  roster: RosterEntry[];
 }
 
 export type BingoView = PlayerView | MasterView | SpectatorView;
@@ -74,6 +89,7 @@ function publicOf(room: Room): PublicView {
     endedAt: room.endedAt,
     revealStep: room.revealStep,
     traitCount: room.traits.length,
+    standings: revealPhase(room) ? rank(room) : [],
   };
 }
 
@@ -94,6 +110,8 @@ export function project(room: Room, viewer: Viewer): BingoView {
     return {
       kind: 'player',
       ...base,
+      // Mark this player's own row so the podium can render 나의 순위 (bingo §9).
+      standings: revealPhase(room) ? rank(room, viewer.playerId) : [],
       traits: room.traits.map((t) => t.text),
       roster: rosterOf(room),
       me: me
@@ -120,5 +138,5 @@ export function project(room: Room, viewer: Viewer): BingoView {
     return { kind: 'master', ...base, roster: rosterOf(room), leaders };
   }
 
-  return { kind: 'spectator', ...base };
+  return { kind: 'spectator', ...base, roster: rosterOf(room) };
 }

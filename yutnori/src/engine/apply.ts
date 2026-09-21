@@ -1,14 +1,15 @@
-import { HOME, BONUS_ROLLS, MIN_TEAMS, MS_PER_MIN, MAX_REVEAL_STEP, TEAM_COLORS, DEFAULT_TIME_LIMIT_MIN, WAITING } from '../shared/constants';
+import { HOME, BONUS_ROLLS, MIN_TEAMS, MS_PER_MIN, MAX_REVEAL_STEP, TEAM_COLORS, DEFAULT_TIME_LIMIT_MIN, WAITING, isMiniGameStation } from '../shared/constants';
 import type { EndReason, MoveCandidate, Roll, Room, RoomState, Team, TurnEvent } from '../shared/types';
 import { EngineError, type Action, type Emit } from './actions';
 import { candidates } from './candidates';
 import { replay, setupOf } from './replay';
+import { MINI_GAMES } from '../shared/minigames';
 
 /** spec §4.3 — the req §4 transition table, as data rather than scattered `if`s. */
 const ALLOWED: Record<RoomState, Action['t'][]> = {
   SETUP:   ['SETUP'],
   LOBBY:   ['START'],
-  RUNNING: ['THROW', 'MOVE', 'UNDO', 'PAUSE', 'RESUME', 'EXTEND', 'END', 'TICK'],
+  RUNNING: ['THROW', 'MOVE', 'UNDO', 'PAUSE', 'RESUME', 'EXTEND', 'END', 'TICK', 'MINIGAME_SPIN', 'MINIGAME_RESOLVE'],
   ENDED:   ['RESUME_FROM_ENDED', 'REVEAL'],
   REVEAL:  ['REVEAL'],
 };
@@ -20,9 +21,12 @@ export function newRoom(p: { id: string; eventId: string; createdAt: number }): 
     state: 'SETUP',
     teams: [],
     malPerTeam: 2,
+    miniGames: false,
+    miniGameSet: MINI_GAMES,
     turnIndex: 0,
     throwQueue: 0,
     pendingThrow: null,
+    pendingMiniGame: null,
     history: [],
     timeLimitMs: DEFAULT_TIME_LIMIT_MIN * MS_PER_MIN,
     startedAt: null,
@@ -53,6 +57,7 @@ export function remainingMs(room: Room, now: number): number {
  */
 export function isMidTurn(room: Room): boolean {
   if (room.pendingThrow !== null) return true;
+  if (room.pendingMiniGame !== null) return true;
   const last = room.history[room.history.length - 1];
   const current = room.teams[room.turnIndex];
   return !!last && !!current && last.teamId === current.id;
@@ -61,7 +66,7 @@ export function isMidTurn(room: Room): boolean {
 const boardMal = (r: Room) =>
   r.teams.flatMap((t) => t.mal.map((m) => ({ teamId: t.id, malId: m.id, progress: m.progress })));
 
-const isFinished = (t: Team) => t.mal.every((m) => m.progress >= HOME);
+const isFinished = (t: Team) => t.mal.every((m) => m.progress === HOME);
 
 function nextTeamIndex(r: Room, from: number): number {
   for (let k = 1; k <= r.teams.length; k++) {
@@ -141,6 +146,23 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
     });
   }
 
+  // 미니게임 칸: freeze the turn until the master judges the challenge. The bonus
+  // (if any) is already on the queue and will be honoured on success, forfeited on
+  // fail. A finishing move never triggers one (`to` is 집, not a station).
+  if (r.miniGames && isMiniGameStation(cand.to) && cand.to > WAITING && cand.to < HOME && !finishedTeam) {
+    r.pendingMiniGame = { teamId: team.id, malId: mal.id, station: cand.to, gameId: null };
+    events.push({ e: 'minigame:triggered', teamId: team.id, teamName: team.name, station: cand.to });
+    return events;
+  }
+
+  events.push(...advanceAfterMove(r, now));
+  return events;
+}
+
+/** The tail of a completed move: honour bonuses, pass the turn, or end the game. */
+function advanceAfterMove(r: Room, now: number): Emit[] {
+  const events: Emit[] = [];
+  const team = r.teams[r.turnIndex]!;
   // A team with nothing left to move cannot spend a bonus throw. The turn ends.
   if (isFinished(team)) r.throwQueue = 0;
 
@@ -153,6 +175,49 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
     events.push({ e: 'turn:changed', teamId: next.id, teamName: next.name });
   }
 
+  return events;
+}
+
+/** Undo a move's board effects from its recorded `TurnEvent` — the fail path. */
+function revertMove(r: Room, ev: TurnEvent): void {
+  const team = r.teams.find((t) => t.id === ev.teamId)!;
+  const mal = team.mal.find((m) => m.id === ev.malId)!;
+  mal.progress = ev.from;
+  for (const cap of ev.captures) {
+    const victim = r.teams.find((t) => t.id === cap.teamId)?.mal.find((m) => m.id === cap.malId);
+    if (victim) victim.progress = cap.from;
+  }
+  if (ev.finishedTeam) team.finishedAt = null;
+}
+
+/**
+ * Resolve the frozen mini-game. Success keeps the move and continues the turn;
+ * fail cancels the advancement (말 back, captures restored, bonus forfeited) and
+ * passes the turn. The outcome is stamped on the TurnEvent so replay reproduces it.
+ * This never calls `replay`, so it is safe to call *from* replay.
+ */
+function resolveMiniGame(r: Room, success: boolean, now: number): Emit[] {
+  const ev = r.history[r.history.length - 1]!;
+  const gameId = r.pendingMiniGame?.gameId ?? '';
+  ev.miniGame = { gameId, success };
+  r.pendingMiniGame = null;
+
+  if (success) {
+    const events: Emit[] = [{ e: 'minigame:resolved', success: true }];
+    events.push(...advanceAfterMove(r, now));
+    return events;
+  }
+
+  revertMove(r, ev);
+  r.throwQueue = 0; // forfeit any bonus this move granted
+  const events: Emit[] = [
+    { e: 'minigame:resolved', success: false },
+    { e: 'board:update', mal: boardMal(r), lastMove: ev },
+  ];
+  r.turnIndex = nextTeamIndex(r, r.turnIndex);
+  r.throwQueue = 1;
+  const next = r.teams[r.turnIndex]!;
+  events.push({ e: 'turn:changed', teamId: next.id, teamName: next.name });
   return events;
 }
 
@@ -178,6 +243,8 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       if (!Number.isFinite(action.timeLimitMin) || action.timeLimitMin < 1) throw new EngineError('BAD_TIME_LIMIT');
 
       r.malPerTeam = action.malPerTeam;
+      r.miniGames = action.miniGames ?? false;
+      r.miniGameSet = action.miniGameSet && action.miniGameSet.length > 0 ? action.miniGameSet : MINI_GAMES;
       r.timeLimitMs = Math.round(action.timeLimitMin * MS_PER_MIN);
       r.teams = action.teams.map((t, i) => {
         const id = `t${i + 1}`;
@@ -208,6 +275,7 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
     }
 
     case 'THROW': {
+      if (r.pendingMiniGame !== null) throw new EngineError('MINIGAME_PENDING');
       if (r.pendingThrow !== null) throw new EngineError('THROW_PENDING');
       if (r.throwQueue <= 0) throw new EngineError('NO_THROW_OWED');
 
@@ -231,15 +299,19 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
     }
 
     case 'MOVE': {
+      if (r.pendingMiniGame !== null) throw new EngineError('MINIGAME_PENDING');
       const pending = r.pendingThrow;
       if (!pending) throw new EngineError('NO_PENDING_THROW');
-      const cand = pending.candidates.find((c) => c.malId === action.malId);
+      // A 말 on a branch 밭 has two candidates (지름길/바깥길); `to` disambiguates.
+      const forMal = pending.candidates.filter((c) => c.malId === action.malId);
+      const cand = action.to !== undefined ? forMal.find((c) => c.to === action.to) : forMal[0];
       if (!cand) throw new EngineError('ILLEGAL_MOVE');
       events.push(...commitMove(r, pending.roll, cand, now));
       break;
     }
 
     case 'UNDO': {
+      if (r.pendingMiniGame !== null) throw new EngineError('MINIGAME_PENDING');
       // A throw entered but not yet resolved is not an event. Cancelling it is the
       // mis-tap caught in time (req §7.1); `revertedSeq: 0` means "nothing was logged".
       if (r.pendingThrow !== null) {
@@ -306,7 +378,21 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       break;
     }
 
+    case 'MINIGAME_SPIN': {
+      if (r.pendingMiniGame === null) throw new EngineError('NO_MINIGAME');
+      r.pendingMiniGame.gameId = action.gameId;
+      events.push({ e: 'minigame:spun', gameId: action.gameId });
+      break;
+    }
+
+    case 'MINIGAME_RESOLVE': {
+      if (r.pendingMiniGame === null) throw new EngineError('NO_MINIGAME');
+      events.push(...resolveMiniGame(r, action.success, now));
+      break;
+    }
+
     case 'TICK': {
+      if (r.pendingMiniGame !== null) break; // frozen — nothing to time out mid-challenge
       if (r.pausedAt !== null) break;
       if (remainingMs(r, now) > 0) break;
       // req §10 — the current team finishes its turn first. The end fires on the first
