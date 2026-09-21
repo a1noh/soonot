@@ -230,10 +230,12 @@ export function App() {
   const [bView, setBView] = useState<BingoView | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [greenKey, setGreenKey] = useState(0); // bump to retrigger the green bingo flash
+  const [fx, setFx] = useState<{ id: number; kind: string; text: string; sub?: string } | null>(null);
   const [autoGame, setAutoGame] = useState<GameId>('yutnori');
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const lastActivity = useRef<Record<GameId, number>>({ yutnori: 0, bingo: 0 });
   const reactId = useRef(0);
+  const fxId = useRef(0);
 
   useEffect(() => {
     const socket = io('/p', { reconnectionDelay: 500, reconnectionDelayMax: 5000, randomizationFactor: 0.5 });
@@ -258,9 +260,24 @@ export function App() {
       else if (msg.gameId === 'bingo') setBView(msg.view as BingoView);
       bump(msg.gameId);
     });
+    const showFx = (kind: string, text: string, sub?: string) =>
+      setFx({ id: fxId.current++, kind, text, sub });
     socket.on('board:update', () => bump('yutnori'));
-    socket.on('throw:recorded', () => bump('yutnori'));
-    socket.on('capture:announced', () => bump('yutnori'));
+    socket.on('throw:recorded', (d: { roll?: string }) => {
+      bump('yutnori');
+      const roll = d?.roll ?? '';
+      const steps: Record<string, number> = { 도: 1, 개: 2, 걸: 3, 윷: 4, 모: 5 };
+      const bonus = roll === '윷' || roll === '모' ? ' · 한 번 더!' : '';
+      showFx('throw', roll, roll ? `${steps[roll] ?? ''}칸${bonus}` : undefined);
+    });
+    socket.on('capture:announced', (d: { count?: number }) => {
+      bump('yutnori');
+      showFx('capture', '잡기! 🎯', `상대 말 ${d?.count ?? 1}개 원위치`);
+    });
+    socket.on('minigame:triggered', () => {
+      bump('yutnori');
+      showFx('minigame', '🎡 미니게임!', '룰렛을 돌려요');
+    });
     socket.on('bingo:announced', () => {
       // Anonymous on purpose: the room sees a bingo happened + a green flash, but
       // NOT who — identities stay secret until the reveal (builds suspense).
@@ -313,8 +330,21 @@ export function App() {
       {bView && bView.connectedCount > 0 ? <OnlineBox online={bView.connectedCount} /> : null}
       {showJoinChip ? <JoinChip code={summary.code} /> : null}
       {greenKey > 0 ? <div key={greenKey} className="greenflash" aria-hidden="true" /> : null}
+      {active === 'yutnori' && fx ? <YutFx key={fx.id} fx={fx} onDone={() => setFx(null)} /> : null}
       <FullscreenButton />
     </>
+  );
+}
+
+/** A big momentary callout over the 윷놀이 board — throw result, 잡기, mini-game —
+ *  so the action reads clearly instead of happening too suddenly. Self-dismisses
+ *  when its pop-and-fade animation ends. */
+function YutFx({ fx, onDone }: { fx: { kind: string; text: string; sub?: string }; onDone(): void }) {
+  return (
+    <div className={`yutfx yutfx--${fx.kind}`} aria-hidden="true" onAnimationEnd={onDone}>
+      <div className="yutfx__text">{fx.text}</div>
+      {fx.sub ? <div className="yutfx__sub">{fx.sub}</div> : null}
+    </div>
   );
 }
 

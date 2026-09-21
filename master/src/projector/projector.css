@@ -157,6 +157,33 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
   animation: greenpulse 0.85s ease-out forwards; }
 @keyframes greenpulse { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; } }
 
+/* ---- 윷놀이 action callouts (throw / 잡기 / mini-game) -------------------- */
+.yutfx {
+  position: fixed; inset: 0; z-index: 18; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.4vmin;
+  animation: yutfx 1.6s ease-out forwards;
+}
+.yutfx__text {
+  font-family: var(--display); font-weight: 900; color: var(--gold);
+  font-size: clamp(64px, 20vmin, 320px); line-height: 1; text-shadow: 0 0.6vmin 3vmin rgba(0,0,0,0.6);
+}
+.yutfx__sub {
+  font-size: clamp(20px, 3.4vmin, 54px); color: var(--ink); font-weight: 700;
+  background: rgba(0,0,0,0.42); padding: 0.6vmin 2.2vmin; border-radius: 999px;
+}
+.yutfx--capture .yutfx__text { color: var(--red); }
+@keyframes yutfx {
+  0% { opacity: 0; transform: scale(0.4) rotate(-6deg); }
+  14% { opacity: 1; transform: scale(1.12) rotate(2deg); }
+  28% { transform: scale(1) rotate(0); }
+  72% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.06); }
+}
+
+/* the mini-game stage pops in (a clear transition into the roulette) */
+.stage--minigame .mg { animation: mgIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes mgIn { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+
 /* ---- shared flashes ----------------------------------------------------- */
 .stage__flash { position: fixed; left: 50%; bottom: 6vmin; transform: translateX(-50%);
   background: linear-gradient(135deg, var(--red), var(--gold-deep)); color: #fff; font-weight: 800;
