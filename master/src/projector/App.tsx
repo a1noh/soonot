@@ -159,34 +159,37 @@ function BingoScreen({ view, summary, flash }: { view: BingoView; summary: Event
         <p className="bingo-stage__hint">
           {view.state === 'LOBBY' ? '휴대폰으로 스캔해서 참여하세요' : '특징에 맞는 사람을 찾아 칸을 채우세요'}
         </p>
-        {view.state === 'RUNNING' ? <BingoChart data={view.bingoBreakdown ?? []} /> : null}
+        <Leaderboard board={view.kind === 'spectator' ? view.board : []} />
       </div>
       {flash ? <div className="stage__flash">{flash}</div> : null}
     </Stage>
   );
 }
 
-/** Anonymous live bingo distribution — how many hold each line count, no names.
- *  Ordered most-bingos-first (the ranking priority); always on during play. */
-function BingoChart({ data }: { data: { lines: number; count: number }[] }) {
-  const rows = [...data].sort((a, b) => b.lines - a.lines); // most bingos at the top
-  const max = Math.max(...rows.map((d) => d.count), 1);
+/**
+ * The always-on live points ladder — number only (익명), ranked high→low. Always
+ * rendered in a fixed panel so it never "pops in": before anyone scores it just
+ * shows everyone at 0점. Points = 1 per filled cell + 5 per bingo line.
+ */
+function Leaderboard({ board }: { board: { n: number; points: number; lines: number }[] }) {
+  const rows = board.slice(0, 12);
   return (
-    <div className="bchart">
-      <div className="bchart__cap">🎉 빙고 현황 · 누구인지는 발표 때!</div>
-      {rows.length === 0 ? (
-        <div className="bchart__empty">아직 빙고가 없어요 — 첫 빙고를 기다려요! 🍀</div>
-      ) : (
-        rows.map((d) => (
-          <div key={d.lines} className="bchart__row">
-            <span className="bchart__lines">{d.lines}줄</span>
-            <span className="bchart__track">
-              <span className="bchart__bar" style={{ width: `${(d.count / max) * 100}%` }} />
-            </span>
-            <span className="bchart__count">{d.count}명</span>
-          </div>
-        ))
-      )}
+    <div className="lboard">
+      <div className="lboard__cap">🏆 실시간 순위 · 번호로 표시 (이름은 발표 때!)</div>
+      <ol className="lboard__list">
+        {rows.length === 0 ? (
+          <li className="lboard__empty">참가자를 기다리는 중… 🍀</li>
+        ) : (
+          rows.map((e, i) => (
+            <li key={e.n} className={`lboard__row${i < 3 ? ` lboard__row--m${i + 1}` : ''}`}>
+              <span className="lboard__rank">{i + 1}</span>
+              <span className="lboard__who">#{e.n}</span>
+              <span className="lboard__lines">{e.lines > 0 ? `${e.lines}줄` : ''}</span>
+              <span className="lboard__pts">{e.points}점</span>
+            </li>
+          ))
+        )}
+      </ol>
     </div>
   );
 }
@@ -307,7 +310,7 @@ export function App() {
     <>
       {screen}
       <Reactions items={reactions} onDone={removeReaction} />
-      {bView && bView.roster.length > 0 ? <OnlineBox roster={bView.roster} bingo={active === 'bingo'} /> : null}
+      {bView && bView.connectedCount > 0 ? <OnlineBox online={bView.connectedCount} /> : null}
       {showJoinChip ? <JoinChip code={summary.code} /> : null}
       {greenKey > 0 ? <div key={greenKey} className="greenflash" aria-hidden="true" /> : null}
       <FullscreenButton />
@@ -328,26 +331,12 @@ function JoinChip({ code }: { code: string }) {
   );
 }
 
-/** A persistent bottom-left box of who's connected right now (Kahoot-style).
- *  On the bingo screen it lists names; on the 윷놀이 board it's just a small count
- *  so it never covers the map. Only CONNECTED players count — offline ghosts and
- *  people who left never appear. */
-function OnlineBox({ roster, bingo }: { roster: { n: number; id: string; name: string; conn: boolean }[]; bingo?: boolean }) {
-  const online = roster.filter((p) => p.conn);
-  if (online.length === 0) return null;
+/** A small bottom-left count of who's connected — number only, so it never covers
+ *  the 윷놀이 map and keeps identities private (the ladder is number-only too). */
+function OnlineBox({ online }: { online: number }) {
   return (
-    <div className={`onlinebox${bingo ? ' onlinebox--bingo' : ' onlinebox--compact'}`}>
-      <div className="onlinebox__head">🟢 접속 {online.length}명</div>
-      {bingo ? (
-        <ul className="onlinebox__list">
-          {online.map((p) => (
-            <li key={p.id} className="onlinebox__row">
-              <span className="onlinebox__name">{p.name}</span>
-              <span className="onlinebox__num">#{p.n}</span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
+    <div className="onlinebox onlinebox--compact">
+      <div className="onlinebox__head">🟢 접속 {online}명</div>
     </div>
   );
 }

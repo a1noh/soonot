@@ -71,10 +71,23 @@ export interface MasterView extends PublicView {
   leaders: { n: number; name: string; at: number; lines: number }[];
 }
 
+/** One rung of the live points ladder — number only, never a nickname, so the
+ *  projector board is competitive but keeps identities private until the reveal. */
+export interface ScoreEntry {
+  n: number;
+  points: number;
+  lines: number;
+}
+
+/** Points: 1 per filled cell + a bonus per completed line (bingo). Tunable here. */
+export const LINE_BONUS = 5;
+
 export interface SpectatorView extends PublicView {
   kind: 'spectator';
   /** Names + connected flag for the projector's "who's online" box — no cards. */
   roster: RosterEntry[];
+  /** The live points ladder (number-only), ranked high→low — always present on /p. */
+  board: ScoreEntry[];
 }
 
 export type BingoView = PlayerView | MasterView | SpectatorView;
@@ -106,6 +119,17 @@ function publicOf(room: Room): PublicView {
     standings: revealPhase(room) ? rank(room) : [],
     bingoBreakdown,
   };
+}
+
+/** The live points ladder, number-only, ranked points→lines→number. */
+function boardOf(room: Room): ScoreEntry[] {
+  return [...room.players.values()]
+    .map((p) => ({
+      n: p.number,
+      lines: p.completedLines.length,
+      points: filledCount(p) + LINE_BONUS * p.completedLines.length,
+    }))
+    .sort((a, b) => b.points - a.points || b.lines - a.lines || a.n - b.n);
 }
 
 function rosterOf(room: Room): RosterEntry[] {
@@ -153,5 +177,5 @@ export function project(room: Room, viewer: Viewer): BingoView {
     return { kind: 'master', ...base, roster: rosterOf(room), leaders };
   }
 
-  return { kind: 'spectator', ...base, roster: rosterOf(room) };
+  return { kind: 'spectator', ...base, roster: rosterOf(room), board: boardOf(room) };
 }
