@@ -66,12 +66,20 @@ export function recoverEvent(
   for (const gameId of GAME_IDS) {
     const module = modules[gameId];
     const strategy = module.persistence;
-    const restored =
-      strategy.kind === 'snapshot' ? strategy.read(db, row.id) : strategy.replay(db, row.id);
+    // A corrupt/inconsistent persisted game (e.g. an event log that replays into an
+    // illegal action after a reset) must NEVER take down the whole host on boot.
+    // Restore defensively: on any failure, start that one game fresh.
+    let restored: unknown = null;
+    try {
+      restored = strategy.kind === 'snapshot' ? strategy.read(db, row.id) : strategy.replay(db, row.id);
+    } catch (err) {
+      console.error(`[master] could not recover ${gameId} — starting it fresh:`, err);
+      restored = null;
+    }
     games[gameId] = {
       // A game with nothing persisted was never started; a fresh SETUP state
       // is the honest restoration of that, not an error.
-      state: restored ?? module.create(row.id, now),
+      state: (restored as EventRecord['games'][GameId]['state']) ?? module.create(row.id, now),
       enabled: (gameId === 'bingo' ? row.bingo_enabled : row.yut_enabled) === 1,
       lastRoomWideEmitAt: 0,
     };
