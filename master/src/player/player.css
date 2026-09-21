@@ -333,8 +333,9 @@ body::after {
 .grid {
   display: grid;
   gap: 6px;
-  flex: 1;
-  align-content: start;
+  flex: 1 1 0;
+  min-height: 0;            /* let the grid shrink/grow inside the flex column */
+  grid-auto-rows: 1fr;      /* rows share the height evenly → the card fills the screen */
   padding: 10px;
   background: var(--bg-raised);
   border: 2px solid var(--line);
@@ -343,7 +344,7 @@ body::after {
 }
 .cell {
   position: relative;
-  aspect-ratio: 1;
+  min-height: 0;            /* was aspect-ratio:1; now each cell fills its 1fr track */
   border: 2px solid var(--line);
   border-radius: 14px;
   background: #fff;
