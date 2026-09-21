@@ -149,7 +149,7 @@ function BingoScreen({ view, summary, flash }: { view: BingoView; summary: Event
   return (
     <Stage kind="bingo" theme="bingo">
       <div className="bingo-stage">
-        <div className="bingo-stage__kicker">교회 사람 빙고</div>
+        <div className="bingo-stage__kicker">SOONOT 사람 빙고</div>
         <h1 className="bingo-stage__title">{summary?.title ?? 'SOONOT'}</h1>
         <div className="bstats">
           <Big value={view.connectedCount} label="접속" />

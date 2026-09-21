@@ -1,5 +1,5 @@
 /**
- * 교회 사람 빙고 — the player's card, served at `/` (bingo spec §7, req §11).
+ * SOONOT 사람 빙고 — the player's card, served at `/` (bingo spec §7, req §11).
  *
  * A phone opens this link, types a nickname, and gets a number and an 81-cell
  * card once the master starts. Filling a cell means naming a real person by
@@ -50,7 +50,7 @@ function JoinForm({ api }: { api: PlayerApi }) {
           if (!res.ok) setErr(res.error ?? '입장하지 못했어요');
         }}
       >
-        <h1 className="join__title">교회 사람 빙고</h1>
+        <h1 className="join__title">SOONOT 사람 빙고</h1>
         <p className="join__sub">{api.summary?.title ?? 'SOONOT'}</p>
         <label className="field">
           <span className="field__label">닉네임</span>
@@ -92,7 +92,7 @@ function CodeGate({ api }: { api: PlayerApi }) {
           if (!api.submitCode(c)) setErr('코드가 맞지 않아요');
         }}
       >
-        <h1 className="join__title">교회 사람 빙고</h1>
+        <h1 className="join__title">SOONOT 사람 빙고</h1>
         <p className="join__sub">{api.summary?.title ?? 'SOONOT'}</p>
         <label className="field">
           <span className="field__label">참여 코드</span>
@@ -427,9 +427,9 @@ export function App() {
   const api = usePlayer();
   switch (api.phase) {
     case 'connecting':
-      return <Waiting title="교회 사람 빙고" line="연결 중…" />;
+      return <Waiting title="SOONOT 사람 빙고" line="연결 중…" />;
     case 'no-event':
-      return <Waiting title="교회 사람 빙고" line="아직 열린 행사가 없어요" sub="잠시 후 다시 시도해주세요" />;
+      return <Waiting title="SOONOT 사람 빙고" line="아직 열린 행사가 없어요" sub="잠시 후 다시 시도해주세요" />;
     case 'need-code':
       return <CodeGate api={api} />;
     case 'setup-wait':
