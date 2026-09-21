@@ -11,8 +11,8 @@ Deployed to Fly.io (Tokyo/nrt), one always-on machine + a 1GB SQLite volume.
 - Operator: https://soonot-hanmadang.fly.dev/master  (passcode `soonot`)
 - Projector: https://soonot-hanmadang.fly.dev/p
 - Players:  https://soonot-hanmadang.fly.dev/b  (or scan the projector QR → `/{참여코드}`)
-- Redeploy: `flyctl deploy --remote-only --app soonot-hanmadang` (or push to main once
-  `DEPLOY_ENABLED=true` + `FLY_API_TOKEN` are set).
+- Redeploy: **automatic on every push to `main`** (CI → deploy, via `FLY_API_TOKEN` secret +
+  `DEPLOY_ENABLED=true` variable). Manual: `flyctl deploy --remote-only --app soonot-hanmadang`.
 - Cost control: it's **always-on (~$3/mo)**. To stop billing between events:
   `flyctl scale count 0 --app soonot-hanmadang` (and `scale count 1` to bring it back), or
   `flyctl apps destroy soonot-hanmadang` to remove it entirely.
