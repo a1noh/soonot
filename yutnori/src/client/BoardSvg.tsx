@@ -6,6 +6,7 @@
  * viewBox units, which is what makes "readable at 10 m" (req §16) a property of
  * the geometry rather than something to re-tune per venue.
  */
+import { useEffect, useState } from 'react';
 import { nodeXY, isOnBoard, CENTER } from '../shared/board';
 import { isMiniGameStation } from '../shared/constants';
 import type { BoardView } from '../project';
@@ -163,8 +164,22 @@ export function Standings({ view }: { view: BoardView }) {
   );
 }
 
+/**
+ * Counts down **locally** so the server no longer has to rebroadcast state every
+ * second just to move the clock (that 1 Hz full re-render was the projector lag).
+ * `ms` is the authoritative remaining at the last real update; the component ticks
+ * down from it and resets whenever a new `ms`/`paused` arrives (pause/resume/
+ * extend/expiry all push a fresh value).
+ */
 export function Clock({ ms, paused }: { ms: number; paused: boolean }) {
-  const s = Math.max(0, Math.floor(ms / 1000));
+  const [remaining, setRemaining] = useState(ms);
+  useEffect(() => setRemaining(ms), [ms]);
+  useEffect(() => {
+    if (paused) return undefined;
+    const t = setInterval(() => setRemaining((r) => Math.max(0, r - 1000)), 1000);
+    return () => clearInterval(t);
+  }, [paused, ms]);
+  const s = Math.max(0, Math.floor(remaining / 1000));
   return (
     <span className={`clock${paused ? ' clock--paused' : ''}`}>
       {Math.floor(s / 60)}:{String(s % 60).padStart(2, '0')}

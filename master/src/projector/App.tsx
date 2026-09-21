@@ -159,28 +159,34 @@ function BingoScreen({ view, summary, flash }: { view: BingoView; summary: Event
         <p className="bingo-stage__hint">
           {view.state === 'LOBBY' ? '휴대폰으로 스캔해서 참여하세요' : '특징에 맞는 사람을 찾아 칸을 채우세요'}
         </p>
-        {view.bingoBreakdown && view.bingoBreakdown.length > 0 ? <BingoChart data={view.bingoBreakdown} /> : null}
+        {view.state === 'RUNNING' ? <BingoChart data={view.bingoBreakdown ?? []} /> : null}
       </div>
       {flash ? <div className="stage__flash">{flash}</div> : null}
     </Stage>
   );
 }
 
-/** Anonymous live bingo distribution — how many hold each line count, no names. */
+/** Anonymous live bingo distribution — how many hold each line count, no names.
+ *  Ordered most-bingos-first (the ranking priority); always on during play. */
 function BingoChart({ data }: { data: { lines: number; count: number }[] }) {
-  const max = Math.max(...data.map((d) => d.count), 1);
+  const rows = [...data].sort((a, b) => b.lines - a.lines); // most bingos at the top
+  const max = Math.max(...rows.map((d) => d.count), 1);
   return (
     <div className="bchart">
       <div className="bchart__cap">🎉 빙고 현황 · 누구인지는 발표 때!</div>
-      {data.map((d) => (
-        <div key={d.lines} className="bchart__row">
-          <span className="bchart__lines">{d.lines}줄</span>
-          <span className="bchart__track">
-            <span className="bchart__bar" style={{ width: `${(d.count / max) * 100}%` }} />
-          </span>
-          <span className="bchart__count">{d.count}명</span>
-        </div>
-      ))}
+      {rows.length === 0 ? (
+        <div className="bchart__empty">아직 빙고가 없어요 — 첫 빙고를 기다려요! 🍀</div>
+      ) : (
+        rows.map((d) => (
+          <div key={d.lines} className="bchart__row">
+            <span className="bchart__lines">{d.lines}줄</span>
+            <span className="bchart__track">
+              <span className="bchart__bar" style={{ width: `${(d.count / max) * 100}%` }} />
+            </span>
+            <span className="bchart__count">{d.count}명</span>
+          </div>
+        ))
+      )}
     </div>
   );
 }

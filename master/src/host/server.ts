@@ -112,11 +112,12 @@ export function createHost(options: HostOptions): Host {
 
   attachNamespaces({ io, registry, dispatch, sessions, persistence, now, playerSockets });
 
-  // The shared 1 Hz clock (spec §7). Re-projecting each second is what actually
-  // moves the countdown on the board and console; dispatching TICK is what lets
-  // a game end itself on time expiry. Only modules with `ticks` participate
-  // (윷놀이 opts in, bingo opts out), and only while a game is RUNNING. TICK is
-  // a no-op until expiry, so this never grows the event log.
+  // The shared 1 Hz clock (spec §7). Dispatching TICK is what lets a game end
+  // itself on time expiry. The countdown itself now ticks **client-side** (the
+  // Clock component), so a plain tick no longer rebroadcasts state — we only push
+  // when a tick actually changes the game (time-up → ENDED). That removes the
+  // per-second full re-render that made the projector feel laggy. Only modules
+  // with `ticks` participate (윷놀이 opts in, bingo opts out) while RUNNING.
   let ticker: ReturnType<typeof setInterval> | null = null;
   if (options.autoTick) {
     ticker = setInterval(() => {
@@ -127,10 +128,13 @@ export function createHost(options: HostOptions): Host {
         if (!module.ticks) continue;
         const handle = event.games[gameId];
         if (!handle.enabled) continue;
-        if (module.lifecycle(handle.state) !== 'RUNNING') continue;
+        const before = module.lifecycle(handle.state);
+        if (before !== 'RUNNING') continue;
         dispatch(gameId, { t: 'TICK' } as never, { kind: 'master' })
           .then(() => {
-            pushStateAll(io, gameId, registry, module.liveProjection ? 'everyone' : 'controls');
+            const cur = registry.current();
+            const after = cur ? module.lifecycle(cur.games[gameId].state) : before;
+            if (after !== before) pushStateAll(io, gameId, registry, 'everyone');
           })
           .catch(() => {
             /* a tick that races a shutdown or a lost event is harmless */
