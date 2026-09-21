@@ -306,7 +306,7 @@ function CardScreen({ api }: { api: PlayerApi }) {
               title={api.traits[traitId] ?? ''}
             >
               <span className="cell__text">{api.traits[traitId] ?? ''}</span>
-              {isFilled ? <span className="cell__mark" aria-hidden="true">✓</span> : null}
+              {isFilled ? <span className="cell__mark" aria-hidden="true">{STAMPS[i % STAMPS.length]}</span> : null}
             </button>
           );
         })}
@@ -314,9 +314,53 @@ function CardScreen({ api }: { api: PlayerApi }) {
 
       {openCell !== null ? <CellSheet api={api} cellIndex={openCell} onClose={() => setOpenCell(null)} /> : null}
       <Picker api={api} />
-      {api.bingoFlash ? <div className="flash" role="status">{api.bingoFlash}</div> : null}
+      {api.bingoFlash ? (
+        // My own bingo starts with "빙고!" → a full-screen confetti party;
+        // someone else's is a gentler floating pill.
+        api.bingoFlash.startsWith('빙고') ? (
+          <Celebration text={api.bingoFlash} />
+        ) : (
+          <div className="flash" role="status">{api.bingoFlash}</div>
+        )
+      ) : null}
       <ReactionBar api={api} />
     </main>
+  );
+}
+
+/** Cute stamps dropped on a filled cell — varied by position so the card looks playful. */
+const STAMPS = ['💖', '⭐', '🌸', '✨', '🍀', '🧸'];
+const CONFETTI_COLORS = ['#ffc2dd', '#d9c4ff', '#b6f0d6', '#ffe6a3', '#bfe3ff', '#ffd2b8'];
+
+/** A full-screen confetti + bouncing headline when the player gets a bingo. */
+function Celebration({ text }: { text: string }) {
+  const pieces = useMemo(
+    () =>
+      Array.from({ length: 30 }, (_, i) => ({
+        left: (i * 37) % 100,
+        jitter: ((i * 53) % 10) - 5,
+        delay: ((i * 7) % 10) / 20,
+        dur: 2.2 + (((i * 13) % 16) / 10),
+        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+      })),
+    [],
+  );
+  return (
+    <div className="celebrate" role="status">
+      {pieces.map((p, i) => (
+        <span
+          key={i}
+          className="confetti"
+          style={{
+            left: `${Math.max(0, Math.min(100, p.left + p.jitter))}%`,
+            background: p.color,
+            animationDuration: `${p.dur}s`,
+            animationDelay: `${p.delay}s`,
+          }}
+        />
+      ))}
+      <div className="celebrate__text">{text}</div>
+    </div>
   );
 }
 

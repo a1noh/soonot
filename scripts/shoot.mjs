@@ -54,6 +54,7 @@ const send = (ev, p) => new Promise((r) => m.emit(ev, p, r));
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox'] });
 
 // 1. projector standby (no event yet? we already have one via recovery maybe) — shoot master first
+await send('event:reset', {}); // idempotent: clear any leftover event so this run starts clean
 const created = await send('event:create', { title: '가을 한마당' });
 await new Promise((r) => setTimeout(r, 150)); // let event:summary arrive
 // The QR encodes the live event code; create can no-op if one already exists, so
@@ -81,26 +82,80 @@ await shoot(browser, '/p', 'p-2-running');
 // also capture the master console mid-game (throw pad / move UI)
 await shoot(browser, '/master', 'master-3-running', { auth: true, wait: 1000 });
 
-// bingo player card + emoji
+// ---- bingo: kawaii code-gate, card, celebration + projector join chip -----
 await send('master:setTraits', { gameId: 'bingo', texts: Array.from({ length: 25 }, (_, i) => `특징 ${i + 1}`) });
-// bare /b hits the 참여 코드 gate; scanning the QR lands on /{code} → straight to join
-await shoot(browser, '/b', 'b-0-codegate');
-const card = await shoot(browser, `/${code}`, 'b-1-join');
-// join + fling an emoji, then screenshot /p to catch the floating reaction
+await shoot(browser, '/b', 'b-0-codegate'); // the 참여 코드 gate (kawaii)
+
+// bot players so bingo can start and the roster/online box is populated
+const botNames = ['지은', '철수', '영희', '현우', '수빈'];
+const bots = [];
+for (const nm of botNames) {
+  const s = io(`${BASE}/b`, { transports: ['websocket'] });
+  await new Promise((x) => s.on('connect', x));
+  const ack = await new Promise((x) => s.emit('room:join', { nickname: nm }, x));
+  bots.push({ sock: s, id: ack.playerId, number: null });
+}
+// numbers arrive on card:assigned when the game starts (not on the join ack)
+const dealt = Promise.all(bots.map((b) => new Promise((x) => b.sock.once('card:assigned', (d) => x(d)))));
+await send('master:start', { gameId: 'bingo' });
+(await dealt).forEach((d, i) => (bots[i].number = d.number));
+await send('projector:set', { setting: 'bingo' });
+
+// a real browser player joins via the QR link (/{code}) and sees the kawaii card
+const card = await browser.newPage();
+await card.setViewport({ width: 390, height: 844 }); // a phone
+card.on('console', (mm) => mm.type() === 'error' && errors.push(`[b-card] console: ${mm.text()}`));
+card.on('pageerror', (e) => errors.push(`[b-card] pageerror: ${e.message}`));
+await card.goto(`${BASE}/${code}`, { waitUntil: 'networkidle2' });
+await new Promise((x) => setTimeout(x, 400));
+await card.screenshot({ path: `${OUT}/b-1-join.png` }); // kawaii join form
+await card.type('input', '민지');
 await card.evaluate(() => {
-  const t = document.querySelector('input'); if (t) { t.value = '민수'; t.dispatchEvent(new Event('input', { bubbles: true })); }
+  const b = [...document.querySelectorAll('button')].find((x) => x.textContent.includes('입장'));
+  b && b.click();
 });
-const p = await shoot(browser, '/p', 'p-3-prereaction', { wait: 300 });
-// fire several reactions from a raw socket so the projector shows them
-const r = io(`${BASE}/b`, { transports: ['websocket'] });
-await new Promise((x) => r.on('connect', x));
-const senders = [['🎉', '민수'], ['❤️', '지은'], ['🔥', '철수'], ['👏', '영희']];
-for (const [e, name] of senders) { r.emit('react', { emoji: e, name }); await new Promise((x) => setTimeout(x, 780)); }
+await new Promise((x) => setTimeout(x, 900));
+await card.screenshot({ path: `${OUT}/b-2-card.png` }); // the kawaii empty card
+
+// fill a cell by naming a bot (by number) — shows the cute stamp
+async function fillCell(i, num) {
+  await card.evaluate((k) => document.querySelectorAll('.cell')[k]?.click(), i);
+  await new Promise((x) => setTimeout(x, 220));
+  await card.type('.sheet .field__input', String(num));
+  await card.keyboard.press('Enter');
+  await new Promise((x) => setTimeout(x, 320));
+}
+// three fills → cute stamps, not yet a bingo
+await fillCell(0, bots[0].number);
+await fillCell(1, bots[1].number);
+await fillCell(2, bots[2].number);
+await card.screenshot({ path: `${OUT}/b-3-card-filled.png` });
+
+// complete row 0 (cells 3,4 with two more distinct bots) → BINGO celebration
+await fillCell(3, bots[3].number);
+await fillCell(4, bots[4].number);
+await new Promise((x) => setTimeout(x, 500));
+await card.screenshot({ path: `${OUT}/b-4-celebrate.png` });
+
+// projector on the bingo view — join chip + who's-online box
+await shoot(browser, '/p', 'p-3-bingo');
+
+// reactions floating up the projector's right side, with names
+const p = await browser.newPage();
+await p.setViewport({ width: 1280, height: 720 });
+await p.goto(`${BASE}/p`, { waitUntil: 'networkidle2' });
+await new Promise((x) => setTimeout(x, 400));
+const senders = [['🎉', '민지'], ['❤️', '지은'], ['🔥', '철수'], ['👏', '영희']];
+for (let i = 0; i < senders.length; i++) {
+  bots[i % bots.length].sock.emit('react', { emoji: senders[i][0], name: senders[i][1] });
+  await new Promise((x) => setTimeout(x, 780));
+}
 await new Promise((x) => setTimeout(x, 400));
 await p.screenshot({ path: `${OUT}/p-4-reactions.png` });
 
 console.log('\nscreenshots written to', OUT);
 console.log(errors.length ? `\n✗ PAGE ERRORS:\n${errors.join('\n')}` : '\n✓ no page/console errors');
 await browser.close();
-m.close(); r.close();
+m.close();
+bots.forEach((b) => b.sock.close());
 process.exit(errors.length ? 1 : 0);

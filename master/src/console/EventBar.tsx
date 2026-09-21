@@ -6,9 +6,11 @@
  * of the event (req §5.2).
  */
 
+import { useState } from 'react';
 import type { EventSummary } from '../event/event.js';
 import type { GameId } from '../shared/lifecycle.js';
 import { t } from '../shared/i18n.js';
+import { Qr, joinUrl } from '../shared/Qr.js';
 
 export interface EventBarProps {
   event: EventSummary | null;
@@ -21,15 +23,38 @@ export interface EventBarProps {
 const CHANNELS: readonly (GameId | 'auto')[] = ['auto', 'bingo', 'yutnori'];
 
 export function EventBar({ event, connected, onSetProjector, onSignOut, onResetEvent }: EventBarProps) {
+  const [copied, setCopied] = useState(false);
+  const copyLink = () => {
+    if (!event) return;
+    const url = joinUrl(event.code);
+    navigator.clipboard
+      ?.writeText(url)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 1600);
+      })
+      .catch(() => {});
+  };
+
   return (
     <header className="bar">
       <div className="bar__id">
         <h1 className="bar__title">{event?.title ?? t('host.console.title')}</h1>
         {event ? (
-          <p className="bar__code">
-            <span className="bar__codeLabel">{t('host.console.code')}</span>
-            <strong className="bar__codeValue">{event.code}</strong>
-          </p>
+          // Joining: players scan the QR OR type the 참여 코드. The operator can
+          // also copy the join link to drop in a group chat.
+          <div className="bar__join">
+            <Qr text={joinUrl(event.code)} size={76} />
+            <div className="bar__joinmeta">
+              <p className="bar__code">
+                <span className="bar__codeLabel">{t('host.console.code')}</span>
+                <strong className="bar__codeValue">{event.code}</strong>
+              </p>
+              <button type="button" className="btn btn--ghost btn--sm" onClick={copyLink}>
+                {copied ? '복사됨! ✓' : '참여 링크 복사'}
+              </button>
+            </div>
+          </div>
         ) : null}
       </div>
 

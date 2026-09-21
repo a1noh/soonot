@@ -15,34 +15,8 @@ import type { BoardView } from '@soonot/yutnori/src/project.js';
 import { BoardSvg, Clock, HomeTray, Standings } from '@soonot/yutnori/src/client/BoardSvg.js';
 import type { SpectatorView } from '@soonot/bingo/src/project.js';
 import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
-import qrcode from 'qrcode-generator';
+import { Qr, joinUrl } from '../shared/Qr.js';
 import './projector.css';
-
-/** A self-contained SVG QR (no network, CSP-safe) — scan to open the join page. */
-function Qr({ text, size = 200 }: { text: string; size?: number }) {
-  const { d, n } = useMemo(() => {
-    const qr = qrcode(0, 'M');
-    qr.addData(text);
-    qr.make();
-    const count = qr.getModuleCount();
-    let path = '';
-    for (let r = 0; r < count; r++) for (let c = 0; c < count; c++) if (qr.isDark(r, c)) path += `M${c},${r}h1v1h-1z`;
-    return { d: path, n: count };
-  }, [text]);
-  return (
-    <svg className="qr" viewBox={`0 0 ${n} ${n}`} width={size} height={size} shapeRendering="crispEdges" aria-label="참여 QR">
-      <rect width={n} height={n} fill="#fff" />
-      <path d={d} fill="#111" />
-    </svg>
-  );
-}
-
-/** The phone join URL for the QR — the deployed origin + the event code (scanning
- *  lands on /{code}, which passes the join gate automatically). */
-const joinUrl = (code?: string) => {
-  const origin = typeof window !== 'undefined' ? window.location.origin : '';
-  return `${origin}/${code ?? 'b'}`;
-};
 
 const HOLD_MS = 20_000;
 type BingoView = SpectatorView & { standings: RankEntry[] };
@@ -296,13 +270,30 @@ export function App() {
     return <Standby summary={summary} joinable={true} />;
   })();
 
+  const showJoinChip =
+    summary && active === 'bingo' && bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY');
+
   return (
     <>
       {screen}
       <Reactions items={reactions} onDone={removeReaction} />
       {bView && bView.roster.length > 0 ? <OnlineBox roster={bView.roster} /> : null}
+      {showJoinChip ? <JoinChip code={summary.code} /> : null}
       <FullscreenButton />
     </>
+  );
+}
+
+/** A small always-there "scan to join" chip so latecomers can still join mid-game. */
+function JoinChip({ code }: { code: string }) {
+  return (
+    <div className="joinchip">
+      <Qr text={joinUrl(code)} size={92} />
+      <div className="joinchip__meta">
+        <span className="joinchip__scan">📱 스캔해서 참여</span>
+        <span className="joinchip__code">참여 코드 <b>{code}</b></span>
+      </div>
+    </div>
   );
 }
 

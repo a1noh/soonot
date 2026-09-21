@@ -112,6 +112,32 @@
   letter-spacing: 0.22em;
 }
 
+/* Join block: scan-to-join QR + code + copy-link, for the operator to share. */
+.bar__join {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.bar__join .qr {
+  border-radius: 8px;
+  background: #fff;
+  padding: 3px;
+  flex: none;
+}
+.bar__joinmeta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+.btn--sm {
+  min-height: 0;
+  padding: 5px 10px;
+  font-size: 0.82rem;
+  border-radius: 8px;
+}
+
 .bar__right {
   display: flex;
   flex-wrap: wrap;
