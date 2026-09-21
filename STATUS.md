@@ -3,7 +3,7 @@
 _Last updated: 2026-09-21._
 
 ## TL;DR
-Everything builds and **284 tests pass** (`npm run verify`). The app is feature-complete for a
+Everything builds and **279 tests pass** (`npm run verify`). The app is feature-complete for a
 church 한마당 and **is LIVE**: **https://soonot-hanmadang.fly.dev** (master passcode `soonot`).
 Deployed to Fly.io (Tokyo/nrt), one always-on machine + a 1GB SQLite volume.
 
@@ -42,9 +42,9 @@ Deployed to Fly.io (Tokyo/nrt), one always-on machine + a 1GB SQLite volume.
   session) never show. Console lists connected names; the projector shows a name list on bingo and a
   compact 접속 N명 count on the 윷놀이 board (so it never covers the map). A bingo **다시 하기**
   also bounces connected phones back to waiting.
-- **Clean-slate restart** — a bingo game that never started (setup/lobby) recovers its trait list
-  but a fresh roster, so a new server never resurrects old players; an in-progress game still fully
-  recovers (roster + podium).
+- **Clean-slate restart** — 빙고 persistence is **config-only**: only the trait list is saved; the
+  roster and play are session-only and are **never persisted or recovered**, so a deploy/restart
+  never resurrects old players. (윷놀이 still recovers fully via its event log.)
 - **Open the projector from the console** — the master top bar has a **🖥 발표 화면 열기**
   button that opens `/p` in a new window (then one tap of ⛶ there goes fullscreen).
 - **Master console** — drives both games; per-game **다시 하기** reset + **새 행사**; the

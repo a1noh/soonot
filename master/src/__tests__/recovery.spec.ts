@@ -1,6 +1,7 @@
 /**
  * M1's acceptance (spec §8.4): kill the host mid-game, boot a new one against
- * the same file, and both games come back.
+ * the same file. 윷놀이 comes back fully (event-log replay); 빙고 comes back with
+ * its trait setup but a clean roster — player/play data is session-only by design.
  *
  * Uses a real SQLite file in a temp dir — an in-memory database cannot prove
  * anything about surviving a process that no longer exists.
@@ -80,13 +81,12 @@ describe('crash recovery', () => {
     expect(restored!.code).toBe(event.code);
     expect(restored!.title).toBe('한마당');
 
-    // bingo: snapshot strategy
+    // bingo: clean-restart policy — only the trait list survives; the roster and
+    // play are session-only, so a restart never resurrects players (user request).
     const bingo = restored!.games.bingo.state as BingoRoom;
-    expect(bingoModule.lifecycle(bingo)).toBe('RUNNING');
-    expect(bingo.players.size).toBe(2);
-    expect(bingo.players.get('p1')!.fills[4]).toBe('p2');
-    // the card is regenerated from the seed, never stored (req §6)
-    expect(bingo.players.get('p1')!.permutation).toHaveLength(CELLS);
+    expect(bingoModule.lifecycle(bingo)).toBe('LOBBY'); // ready for a fresh round
+    expect(bingo.traits).toHaveLength(CELLS); // setup (traits) survives
+    expect(bingo.players.size).toBe(0); // players from the previous session are gone
 
     // yutnori: event-log strategy, positions derived by replay
     const yut = restored!.games.yutnori.state as YutRoom;

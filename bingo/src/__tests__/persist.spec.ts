@@ -1,112 +1,59 @@
 import { describe, it, expect } from 'vitest';
 import { snapshot } from '../persist';
 import { assertInvariants } from '../engine/invariants';
-import { rankPlayers } from '../engine/ranking';
 import { LINES } from '../shared/lines';
-import { CELLS, GRID } from '../shared/constants';
+import { CELLS } from '../shared/constants';
 import { createFakeDb } from './fakedb';
-import { running, lobby, step, fillLine } from '../engine/__tests__/helpers';
+import { running, step, fillLine } from '../engine/__tests__/helpers';
 
 /** A game with history: fills, a bingo, and a disconnect. */
 function played() {
   let r = running(12);
-  r = fillLine(r, 'p1', LINES[0]!.cells);          // p1 has a bingo
+  r = fillLine(r, 'p1', LINES[0]!.cells); // p1 has a bingo
   r = step(r, { t: 'FILL', playerId: 'p2', cellIndex: 5, query: '3' });
   r = step(r, { t: 'DISCONNECT', playerId: 'p4' });
   return r;
 }
 
-describe('snapshot strategy (master spec §8.2)', () => {
-  it('declares triggers that never debounce a bingo', () => {
+/**
+ * Clean-restart policy (user request): persistence keeps ONLY the trait list.
+ * The roster and play are session-only — never written, never recovered — so a
+ * deploy/restart never resurrects people from a previous session.
+ */
+describe('snapshot strategy — clean-restart (config-only) persistence', () => {
+  it('declares a debounced on-transition trigger', () => {
     expect(snapshot.triggers.onTransition).toBe(true);
-    expect(snapshot.triggers.onEmits).toContain('bingo:announced');
     expect(snapshot.triggers.debounceMs).toBe(1000);
   });
 
-  it('round-trips a played game', () => {
+  it('recovers the trait list but NOT the roster or play (clean slate)', () => {
     const db = createFakeDb();
     const before = played();
+    expect(before.players.size).toBe(12);
     snapshot.write(db, 'ev1', before);
-    const after = snapshot.read(db, 'ev1')!;
 
-    expect(after).not.toBeNull();
+    const after = snapshot.read(db, 'ev1')!;
     assertInvariants(after);
-    expect(after.state).toBe(before.state);
-    expect(after.seq).toBe(before.seq);
-    expect(after.nextNumber).toBe(before.nextNumber);
-    expect(after.players.size).toBe(before.players.size);
-    expect(after.bingoEvents).toEqual(before.bingoEvents);
+    expect(after.traits.length).toBe(CELLS); // setup survives
+    expect(after.players.size).toBe(0); // nobody carried over
+    expect(after.bingoEvents).toEqual([]); // no play carried over
+    expect(after.startedAt).toBeNull();
+    expect(after.state).toBe('LOBBY'); // ready for a fresh round with the same traits
   });
 
-  it('regenerates the permutation from the seed rather than storing it', () => {
-    const db = createFakeDb();
-    const before = played();
-    snapshot.write(db, 'ev1', before);
-
-    // nothing in the persisted rows mentions a card layout
-    const rows = [...db.tables.get('bingo_players')!.values()];
-    expect(JSON.stringify(rows)).not.toContain('permutation');
-
-    const after = snapshot.read(db, 'ev1')!;
-    for (const [id, p] of after.players) {
-      expect(p.permutation).toEqual(before.players.get(id)!.permutation);
-      expect(p.permutation).toHaveLength(CELLS);
-    }
-  });
-
-  it('one row per player, not 81', () => {
+  it('never writes any player data to the database', () => {
     const db = createFakeDb();
     snapshot.write(db, 'ev1', played());
-    expect(db.tables.get('bingo_players')!.size).toBe(12);
+    // the roster/bingo tables are never created or written — no player data at rest
+    expect(db.tables.get('bingo_players')).toBeUndefined();
+    expect(db.tables.get('bingo_events')).toBeUndefined();
   });
 
-  it('rebuilds the derived indexes, not just the rows', () => {
-    const db = createFakeDb();
-    const before = played();
-    snapshot.write(db, 'ev1', before);
-    const after = snapshot.read(db, 'ev1')!;
-
-    expect(after.byNumber.size).toBe(after.players.size);
-    expect(after.players.get('p1')!.usedPlayerIds.size).toBe(GRID); // one full row
-    expect(after.nameIndex.get(after.players.get('p1')!.nicknameKey)).toContain('p1');
-  });
-
-  it('preserves the podium exactly', () => {
-    const db = createFakeDb();
-    const before = played();
-    snapshot.write(db, 'ev1', before);
-    const after = snapshot.read(db, 'ev1')!;
-    expect(rankPlayers(after).map((p) => p.id)).toEqual(rankPlayers(before).map((p) => p.id));
-    expect(after.players.get('p1')!.firstBingoSeq).toBe(before.players.get('p1')!.firstBingoSeq);
-  });
-
-  it('everyone comes back disconnected — clients reconnect (spec §8.4)', () => {
+  it('a second write overwrites rather than duplicating the one config row', () => {
     const db = createFakeDb();
     snapshot.write(db, 'ev1', played());
-    const after = snapshot.read(db, 'ev1')!;
-    expect([...after.players.values()].every((p) => !p.connected)).toBe(true);
-  });
-
-  it('does not resurrect a not-yet-started lobby roster on restart (clean slate)', () => {
-    const db = createFakeDb();
-    const before = lobby(5);
-    expect(before.state).toBe('LOBBY');
-    expect(before.players.size).toBe(5);
-    snapshot.write(db, 'ev1', before);
-
-    const after = snapshot.read(db, 'ev1')!;
-    expect(after.players.size).toBe(0); // ghosts from a previous session are gone
-    expect(after.traits.length).toBe(CELLS); // but the trait list is kept
-  });
-
-  it('a second write overwrites rather than duplicating', () => {
-    const db = createFakeDb();
-    let r = played();
-    snapshot.write(db, 'ev1', r);
-    r = step(r, { t: 'FILL', playerId: 'p2', cellIndex: 9, query: '5' });
-    snapshot.write(db, 'ev1', r);
-    expect(db.tables.get('bingo_players')!.size).toBe(12);
-    expect(snapshot.read(db, 'ev1')!.players.get('p2')!.fills[9]).toBe('p5');
+    snapshot.write(db, 'ev1', played());
+    expect(db.tables.get('bingo_rooms')!.size).toBe(1);
   });
 
   it('returns null for an unknown event', () => {

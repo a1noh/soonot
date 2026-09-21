@@ -153,6 +153,20 @@ for (let i = 0; i < senders.length; i++) {
 await new Promise((x) => setTimeout(x, 400));
 await p.screenshot({ path: `${OUT}/p-4-reactions.png` });
 
+// ---- reveal the BINGO placements (순위) on the projector -------------------
+const warn = (label, ack) => { if (ack && ack.ok === false) errors.push(`[${label}] ${JSON.stringify(ack.error ?? ack)}`); };
+warn('bingo:end', await send('master:end', { gameId: 'bingo' }));
+warn('bingo:reveal0', await send('master:reveal', { gameId: 'bingo', step: 0 }));
+for (let s = 1; s <= 4; s++) { warn(`bingo:reveal${s}`, await send('master:reveal', { gameId: 'bingo', step: s })); await new Promise((x) => setTimeout(x, 150)); }
+await shoot(browser, '/p', 'p-5-podium'); // bingo podium — all placements + medals
+
+// free the reveal lock, then reveal the 윷놀이 placements too
+warn('bingo:reset', await send('game:reset', { gameId: 'bingo' }));
+warn('yut:end', await send('master:end', { gameId: 'yutnori' }));
+warn('yut:reveal0', await send('master:reveal', { gameId: 'yutnori', step: 0 }));
+for (let s = 1; s <= 4; s++) { warn(`yut:reveal${s}`, await send('master:reveal', { gameId: 'yutnori', step: s })); await new Promise((x) => setTimeout(x, 150)); }
+await shoot(browser, '/p', 'p-6-yut-podium'); // 윷놀이 podium (gold)
+
 console.log('\nscreenshots written to', OUT);
 console.log(errors.length ? `\n✗ PAGE ERRORS:\n${errors.join('\n')}` : '\n✓ no page/console errors');
 await browser.close();

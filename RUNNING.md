@@ -4,7 +4,7 @@ Requires **Node 18+** (`nvm use 20`).
 
 ```bash
 npm install
-npm run verify                 # tsc -b + vitest (284 tests) — both must pass
+npm run verify                 # tsc -b + vitest (279 tests) — both must pass
 npm run build                  # builds all four client surfaces
 npm start                      # http://localhost:3000
 ```
@@ -54,14 +54,17 @@ Set `MASTER_PASSCODE_HASH` before a real event (`npm run hash-passcode`).
   - **Who's-online box** (bottom-left): only **connected** players — offline/ghosts never show.
     Full name list on the bingo screen; a compact **접속 N명** count on the 윷놀이 board so it
     never covers the map. Latecomers can always scan the persistent join **QR + 참여 코드** chip.
-- **Persistence** — one SQLite file; a restart recovers the event and both games. A bingo game
-  **in progress** (RUNNING/reveal) recovers its roster so phones reconnect and the podium survives;
-  a game that **never started** (setup/lobby) comes back with its trait list but a **clean roster**,
-  so a fresh server never shows people from a previous session.
+- **Persistence (clean-restart)** — one SQLite file. 윷놀이 recovers fully (event-log replay).
+  **빙고 is session-only**: only the **trait list** is saved — the **roster and play are never
+  persisted or recovered**, so a deploy/restart comes back with your setup intact but a **clean
+  slate** (people from a previous session are never resurrected). Use **다시 하기** / **새 행사**
+  for an intentional in-session reset.
+- **Seeing the 순위 (placements)** on `/p`: **게임 종료** → **순위 발표** → press **다음** to reveal
+  3등 → 2등 → 1등 → the full list. Step 0 is just the drumroll, so keep pressing 다음.
 
 ## Verifying
 
-- `npm run verify` — tsc + **284 tests** (engines, host, both e2e suites, multi-user + time-skip
+- `npm run verify` — tsc + **279 tests** (engines, host, both e2e suites, multi-user + time-skip
   simulations, mini-game engine + socket tests, and jsdom UI tests for the card, console panes,
   and projector).
 - **Real-browser screenshots**: `node scripts/shoot.mjs` drives the system Chrome against the

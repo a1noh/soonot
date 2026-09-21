@@ -30,16 +30,6 @@ export function running(n: number, names?: string[]): Room {
   return step(r, { t: 'START' });
 }
 
-/** A room in LOBBY with `n` players joined, but the game not yet started. */
-export function lobby(n: number, names?: string[]): Room {
-  let r = create('ev1', tick());
-  r = step(r, { t: 'SET_TRAITS', texts: T81 });
-  for (let i = 1; i <= n; i++) {
-    r = step(r, { t: 'JOIN', playerId: `p${i}`, nickname: names?.[i - 1] ?? `사람${i}` });
-  }
-  return r; // no START → still LOBBY
-}
-
 /**
  * Fill the given cells on `who`'s card, each with a person not yet used on it
  * — the once-per-card rule (req §7.2) means a helper that always starts from
