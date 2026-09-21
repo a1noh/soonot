@@ -22,9 +22,9 @@ const HOLD_MS = 20_000;
 type BingoView = SpectatorView & { standings: RankEntry[] };
 
 /** The always-present festive backdrop — a warm stage, not a flat screen. */
-function Stage({ children, kind }: { children: ReactNode; kind?: string }) {
+function Stage({ children, kind, theme }: { children: ReactNode; kind?: string; theme?: string }) {
   return (
-    <main className={`stage${kind ? ` stage--${kind}` : ''}`}>
+    <main className={`stage${kind ? ` stage--${kind}` : ''}${theme ? ` stage--theme-${theme}` : ''}`}>
       <div className="stage__glow" aria-hidden="true" />
       <div className="stage__grain" aria-hidden="true" />
       {children}
@@ -33,9 +33,9 @@ function Stage({ children, kind }: { children: ReactNode; kind?: string }) {
 }
 
 /** Standby: shown before a game starts, so the room can join and settle in. */
-function Standby({ summary, joinable }: { summary: EventSummary | null; joinable: boolean }) {
+function Standby({ summary, joinable, theme }: { summary: EventSummary | null; joinable: boolean; theme?: string }) {
   return (
-    <Stage kind="standby">
+    <Stage kind="standby" theme={theme}>
       <div className="standby">
         <div className="standby__kicker">교회 한마당</div>
         <h1 className="standby__title">{summary?.title ?? 'SOONOT'}</h1>
@@ -57,10 +57,10 @@ function Standby({ summary, joinable }: { summary: EventSummary | null; joinable
   );
 }
 
-function Podium({ ranked, step, title }: { ranked: readonly RankEntry[]; step: number; title: string }) {
+function Podium({ ranked, step, title, theme }: { ranked: readonly RankEntry[]; step: number; title: string; theme?: string }) {
   const shown = podiumAt(ranked, step);
   return (
-    <Stage kind="podium">
+    <Stage kind="podium" theme={theme}>
       <div className="podium">
         <h2 className="podium__title">🏆 {title} 순위 발표</h2>
         {shown.length === 0 ? (
@@ -147,7 +147,7 @@ function YutnoriBoard({ view }: { view: BoardView }) {
 
 function BingoScreen({ view, summary, flash }: { view: BingoView; summary: EventSummary | null; flash: string | null }) {
   return (
-    <Stage kind="bingo">
+    <Stage kind="bingo" theme="bingo">
       <div className="bingo-stage">
         <div className="bingo-stage__kicker">교회 사람 빙고</div>
         <h1 className="bingo-stage__title">{summary?.title ?? '한마당'}</h1>
@@ -262,12 +262,12 @@ export function App() {
       return <Standby summary={summary} joinable={false} />;
     }
     if (bView && (bView.state === 'REVEAL' || bView.state === 'ENDED')) {
-      return <Podium ranked={bView.standings} step={bView.state === 'ENDED' ? 0 : bView.revealStep} title="빙고" />;
+      return <Podium ranked={bView.standings} step={bView.state === 'ENDED' ? 0 : bView.revealStep} title="빙고" theme="bingo" />;
     }
     if (bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY')) {
       return <BingoScreen view={bView} summary={summary} flash={flash} />;
     }
-    return <Standby summary={summary} joinable={true} />;
+    return <Standby summary={summary} joinable={true} theme="bingo" />;
   })();
 
   const showJoinChip =
@@ -277,7 +277,7 @@ export function App() {
     <>
       {screen}
       <Reactions items={reactions} onDone={removeReaction} />
-      {bView && bView.roster.length > 0 ? <OnlineBox roster={bView.roster} /> : null}
+      {bView && bView.roster.length > 0 ? <OnlineBox roster={bView.roster} bingo={active === 'bingo'} /> : null}
       {showJoinChip ? <JoinChip code={summary.code} /> : null}
       <FullscreenButton />
     </>
@@ -298,10 +298,10 @@ function JoinChip({ code }: { code: string }) {
 }
 
 /** A persistent bottom-left box of who's connected right now (Kahoot-style). */
-function OnlineBox({ roster }: { roster: { n: number; id: string; name: string; conn: boolean }[] }) {
+function OnlineBox({ roster, bingo }: { roster: { n: number; id: string; name: string; conn: boolean }[]; bingo?: boolean }) {
   const online = roster.filter((p) => p.conn);
   return (
-    <div className="onlinebox">
+    <div className={`onlinebox${bingo ? ' onlinebox--bingo' : ''}`}>
       <div className="onlinebox__head">🟢 접속 {online.length}명</div>
       <ul className="onlinebox__list">
         {online.map((p) => (

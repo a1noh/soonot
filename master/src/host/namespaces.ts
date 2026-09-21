@@ -373,6 +373,9 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       deps.persistence?.enqueue({ gameId, state: fresh, action: { t: 'RESET' }, emits: [], at });
       broadcastSummary(deps);
       pushStateAll(deps.io, gameId, registry, 'everyone');
+      // Bounce connected bingo phones out of their now-orphaned card back to the
+      // waiting screen, so 다시 하기 leaves no lingering (or offline) players.
+      if (gameId === 'bingo') deps.io.of('/b').emit('room:reset');
       reply(ack, { ok: true });
     } catch (err) {
       reply(ack, { ok: false, error: toWireError(err) });

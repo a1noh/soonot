@@ -248,6 +248,22 @@ export function usePlayer(): PlayerApi {
       bingoTimer.current = setTimeout(() => setBingoFlash(null), mine ? 3500 : 2200);
     });
 
+    // The master pressed 다시 하기: this game was reset to a fresh room, so drop
+    // our old identity/card and return to the waiting screen for the new round.
+    socket.on('room:reset', () => {
+      localStorage.removeItem(STORAGE_KEY);
+      playerIdRef.current = null;
+      setJoined(false);
+      setNum(null);
+      setPermutation([]);
+      setView(null);
+      setTraits([]);
+      setCells(new Map());
+      setCandidates(null);
+      rosterRef.current = new Map();
+      bumpRoster();
+    });
+
     socket.on('error', (err: { message?: string }) => setError(err?.message ?? '문제가 생겼어요'));
 
     return () => {
