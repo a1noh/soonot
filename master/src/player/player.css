@@ -363,6 +363,13 @@ body::after {
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.09s ease, box-shadow 0.12s ease, background 0.2s;
 }
+/* soft pastel wash across the 5 columns so the empty board matches the theme
+   (filled/pending/line states below override these). */
+.cell:nth-child(5n + 1) { background: #fff0f6; }
+.cell:nth-child(5n + 2) { background: #f3ecff; }
+.cell:nth-child(5n + 3) { background: #eafaf1; }
+.cell:nth-child(5n + 4) { background: #fff7e6; }
+.cell:nth-child(5n)     { background: #eaf4ff; }
 .cell:not(:disabled):active {
   transform: scale(0.9) rotate(-2deg);
 }

@@ -346,15 +346,25 @@ export function App() {
     return <Standby summary={summary} joinable={true} theme="bingo" />;
   })();
 
-  const showJoinChip =
-    summary && active === 'bingo' && bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY');
+  // Where the scan-to-join chip sits: top-left on the bingo screen, bottom-right on
+  // the 윷놀이 board (clear of the board header + the bottom-left online box), so
+  // latecomers can always join to play/cheer. Hidden on standby/podium/mini-game.
+  const joinChipCorner: 'tl' | 'br' | null =
+    active === 'bingo' && bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY')
+      ? 'tl'
+      : active === 'yutnori' &&
+          yView &&
+          !yView.pendingMiniGame &&
+          (yView.state === 'RUNNING' || yView.state === 'LOBBY' || yView.state === 'SETUP')
+        ? 'br'
+        : null;
 
   return (
     <>
       {screen}
       <Reactions items={reactions} onDone={removeReaction} />
       {bView && bView.connectedCount > 0 ? <OnlineBox online={bView.connectedCount} /> : null}
-      {showJoinChip ? <JoinChip code={summary.code} /> : null}
+      {summary && joinChipCorner ? <JoinChip code={summary.code} corner={joinChipCorner} /> : null}
       {greenKey > 0 ? <div key={greenKey} className="greenflash" aria-hidden="true" /> : null}
       {active === 'yutnori' && fx ? <YutFx key={fx.id} fx={fx} onDone={() => setFx(null)} /> : null}
       <FullscreenButton />
@@ -375,9 +385,9 @@ function YutFx({ fx, onDone }: { fx: { kind: string; text: string; sub?: string 
 }
 
 /** A small always-there "scan to join" chip so latecomers can still join mid-game. */
-function JoinChip({ code }: { code: string }) {
+function JoinChip({ code, corner }: { code: string; corner: 'tl' | 'br' }) {
   return (
-    <div className="joinchip">
+    <div className={`joinchip joinchip--${corner}`}>
       <Qr text={joinUrl(code)} size={92} />
       <div className="joinchip__meta">
         <span className="joinchip__scan">📱 스캔해서 참여</span>

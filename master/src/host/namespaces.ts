@@ -337,7 +337,12 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
     try {
       const value = (payload as { setting?: unknown })?.setting;
       if (value !== 'auto' && !isGameId(value)) throw new HostError('BAD_PAYLOAD');
-      registry.require().projector = value;
+      const event = registry.require();
+      event.projector = value;
+      // A manual switch is the operator taking control — it releases any reveal
+      // lock, so after a 순위 발표 they can move the screen to the other game
+      // (e.g. on to 윷놀이) WITHOUT a 다시 하기 that would kick the players.
+      event.projectorLock = null;
       broadcastSummary(deps);
       reply(ack, { ok: true });
     } catch (err) {

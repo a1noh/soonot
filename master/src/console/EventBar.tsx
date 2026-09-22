@@ -81,18 +81,17 @@ export function EventBar({ event, connected, onSetProjector, onSignOut, onResetE
                   (event.projectorLock ?? event.projector) === channel ? ' is-on' : ''
                 }`}
                 aria-pressed={(event.projectorLock ?? event.projector) === channel}
-                disabled={event.projectorLock !== null}
                 onClick={() => onSetProjector(channel)}
               >
                 {channel === 'auto' ? t('host.console.projector.auto') : t(`host.game.${channel}`)}
               </button>
             ))}
-            {/* req §5.2 — a reveal seizes the screen; the choice is suspended,
-                not overwritten, and the console says so rather than appearing
-                broken. */}
+            {/* req §5.2 — a reveal seizes the screen, but the operator can still
+                click another channel to take it back (e.g. move on to 윷놀이 after
+                a 발표) — that releases the lock without a 다시 하기. */}
             {event.projectorLock ? (
               <span className="seg__locked">
-                순위 발표 중 · {t(`host.game.${event.projectorLock}`)}
+                순위 발표 중 · {t(`host.game.${event.projectorLock}`)} (전환하려면 다른 게임 선택)
               </span>
             ) : null}
           </div>

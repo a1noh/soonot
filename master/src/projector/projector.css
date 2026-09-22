@@ -289,13 +289,15 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 .join__code b { font-family: var(--display); color: var(--gold); letter-spacing: 0.2em; font-size: 1.2em; }
 .join--sm .qr { width: clamp(110px, 14vmin, 170px); }
 
-/* join chip — top-left, so latecomers can scan mid-game */
+/* join chip — so latecomers can scan mid-game (top-left on bingo, bottom-right on 윷놀이) */
 .joinchip {
-  position: fixed; left: 1.6vmin; top: 1.6vmin; z-index: 15;
+  position: fixed; z-index: 15;
   display: flex; align-items: center; gap: 1.2vmin;
   background: rgba(255,255,255,0.92); border-radius: 14px; padding: 1vmin 1.4vmin 1vmin 1vmin;
   box-shadow: 0 1vmin 3vmin rgba(0,0,0,0.35);
 }
+.joinchip--tl { left: 1.6vmin; top: 1.6vmin; }
+.joinchip--br { right: 1.6vmin; bottom: 1.6vmin; }
 .joinchip .qr { border-radius: 8px; display: block; }
 .joinchip__meta { display: flex; flex-direction: column; gap: 0.4vmin; }
 .joinchip__scan { font-family: var(--display); font-size: clamp(13px, 1.7vmin, 22px); color: #2a1a08; }
