@@ -55,6 +55,9 @@ export function BingoMasterPane({ view, send }: BingoPaneProps) {
           <button className="btn btn--danger" onClick={() => void send('master:end')}>
             게임 종료
           </button>
+          <p className="bingo__note">
+            종료해도 참가자는 남아 이모지로 윷놀이를 응원할 수 있어요. (내보내려면 “다시 하기”)
+          </p>
         </>
       ) : null}
 
@@ -80,6 +83,9 @@ export function BingoMasterPane({ view, send }: BingoPaneProps) {
           ) : (
             <p className="bingo__prompt">발표 완료</p>
           )}
+          <p className="bingo__note">
+            이대로 두면 참가자는 남아 윷놀이를 응원할 수 있어요. 새 판은 “다시 하기”.
+          </p>
         </>
       ) : null}
     </div>

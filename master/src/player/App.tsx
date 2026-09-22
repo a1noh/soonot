@@ -284,10 +284,10 @@ function CardScreen({ api }: { api: PlayerApi }) {
       </header>
 
       {api.phase === 'ended' ? (
-        <p className="banner banner--ended">게임이 끝났어요! 결과를 기다려주세요.</p>
+        <p className="banner banner--ended">게임 끝! 🎉 아래 이모지로 윷놀이를 응원해요!</p>
       ) : null}
       {api.phase === 'reveal' ? (
-        <p className="banner banner--reveal">📊 순위 발표 중 — 큰 화면을 봐주세요</p>
+        <p className="banner banner--reveal">📊 순위 발표 중 — 큰 화면을 보며 이모지로 응원해요!</p>
       ) : null}
 
       <div className="grid" style={{ gridTemplateColumns: `repeat(${GRID}, 1fr)` }}>
