@@ -35,7 +35,7 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
 .stage > *:not(.stage__glow):not(.stage__grain) { position: relative; z-index: 1; }
-.stage--standby, .stage--podium, .stage--minigame, .stage--bingo { align-items: center; justify-content: center; text-align: center; }
+.stage--standby, .stage--podium, .stage--minigame, .stage--bingo, .stage--wcard { align-items: center; justify-content: center; text-align: center; }
 
 /* ---- kawaii-pastel theme for BINGO screens (matches the /b player card) --- */
 .stage--theme-bingo {
@@ -231,14 +231,18 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 .wreveal__chip small { color: var(--ink-dim); font-size: clamp(10px, 1.4vmin, 18px); }
 
 /* ---- winner card spotlight (interview) — one winner's whole 5×5 card on /p -- */
-.wcard { width: min(1100px, 94vw); display: flex; flex-direction: column; gap: 2vmin; }
+/* The 5×5 grid is square, so its height == its width; cap the width by viewport
+   HEIGHT too (minus the title) so the whole card fits a 720p projector without
+   the bottom rows scrolling off. */
+.wcard { width: min(1000px, 94vw, 78vh); display: flex; flex-direction: column; gap: 1.6vmin;
+  align-items: stretch; }
 .wcard__title { display: flex; align-items: baseline; gap: 1.2vmin; margin: 0; flex-wrap: wrap;
   font-family: var(--display); font-weight: 800; color: var(--ink);
   font-size: clamp(22px, 3.6vmin, 52px); justify-content: center; }
 .wcard__medal { font-size: 1.1em; }
 .wcard__name { color: var(--gold-deep); }
 .wcard__num { color: var(--ink-dim); font-weight: 600; font-size: 0.6em; }
-.wcard__meta { color: var(--ink-dim); font-weight: 600; font-size: 0.5em; margin-left: auto; }
+.wcard__meta { color: var(--ink-dim); font-weight: 600; font-size: 0.5em; }
 .wcard__grid { display: grid; gap: 0.9vmin; }
 .wcell { aspect-ratio: 1 / 1; display: flex; flex-direction: column; justify-content: center;
   align-items: center; text-align: center; gap: 0.5vmin; padding: 0.6vmin;

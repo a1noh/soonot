@@ -9,7 +9,7 @@
  */
 import { useState } from 'react';
 import type { MasterView } from '@soonot/bingo/src/project.js';
-import { CELLS } from '@soonot/bingo/src/shared/constants.js';
+import { CELLS, GRID, MIN_PLAYERS_FOR_BINGO } from '@soonot/bingo/src/shared/constants.js';
 import { STARTER_TRAITS } from '@soonot/bingo/src/shared/traits.js';
 
 export interface BingoPaneProps {
@@ -39,6 +39,13 @@ export function BingoMasterPane({ view, send, spotlight = null }: BingoPaneProps
           <p className="bingo__prompt">
             {view.playerCount < 2 ? '참가자를 2명 이상 기다리는 중…' : '모두 준비되면 시작하세요'}
           </p>
+          {view.playerCount >= 2 && view.playerCount < MIN_PLAYERS_FOR_BINGO ? (
+            <p className="bingo__warn">
+              ⚠ 지금 {view.playerCount}명 — 빙고 <b>한 줄</b>은 {MIN_PLAYERS_FOR_BINGO}명 이상부터 가능해요.
+              (한 줄 {GRID}칸을 서로 다른 사람으로 채워야 하고, 자기 자신은 못 써요.)
+              그 아래에선 칸 점수로만 진행돼요.
+            </p>
+          ) : null}
           <Online view={view} />
           <button
             className="btn btn--primary btn--big"
@@ -52,6 +59,12 @@ export function BingoMasterPane({ view, send, spotlight = null }: BingoPaneProps
 
       {view.state === 'RUNNING' ? (
         <>
+          {view.playerCount < MIN_PLAYERS_FOR_BINGO ? (
+            <p className="bingo__warn">
+              ⚠ {view.playerCount}명뿐이라 빙고 <b>한 줄</b>이 안 나올 수 있어요 ({MIN_PLAYERS_FOR_BINGO}명 이상 필요).
+              칸 점수로는 계속 진행돼요.
+            </p>
+          ) : null}
           <Leaders view={view} />
           <Online view={view} />
           <button className="btn btn--danger" onClick={() => void send('master:end')}>
