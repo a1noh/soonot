@@ -9,6 +9,7 @@ import type { RankEntry, Viewer } from '@soonot/master';
 import type { Room } from './shared/types';
 import { filledCount, bestLineProgress } from './engine/bingo';
 import { rank, rankPlayers } from './engine/ranking';
+import { lineById } from './shared/lines';
 
 export interface RosterEntry {
   n: number;
@@ -25,6 +26,19 @@ export interface MatchedCell {
 }
 
 /**
+ * One cell of a winner's whole card, in card order — for projecting the full 5×5
+ * card on `/p` (the interview spotlight). Empty cells carry the trait only.
+ */
+export interface WinnerGridCell {
+  trait: string;
+  /** The person named for this cell, or null if the cell is empty. */
+  name: string | null;
+  number: number | null;
+  /** True if this cell is part of a completed bingo line (for highlighting). */
+  line: boolean;
+}
+
+/**
  * A top-3 winner and the people they matched — the operator's "interview" tool
  * (interview 1등 and the people they named; on a lie, check 2등). Names are shown
  * only at the reveal, when identities are meant to be public.
@@ -36,6 +50,8 @@ export interface WinnerCard {
   lines: number;
   points: number;
   matched: MatchedCell[];
+  /** The whole card in cell order (25), so the projector can show it, not just a list. */
+  grid: WinnerGridCell[];
 }
 
 /** Everything every viewer may see. No cards, no fills. */
@@ -78,12 +94,23 @@ function winnersOf(room: Room): WinnerCard[] {
   return rankPlayers(room)
     .slice(0, 3)
     .map((p, i) => {
+      // Cells that belong to a completed line — highlighted on the projected card.
+      const lineCells = new Set<number>();
+      for (const id of p.completedLines) {
+        for (const c of lineById(id)?.cells ?? []) lineCells.add(c);
+      }
       const matched: MatchedCell[] = [];
-      p.fills.forEach((fill, cell) => {
-        if (!fill) return;
-        const trait = room.traits[p.permutation[cell] ?? -1]?.text ?? '';
-        const person = room.players.get(fill);
+      const grid: WinnerGridCell[] = p.permutation.map((traitIdx, cell) => {
+        const trait = room.traits[traitIdx ?? -1]?.text ?? '';
+        const fill = p.fills[cell];
+        const person = fill ? room.players.get(fill) : undefined;
         if (person) matched.push({ trait, name: person.nickname, number: person.number });
+        return {
+          trait,
+          name: person?.nickname ?? null,
+          number: person?.number ?? null,
+          line: lineCells.has(cell),
+        };
       });
       return {
         rank: i + 1,
@@ -92,6 +119,7 @@ function winnersOf(room: Room): WinnerCard[] {
         lines: p.completedLines.length,
         points: filledCount(p) + LINE_BONUS * p.completedLines.length,
         matched,
+        grid,
       };
     });
 }

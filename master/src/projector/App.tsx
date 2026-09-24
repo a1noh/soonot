@@ -14,6 +14,7 @@ import { podiumAt, type RankEntry } from '../shared/rank.js';
 import type { BoardView } from '@soonot/yutnori/src/project.js';
 import { BoardSvg, Clock, HomeTray, Standings } from '@soonot/yutnori/src/client/BoardSvg.js';
 import type { SpectatorView, WinnerCard } from '@soonot/bingo/src/project.js';
+import { GRID } from '@soonot/bingo/src/shared/constants.js';
 import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
 import { Qr, joinUrl } from '../shared/Qr.js';
 import './projector.css';
@@ -102,6 +103,39 @@ function Podium({
             </div>
           </div>
         ) : null}
+      </div>
+    </Stage>
+  );
+}
+
+/**
+ * One winner's whole bingo card, full-screen — the master's interview spotlight
+ * (pushed from the console at the reveal). Shows every cell's trait and, where
+ * filled, the person they matched; cells in a completed line are highlighted.
+ */
+function WinnerCardStage({ winner }: { winner: WinnerCard }) {
+  return (
+    <Stage kind="wcard" theme="bingo">
+      <div className="wcard">
+        <h2 className="wcard__title">
+          <span className="wcard__medal">{['🥇', '🥈', '🥉'][winner.rank - 1] ?? `${winner.rank}등`}</span>
+          <span className="wcard__name">{winner.name}</span>
+          <small className="wcard__num">#{String(winner.n).padStart(3, '0')}</small>
+          <span className="wcard__meta">{winner.lines}줄 · {winner.points}점</span>
+        </h2>
+        <div className="wcard__grid" style={{ gridTemplateColumns: `repeat(${GRID}, 1fr)` }}>
+          {winner.grid.map((c, i) => (
+            <div
+              key={i}
+              className={`wcell${c.name ? ' wcell--on' : ''}${c.line ? ' wcell--line' : ''}`}
+            >
+              <span className="wcell__trait">{c.trait}</span>
+              {c.name ? (
+                <span className="wcell__who">{c.name} <b>#{c.number}</b></span>
+              ) : null}
+            </div>
+          ))}
+        </div>
       </div>
     </Stage>
   );
@@ -368,6 +402,11 @@ export function App() {
       return <Standby summary={summary} joinable={false} />;
     }
     if (bView && (bView.state === 'REVEAL' || bView.state === 'ENDED')) {
+      // The operator can push a chosen winner's whole card to the screen for the
+      // interview; otherwise the shared podium (which already reveals 1등's list).
+      const spot = summary.bingoSpotlight;
+      const winner = spot != null ? bView.winners.find((w) => w.n === spot) : undefined;
+      if (winner) return <WinnerCardStage winner={winner} />;
       return <Podium ranked={bView.standings} step={bView.state === 'ENDED' ? 0 : bView.revealStep} title="빙고" theme="bingo" winners={bView.winners} />;
     }
     if (bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY')) {

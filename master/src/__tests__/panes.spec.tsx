@@ -167,6 +167,64 @@ describe('BingoMasterPane (빙고 console)', () => {
     expect((screen.getByRole('button', { name: /게임 시작/ }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it('REVEAL: tapping a winner\'s 카드 띄우기 pushes their card to /p', async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    render(
+      <BingoMasterPane
+        view={bingoView({
+          state: 'REVEAL',
+          revealStep: 4,
+          traitCount: CELLS,
+          standings: [],
+          winners: [
+            {
+              rank: 1,
+              n: 7,
+              name: '민지',
+              lines: 2,
+              points: 12,
+              matched: [{ trait: '커피를 좋아해요', name: '지훈', number: 3 }],
+              grid: Array.from({ length: CELLS }, () => ({ trait: 't', name: null, number: null, line: false })),
+            },
+          ],
+        })}
+        send={send}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /카드 띄우기/ }));
+    expect(send).toHaveBeenCalledWith('projector:spotlight', { n: 7 });
+  });
+
+  it('REVEAL: the spotlighted winner shows a 숨기기 control that clears /p', async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    render(
+      <BingoMasterPane
+        spotlight={7}
+        view={bingoView({
+          state: 'REVEAL',
+          revealStep: 4,
+          traitCount: CELLS,
+          winners: [
+            {
+              rank: 1,
+              n: 7,
+              name: '민지',
+              lines: 2,
+              points: 12,
+              matched: [],
+              grid: Array.from({ length: CELLS }, () => ({ trait: 't', name: null, number: null, line: false })),
+            },
+          ],
+        })}
+        send={send}
+      />,
+    );
+    await user.click(screen.getByRole('button', { name: /숨기기/ }));
+    expect(send).toHaveBeenCalledWith('projector:spotlight', { n: null });
+  });
+
   it('RUNNING: the live dashboard renders bingo leaders', () => {
     const send = vi.fn().mockResolvedValue({ ok: true });
     render(

@@ -116,6 +116,55 @@ describe('projector presentation mode', () => {
     expect(flying[0]!.textContent).toBe('🎉');
   });
 
+  it('spotlights a winner\'s whole card on /p when the master pushes it', () => {
+    render(<App />);
+    const sock = sockets[0]!;
+    const bWinner = {
+      rank: 1,
+      n: 7,
+      name: '민지',
+      lines: 1,
+      points: 6,
+      matched: [{ trait: '커피를 좋아해요', name: '지훈', number: 3 }],
+      grid: [
+        { trait: '커피를 좋아해요', name: '지훈', number: 3, line: true },
+        { trait: '강아지를 키워요', name: null, number: null, line: false },
+      ],
+    };
+    const bReveal = {
+      kind: 'spectator',
+      state: 'REVEAL',
+      revealStep: 4,
+      connectedCount: 2,
+      playerCount: 2,
+      bingoCount: 1,
+      standings: [],
+      board: [],
+      roster: [],
+      bingoBreakdown: [],
+      winners: [bWinner],
+    };
+    // Point the projector at bingo and reveal, but WITHOUT a spotlight → podium,
+    // not the whole-card grid.
+    act(() => {
+      sock.fire('connect');
+      sock.fire('event:summary', { ...summary, projector: 'bingo', bingoSpotlight: null });
+      sock.fire('room:state', { gameId: 'bingo', view: bReveal });
+    });
+    expect(document.querySelector('.wcard')).toBeNull();
+    expect(document.querySelector('.podium')).toBeTruthy();
+
+    // The master pushes 민지's card → the whole 5×5 card (one cell per grid entry,
+    // matched people named, empty cells trait-only) replaces the podium.
+    act(() => sock.fire('event:summary', { ...summary, projector: 'bingo', bingoSpotlight: 7 }));
+    expect(document.querySelector('.wcard')).toBeTruthy();
+    expect(document.querySelector('.podium')).toBeNull();
+    expect(screen.getByText('민지')).toBeTruthy();
+    expect(document.querySelectorAll('.wcell')).toHaveLength(2);
+    expect(document.querySelectorAll('.wcell__who')).toHaveLength(1); // only the filled cell
+    expect(screen.getByText(/지훈/)).toBeTruthy();
+  });
+
   it('plays the 미니게임! callout first, then reveals the roulette', () => {
     vi.useFakeTimers();
     try {

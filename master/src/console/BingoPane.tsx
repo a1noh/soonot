@@ -15,11 +15,13 @@ import { STARTER_TRAITS } from '@soonot/bingo/src/shared/traits.js';
 export interface BingoPaneProps {
   view: MasterView | null;
   send(ev: string, payload?: Record<string, unknown>): Promise<unknown>;
+  /** Which winner's card is currently on /p (their number), from the event summary. */
+  spotlight?: number | null;
 }
 
 const DEFAULT_TRAITS = STARTER_TRAITS.slice(0, CELLS).map((t) => t.text).join('\n');
 
-export function BingoMasterPane({ view, send }: BingoPaneProps) {
+export function BingoMasterPane({ view, send, spotlight = null }: BingoPaneProps) {
   if (!view) return <p className="pane__hint">불러오는 중…</p>;
 
   if (view.state === 'SETUP') return <TraitSetup send={send} />;
@@ -67,7 +69,7 @@ export function BingoMasterPane({ view, send }: BingoPaneProps) {
           <button className="btn btn--primary" onClick={() => void send('master:reveal', { step: 0 })}>
             순위 발표
           </button>
-          <WinnersPanel winners={view.winners} />
+          <WinnersPanel winners={view.winners} send={send} spotlight={spotlight} />
         </>
       ) : null}
 
@@ -87,7 +89,7 @@ export function BingoMasterPane({ view, send }: BingoPaneProps) {
           <p className="bingo__note">
             이대로 두면 참가자는 남아 윷놀이를 응원할 수 있어요. 새 판은 “다시 하기”.
           </p>
-          <WinnersPanel winners={view.winners} />
+          <WinnersPanel winners={view.winners} send={send} spotlight={spotlight} />
         </>
       ) : null}
     </div>
@@ -154,18 +156,43 @@ function RankBox({ view }: { view: MasterView }) {
 }
 
 /** Interview tool: each top-3 winner and the people they named per trait. The
- *  operator interviews 1등 (and the named people); on a lie, checks 2등. */
-function WinnersPanel({ winners }: { winners: MasterView['winners'] }) {
+ *  operator interviews 1등 (and the named people); on a lie, checks 2등. Each
+ *  winner has a “카드 띄우기” button that pushes their whole card to the projector
+ *  (/p) so the room sees it during the interview. */
+function WinnersPanel({
+  winners,
+  send,
+  spotlight,
+}: {
+  winners: MasterView['winners'];
+  send: BingoPaneProps['send'];
+  spotlight: number | null;
+}) {
   if (winners.length === 0) return null;
+  const show = (n: number | null) => void send('projector:spotlight', { n });
   return (
     <details className="winners" open>
       <summary className="winners__summary">🎤 인터뷰 — 매칭한 사람들</summary>
-      {winners.map((w) => (
-        <div key={w.n} className="winners__card">
+      {spotlight != null ? (
+        <button type="button" className="btn btn--ghost winners__hide" onClick={() => show(null)}>
+          🙈 화면에서 카드 숨기기
+        </button>
+      ) : null}
+      {winners.map((w) => {
+        const on = spotlight === w.n;
+        return (
+        <div key={w.n} className={`winners__card${on ? ' is-live' : ''}`}>
           <div className="winners__head">
             <span className="winners__medal">{['🥇', '🥈', '🥉'][w.rank - 1] ?? `${w.rank}등`}</span>
             <b className="winners__name">{w.name} #{String(w.n).padStart(3, '0')}</b>
             <span className="winners__meta">{w.lines}줄 · {w.points}점</span>
+            <button
+              type="button"
+              className={`btn winners__show${on ? ' is-on' : ''}`}
+              onClick={() => show(on ? null : w.n)}
+            >
+              {on ? '📺 화면 표시 중' : '📺 카드 띄우기'}
+            </button>
           </div>
           <ul className="winners__list">
             {w.matched.length === 0 ? (
@@ -180,7 +207,8 @@ function WinnersPanel({ winners }: { winners: MasterView['winners'] }) {
             )}
           </ul>
         </div>
-      ))}
+        );
+      })}
     </details>
   );
 }

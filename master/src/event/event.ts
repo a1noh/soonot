@@ -31,6 +31,13 @@ export interface EventRecord {
   projector: ProjectorSetting;
   /** A reveal seizes the screen and overrides `projector` until it ends (req §5.2). */
   projectorLock: GameId | null;
+  /**
+   * Which winner's whole bingo card the operator is spotlighting on `/p` — the
+   * winner's player number, or null for none. The interview tool: at the reveal
+   * the master can push a chosen 1등/2등/3등's card (their matched people) to the
+   * projector. Reveal-only on screen; harmless otherwise.
+   */
+  bingoSpotlight: number | null;
   readonly games: Record<GameId, GameHandle>;
   readonly createdAt: number;
   closedAt: number | null;
@@ -66,6 +73,7 @@ export function createEvent(input: CreateEventInput): EventRecord {
     title,
     projector: 'auto',
     projectorLock: null,
+    bingoSpotlight: null,
     games,
     createdAt: now,
     closedAt: null,
@@ -91,6 +99,7 @@ export interface EventSummary {
   title: string;
   projector: ProjectorSetting;
   projectorLock: GameId | null;
+  bingoSpotlight: number | null;
   games: Record<GameId, { enabled: boolean; state: RoomState }>;
 }
 
@@ -111,6 +120,7 @@ export function summarize(
     title: event.title,
     projector: event.projector,
     projectorLock: event.projectorLock,
+    bingoSpotlight: event.bingoSpotlight,
     games,
   };
 }

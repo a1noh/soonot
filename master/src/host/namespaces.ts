@@ -351,6 +351,26 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
     }
   });
 
+  /**
+   * Spotlight one winner's whole bingo card on `/p` — the interview tool. `n` is
+   * the winner's player number, or null to clear. The projector renders it only
+   * at the reveal; a stale value is harmless. `projector:`-prefixed so `onAny`
+   * (game actions) skips it, exactly like `projector:set`.
+   */
+  socket.on('projector:spotlight', (payload: unknown, ack: unknown) => {
+    try {
+      const raw = (payload as { n?: unknown } | null)?.n;
+      const n = raw === null || raw === undefined ? null : Number(raw);
+      if (n !== null && !Number.isInteger(n)) throw new HostError('BAD_PAYLOAD');
+      registry.require().bingoSpotlight = n;
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
   socket.on('game:enable', (payload: unknown, ack: unknown) => {
     try {
       const { gameId, enabled } = (payload ?? {}) as { gameId?: unknown; enabled?: unknown };
@@ -375,6 +395,8 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       const fresh = registry.modules[gameId].create(event.id, at);
       registry.commit(gameId, fresh);
       if (event.projectorLock === gameId) event.projectorLock = null;
+      // A fresh bingo game has no winners — drop any lingering card spotlight.
+      if (gameId === 'bingo') event.bingoSpotlight = null;
       deps.persistence?.enqueue({ gameId, state: fresh, action: { t: 'RESET' }, emits: [], at });
       broadcastSummary(deps);
       pushStateAll(deps.io, gameId, registry, 'everyone');

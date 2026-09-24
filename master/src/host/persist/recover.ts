@@ -92,6 +92,7 @@ export function recoverEvent(
     projector: (row.projector === 'auto' ? 'auto' : row.projector) as EventRecord['projector'],
     // A reveal in progress does not survive a restart: the room saw it stop.
     projectorLock: null,
+    bingoSpotlight: null,
     games,
     createdAt: row.created_at,
     closedAt: null,

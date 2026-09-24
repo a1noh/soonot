@@ -139,6 +139,7 @@ export function App() {
               <BingoMasterPane
                 view={(api.views.bingo as never) ?? null}
                 send={(ev, payload) => api.send('bingo', ev, payload)}
+                spotlight={event.bingoSpotlight}
               />
             )}
           </GamePane>

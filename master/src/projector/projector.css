@@ -230,6 +230,28 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 .wreveal__chip b { font-size: clamp(14px, 2vmin, 28px); }
 .wreveal__chip small { color: var(--ink-dim); font-size: clamp(10px, 1.4vmin, 18px); }
 
+/* ---- winner card spotlight (interview) — one winner's whole 5×5 card on /p -- */
+.wcard { width: min(1100px, 94vw); display: flex; flex-direction: column; gap: 2vmin; }
+.wcard__title { display: flex; align-items: baseline; gap: 1.2vmin; margin: 0; flex-wrap: wrap;
+  font-family: var(--display); font-weight: 800; color: var(--ink);
+  font-size: clamp(22px, 3.6vmin, 52px); justify-content: center; }
+.wcard__medal { font-size: 1.1em; }
+.wcard__name { color: var(--gold-deep); }
+.wcard__num { color: var(--ink-dim); font-weight: 600; font-size: 0.6em; }
+.wcard__meta { color: var(--ink-dim); font-weight: 600; font-size: 0.5em; margin-left: auto; }
+.wcard__grid { display: grid; gap: 0.9vmin; }
+.wcell { aspect-ratio: 1 / 1; display: flex; flex-direction: column; justify-content: center;
+  align-items: center; text-align: center; gap: 0.5vmin; padding: 0.6vmin;
+  border-radius: 12px; border: 1px solid var(--line); background: rgba(255,255,255,0.5);
+  overflow: hidden; }
+.wcell__trait { font-size: clamp(9px, 1.5vmin, 20px); line-height: 1.15; color: var(--ink-dim); }
+.wcell__who { font-size: clamp(10px, 1.7vmin, 24px); font-weight: 700; color: var(--ink); }
+.wcell__who b { color: var(--gold-deep); }
+.wcell--on { background: rgba(255,255,255,0.92); border-color: var(--gold); }
+.wcell--on .wcell__trait { color: var(--ink); }
+.wcell--line { background: linear-gradient(160deg, #fff0f7, #ffe6c7);
+  border-color: var(--gold-deep); box-shadow: 0 0.4vmin 1.6vmin rgba(255,143,194,0.35); }
+
 /* ---- mini-game stage ---------------------------------------------------- */
 .mg { display: flex; flex-direction: column; align-items: center; gap: 3vmin; }
 .mg__flag { font-family: var(--display); font-size: clamp(24px, 4.6vmin, 68px); font-weight: 800; color: var(--gold); margin: 0; }
