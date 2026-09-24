@@ -364,7 +364,7 @@ function Celebration({ text }: { text: string }) {
   );
 }
 
-const REACTIONS = ['❤️', '👏', '🎉', '😂', '🔥', '👍'];
+const REACTIONS = ['❤️', '👏', '🎉', '😂', '🔥', '👍', '😢'];
 
 /** Tap an emoji → it floats up on the projector (Kahoot-style). */
 function ReactionBar({ api }: { api: PlayerApi }) {

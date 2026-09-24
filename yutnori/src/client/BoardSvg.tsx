@@ -13,9 +13,11 @@ import type { BoardView } from '../project';
 
 const PAD = 9;
 const SPAN = 100 - PAD * 2;
+// Mirror x so the 말 starts at the bottom-LEFT corner and travels to the RIGHT
+// (clockwise). Rendering only — the engine graph/positions are unchanged.
 const xy = (i: number): [number, number] => {
   const [ux, uy] = nodeXY(i);
-  return [PAD + ux * SPAN, PAD + uy * SPAN];
+  return [PAD + (1 - ux) * SPAN, PAD + uy * SPAN];
 };
 
 /** The 4 corner 밭 are bigger: 참(0), 모(5), 뒷모(10), 모동(15) (req §6). */
@@ -69,6 +71,23 @@ export function BoardSvg({ view }: { view: BoardView }) {
         className="board__ring"
       />
 
+      {/* direction arrows — 말 travels this way (bottom-left → right, clockwise) */}
+      {[2, 7, 12, 17].map((i) => {
+        const [ax, ay] = xy(i);
+        const [bx, by] = xy(i + 1);
+        const mx = (ax + bx) / 2;
+        const my = (ay + by) / 2;
+        const ang = (Math.atan2(by - ay, bx - ax) * 180) / Math.PI;
+        return (
+          <path
+            key={`arr${i}`}
+            d="M-1.8,-1.5 L1.8,0 L-1.8,1.5 Z"
+            className="board__arrow"
+            transform={`translate(${mx.toFixed(2)},${my.toFixed(2)}) rotate(${ang.toFixed(1)})`}
+          />
+        );
+      })}
+
       {/* inner diagonal 밭 */}
       {DIAGONAL_NODES.map((n) => {
         const [x, y] = xy(n);
@@ -82,7 +101,6 @@ export function BoardSvg({ view }: { view: BoardView }) {
           <g>
             <circle cx={x} cy={y} r={5.6} className="board__bat board__bat--big" />
             <circle cx={x} cy={y} r={3.4} className="board__bat-inner" />
-            <text x={x} y={y + 1.5} className="board__label board__center-label">방</text>
           </g>
         );
       })()}
@@ -100,10 +118,9 @@ export function BoardSvg({ view }: { view: BoardView }) {
                 <circle cx={x} cy={y} r={3.2} className="board__bat-inner" />
               </>
             ) : (
-              <circle cx={x} cy={y} r={mini ? 3.6 : 2.6} className={`board__station${mini ? ' board__station--mini' : ''}`} />
+              <circle cx={x} cy={y} r={2.6} className={`board__station${mini ? ' board__station--mini' : ''}`} />
             )}
             {mini ? <text x={x} y={y + 1.35} className="board__star" aria-hidden="true">★</text> : null}
-            {i === 0 ? <text x={x - 6} y={y - 5} className="board__label board__label--cham">참</text> : null}
           </g>
         );
       })}

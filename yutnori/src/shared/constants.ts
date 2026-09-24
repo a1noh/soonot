@@ -15,7 +15,7 @@ export const HOME = 20;     // 집   — finished, uncatchable
 // All ≥ 6 on purpose: a 말 leaving 대기 moves at most 5 (모), so it can never hit
 // a mini-game on its first step — a fail then only ever reverts an already-on-board
 // 말 to where it was, never all the way back to 대기.
-export const MINIGAME_STATIONS: readonly number[] = [6, 8, 11, 13, 16, 18];
+export const MINIGAME_STATIONS: readonly number[] = [6, 7, 8, 11, 13, 14, 16, 18, 19];
 export function isMiniGameStation(progress: number): boolean {
   return MINIGAME_STATIONS.includes(progress);
 }

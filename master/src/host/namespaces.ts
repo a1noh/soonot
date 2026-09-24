@@ -50,7 +50,7 @@ export interface NamespaceDeps {
 
 /** The emojis a phone may fling onto the projector (Kahoot-style reactions). */
 export const REACTION_EMOJI: ReadonlySet<string> = new Set([
-  '❤️', '👏', '🎉', '😂', '🔥', '👍', '🙏', '😮',
+  '❤️', '👏', '🎉', '😂', '🔥', '👍', '🙏', '😮', '😢',
 ]);
 
 /**

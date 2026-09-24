@@ -67,6 +67,7 @@ export function BingoMasterPane({ view, send }: BingoPaneProps) {
           <button className="btn btn--primary" onClick={() => void send('master:reveal', { step: 0 })}>
             순위 발표
           </button>
+          <WinnersPanel winners={view.winners} />
         </>
       ) : null}
 
@@ -86,6 +87,7 @@ export function BingoMasterPane({ view, send }: BingoPaneProps) {
           <p className="bingo__note">
             이대로 두면 참가자는 남아 윷놀이를 응원할 수 있어요. 새 판은 “다시 하기”.
           </p>
+          <WinnersPanel winners={view.winners} />
         </>
       ) : null}
     </div>
@@ -148,6 +150,38 @@ function RankBox({ view }: { view: MasterView }) {
         })}
       </ol>
     </div>
+  );
+}
+
+/** Interview tool: each top-3 winner and the people they named per trait. The
+ *  operator interviews 1등 (and the named people); on a lie, checks 2등. */
+function WinnersPanel({ winners }: { winners: MasterView['winners'] }) {
+  if (winners.length === 0) return null;
+  return (
+    <details className="winners" open>
+      <summary className="winners__summary">🎤 인터뷰 — 매칭한 사람들</summary>
+      {winners.map((w) => (
+        <div key={w.n} className="winners__card">
+          <div className="winners__head">
+            <span className="winners__medal">{['🥇', '🥈', '🥉'][w.rank - 1] ?? `${w.rank}등`}</span>
+            <b className="winners__name">{w.name} #{String(w.n).padStart(3, '0')}</b>
+            <span className="winners__meta">{w.lines}줄 · {w.points}점</span>
+          </div>
+          <ul className="winners__list">
+            {w.matched.length === 0 ? (
+              <li className="winners__empty">채운 칸이 없어요</li>
+            ) : (
+              w.matched.map((m, i) => (
+                <li key={i} className="winners__row">
+                  <span className="winners__trait">{m.trait}</span>
+                  <span className="winners__who">{m.name} #{m.number}</span>
+                </li>
+              ))
+            )}
+          </ul>
+        </div>
+      ))}
+    </details>
   );
 }
 

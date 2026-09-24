@@ -398,6 +398,20 @@
 .pane__reset { margin-left: 8px; font-size: 13px; min-height: 32px; padding: 0 10px; }
 
 /* ---- reveal ranking on the console (suspense) ---------------------------- */
+/* interview panel — winners + who they matched */
+.winners { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--bg-sunken); margin-top: 8px; }
+.winners__summary { cursor: pointer; font-weight: 700; font-size: 14px; }
+.winners__card { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 6px; }
+.winners__head { display: flex; align-items: baseline; gap: 8px; }
+.winners__medal { font-size: 16px; }
+.winners__name { font-size: 14px; }
+.winners__meta { margin-left: auto; font-size: 12px; color: var(--text-dim); font-variant-numeric: tabular-nums; }
+.winners__list { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow: auto; }
+.winners__row { display: flex; gap: 8px; font-size: 13px; }
+.winners__trait { color: var(--text-dim); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.winners__who { font-weight: 600; flex: none; }
+.winners__empty { color: var(--text-dim); font-size: 13px; }
+
 .rankbox { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; background: var(--bg-sunken); }
 .rankbox__head { margin: 0 0 6px; font-weight: 700; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
 .rankbox__hint { font-size: 12px; font-weight: 400; color: var(--text-dim); }

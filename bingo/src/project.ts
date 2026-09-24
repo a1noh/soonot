@@ -8,13 +8,34 @@
 import type { RankEntry, Viewer } from '@soonot/master';
 import type { Room } from './shared/types';
 import { filledCount, bestLineProgress } from './engine/bingo';
-import { rank } from './engine/ranking';
+import { rank, rankPlayers } from './engine/ranking';
 
 export interface RosterEntry {
   n: number;
   id: string;
   name: string;
   conn: boolean;
+}
+
+/** One matched cell on a winner's card — a trait and the person they named for it. */
+export interface MatchedCell {
+  trait: string;
+  name: string;
+  number: number;
+}
+
+/**
+ * A top-3 winner and the people they matched — the operator's "interview" tool
+ * (interview 1등 and the people they named; on a lie, check 2등). Names are shown
+ * only at the reveal, when identities are meant to be public.
+ */
+export interface WinnerCard {
+  rank: number;
+  n: number;
+  name: string;
+  lines: number;
+  points: number;
+  matched: MatchedCell[];
 }
 
 /** Everything every viewer may see. No cards, no fills. */
@@ -40,11 +61,39 @@ export interface PublicView {
    * projector for suspense while identities stay private until the reveal.
    */
   bingoBreakdown: { lines: number; count: number }[];
+  /**
+   * Top-3 winners with the people they matched (interview tool). Populated only at
+   * the reveal — cards are private during play.
+   */
+  winners: WinnerCard[];
 }
 
 /** Is the ranking public yet? (Only at reveal — see `PublicView.standings`.) */
 function revealPhase(room: Room): boolean {
   return room.state === 'ENDED' || room.state === 'REVEAL';
+}
+
+/** The top-3 winners and, for each, the people they named per trait. Reveal-only. */
+function winnersOf(room: Room): WinnerCard[] {
+  return rankPlayers(room)
+    .slice(0, 3)
+    .map((p, i) => {
+      const matched: MatchedCell[] = [];
+      p.fills.forEach((fill, cell) => {
+        if (!fill) return;
+        const trait = room.traits[p.permutation[cell] ?? -1]?.text ?? '';
+        const person = room.players.get(fill);
+        if (person) matched.push({ trait, name: person.nickname, number: person.number });
+      });
+      return {
+        rank: i + 1,
+        n: p.number,
+        name: p.nickname,
+        lines: p.completedLines.length,
+        points: filledCount(p) + LINE_BONUS * p.completedLines.length,
+        matched,
+      };
+    });
 }
 
 export interface PlayerView extends PublicView {
@@ -118,6 +167,7 @@ function publicOf(room: Room): PublicView {
     traitCount: room.traits.length,
     standings: revealPhase(room) ? rank(room) : [],
     bingoBreakdown,
+    winners: revealPhase(room) ? winnersOf(room) : [],
   };
 }
 

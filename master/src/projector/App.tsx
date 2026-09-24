@@ -13,7 +13,7 @@ import type { GameId } from '../shared/lifecycle.js';
 import { podiumAt, type RankEntry } from '../shared/rank.js';
 import type { BoardView } from '@soonot/yutnori/src/project.js';
 import { BoardSvg, Clock, HomeTray, Standings } from '@soonot/yutnori/src/client/BoardSvg.js';
-import type { SpectatorView } from '@soonot/bingo/src/project.js';
+import type { SpectatorView, WinnerCard } from '@soonot/bingo/src/project.js';
 import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
 import { Qr, joinUrl } from '../shared/Qr.js';
 import './projector.css';
@@ -57,8 +57,21 @@ function Standby({ summary, joinable, theme }: { summary: EventSummary | null; j
   );
 }
 
-function Podium({ ranked, step, title, theme }: { ranked: readonly RankEntry[]; step: number; title: string; theme?: string }) {
+function Podium({
+  ranked,
+  step,
+  title,
+  theme,
+  winners,
+}: {
+  ranked: readonly RankEntry[];
+  step: number;
+  title: string;
+  theme?: string;
+  winners?: readonly WinnerCard[];
+}) {
   const shown = podiumAt(ranked, step);
+  const champ = winners && winners[0]; // 1등's matched people, once fully revealed
   return (
     <Stage kind="podium" theme={theme}>
       <div className="podium">
@@ -76,6 +89,19 @@ function Podium({ ranked, step, title, theme }: { ranked: readonly RankEntry[]; 
             ))}
           </ol>
         )}
+        {step >= 4 && champ && champ.matched.length > 0 ? (
+          <div className="wreveal">
+            <div className="wreveal__cap">🥇 {champ.name} 님이 매칭한 사람들</div>
+            <div className="wreveal__chips">
+              {champ.matched.map((m, i) => (
+                <span key={i} className="wreveal__chip">
+                  <b>{m.name} #{m.number}</b>
+                  <small>{m.trait}</small>
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </Stage>
   );
@@ -159,6 +185,10 @@ function BingoScreen({ view, summary, flash }: { view: BingoView; summary: Event
         <p className="bingo-stage__hint">
           {view.state === 'LOBBY' ? '휴대폰으로 스캔해서 참여하세요' : '특징에 맞는 사람을 찾아 칸을 채우세요'}
         </p>
+        <div className="bingo-info">
+          <span className="bingo-info__time">🕛 빙고 12:00–1:00 · 1:05 종료</span>
+          <span className="bingo-info__pts">칸 1개 = 1점 · 빙고 한 줄 = +5점</span>
+        </div>
         <Leaderboard board={view.kind === 'spectator' ? view.board : []} />
       </div>
       {flash ? <div className="stage__flash">{flash}</div> : null}
@@ -338,7 +368,7 @@ export function App() {
       return <Standby summary={summary} joinable={false} />;
     }
     if (bView && (bView.state === 'REVEAL' || bView.state === 'ENDED')) {
-      return <Podium ranked={bView.standings} step={bView.state === 'ENDED' ? 0 : bView.revealStep} title="빙고" theme="bingo" />;
+      return <Podium ranked={bView.standings} step={bView.state === 'ENDED' ? 0 : bView.revealStep} title="빙고" theme="bingo" winners={bView.winners} />;
     }
     if (bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY')) {
       return <BingoScreen view={bView} summary={summary} flash={flash} />;
