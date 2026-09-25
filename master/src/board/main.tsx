@@ -13,6 +13,7 @@ import {
   BoardSvg,
   Clock,
   HomeTray,
+  HowToPlay,
   Standings,
 } from '@soonot/yutnori/src/client/BoardSvg.js';
 import './board.css';
@@ -78,6 +79,7 @@ function Board() {
           <HomeTray view={view} />
           <h2>순위</h2>
           <Standings view={view} />
+          <HowToPlay />
         </aside>
       </div>
 

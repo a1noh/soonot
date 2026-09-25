@@ -56,11 +56,12 @@ describe('BoardSvg geometry', () => {
     expect(corner.x).toBeGreaterThan(start.x); // travel goes rightward
   });
 
-  it('draws the 4 direction arrows and the 출발/집 + 갈림길 labels', () => {
+  it('draws direction arrows, the animated flow, the 출발 badge and 갈림길 labels', () => {
     const { container } = render(<BoardSvg view={view([])} />);
-    expect(container.querySelectorAll('.board__arrow')).toHaveLength(4);
+    expect(container.querySelectorAll('.board__arrow').length).toBeGreaterThanOrEqual(4);
+    expect(container.querySelector('.board__flow')).not.toBeNull(); // the "which way" flow
+    expect(container.querySelector('.board__starttxt')?.textContent).toContain('출발');
     const labels = [...container.querySelectorAll('.board__glabel')].map((e) => e.textContent);
-    expect(labels).toContain('출발·집');
     expect(labels.filter((t) => t === '갈림길')).toHaveLength(3); // 모, 뒷모, 방
   });
 

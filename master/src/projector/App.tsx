@@ -12,7 +12,7 @@ import type { EventSummary } from '../event/event.js';
 import type { GameId } from '../shared/lifecycle.js';
 import { podiumAt, type RankEntry } from '../shared/rank.js';
 import type { BoardView } from '@soonot/yutnori/src/project.js';
-import { BoardSvg, Clock, HomeTray, Standings } from '@soonot/yutnori/src/client/BoardSvg.js';
+import { BoardSvg, Clock, HomeTray, HowToPlay, Standings } from '@soonot/yutnori/src/client/BoardSvg.js';
 import type { SpectatorView, WinnerCard } from '@soonot/bingo/src/project.js';
 import { GRID } from '@soonot/bingo/src/shared/constants.js';
 import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
@@ -199,6 +199,7 @@ function YutnoriBoard({ view }: { view: BoardView }) {
           <HomeTray view={view} />
           <h2>순위</h2>
           <Standings view={view} />
+          <HowToPlay />
         </aside>
       </div>
     </Stage>

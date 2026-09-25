@@ -282,7 +282,7 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 .board__bg { fill: #e8d9ba; }
 .board__ring { fill: none; stroke: #4a3320; stroke-width: 1.3; stroke-linejoin: round; }
 .board__cross { stroke: #6b5233; stroke-width: 1.0; stroke-dasharray: none; opacity: 0.85; }
-.board__arrow { fill: #8a6b45; opacity: 0.75; }
+.board__arrow { fill: #7a4f10; opacity: 0.92; }
 .board__station { fill: #e8d9ba; stroke: #6b5233; stroke-width: 0.9; }
 .board__bat { fill: #e8d9ba; stroke: #4a3320; stroke-width: 1.2; }
 .board__bat-inner { fill: none; stroke: #6b5233; stroke-width: 0.7; }
@@ -384,3 +384,18 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 .board__choicetxt { fill: #4a3320; font-size: 3px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; }
 .board__choice { animation: choicePulse 0.85s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
 @keyframes choicePulse { 0%, 100% { opacity: 0.85; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
+
+/* animated flow around the ring, in the travel direction — the "which way" cue */
+.board__flow { fill: none; stroke: var(--gold-deep, #d29922); stroke-width: 1.5; stroke-dasharray: 2 7; stroke-linecap: round; opacity: 0.9; animation: boardFlow 1.05s linear infinite; }
+@keyframes boardFlow { to { stroke-dashoffset: -9; } }
+.board__startbg { fill: #1e8449; stroke: #6ee7a8; stroke-width: 0.5; }
+.board__starttxt { fill: #eafff4; font-size: 3px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; }
+
+/* how-to-play + legend (sits in the dark side panel) */
+.howto { margin-top: 1.6vmin; padding: 1.4vmin 1.6vmin; border: 1px solid rgba(255,255,255,0.14); border-radius: 12px; background: rgba(255,255,255,0.05); }
+.howto__title { margin: 0 0 0.8vmin; font-size: clamp(15px, 2vmin, 26px); color: var(--gold, #f4c95d); }
+.howto__rules { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.6vmin; font-size: clamp(13px, 1.7vmin, 23px); line-height: 1.4; color: var(--ink, #f6edda); }
+.howto__rules b { color: var(--gold, #f4c95d); font-weight: 800; }
+.howto__legend { display: flex; flex-wrap: wrap; gap: 0.6vmin 1.4vmin; margin-top: 1.1vmin; font-size: clamp(12px, 1.5vmin, 20px); color: var(--ink-dim, #b6a68f); }
+.howto__ic { font-style: normal; font-weight: 800; }
+.howto__ic--star { color: #f4c95d; } .howto__ic--branch { color: #6ee7a8; } .howto__ic--home { color: #e6e9f0; }

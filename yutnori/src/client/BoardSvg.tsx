@@ -74,17 +74,25 @@ export function BoardSvg({ view }: { view: BoardView }) {
         const [bx, by] = xy(b);
         return <path key={`x${a}`} d={`M${ax.toFixed(2)},${ay.toFixed(2)} L${bx.toFixed(2)},${by.toFixed(2)}`} className="board__cross" />;
       })}
-      {/* the square outer ring */}
-      <path
-        d={Array.from({ length: 20 }, (_, i) => {
-          const [x, y] = xy(i);
-          return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`;
-        }).join(' ') + ' Z'}
-        className="board__ring"
-      />
+      {/* the square outer ring (path drawn 0→1→…→19, i.e. the travel direction) */}
+      {(() => {
+        const ringD =
+          Array.from({ length: 20 }, (_, i) => {
+            const [x, y] = xy(i);
+            return `${i === 0 ? 'M' : 'L'}${x.toFixed(2)},${y.toFixed(2)}`;
+          }).join(' ') + ' Z';
+        return (
+          <>
+            <path d={ringD} className="board__ring" />
+            {/* marching dashes flow in the DRAW direction = the way 말 travel, so
+                even a first-timer can see which way to go around the loop. */}
+            <path d={ringD} className="board__flow" />
+          </>
+        );
+      })()}
 
-      {/* direction arrows — 말 travels this way (starts bottom-left, goes right, then around) */}
-      {[2, 7, 12, 17].map((i) => {
+      {/* direction arrows on every edge — bigger + gold so the way is obvious */}
+      {[1, 3, 6, 8, 11, 13, 16, 18].map((i) => {
         const [ax, ay] = xy(i);
         const [bx, by] = xy(i + 1);
         const mx = (ax + bx) / 2;
@@ -93,7 +101,7 @@ export function BoardSvg({ view }: { view: BoardView }) {
         return (
           <path
             key={`arr${i}`}
-            d="M-1.8,-1.5 L1.8,0 L-1.8,1.5 Z"
+            d="M-2.4,-2.2 L2.6,0 L-2.4,2.2 Z"
             className="board__arrow"
             transform={`translate(${mx.toFixed(2)},${my.toFixed(2)}) rotate(${ang.toFixed(1)})`}
           />
@@ -137,11 +145,17 @@ export function BoardSvg({ view }: { view: BoardView }) {
         );
       })}
 
-      {/* orientation labels: 출발/집 at 참, and 갈림길 at the 지름길 choice 밭 (모/뒷모/방) */}
+      {/* orientation labels: a bold green 출발 (=집) badge at 참, and 갈림길 markers
+          at the 지름길 choice 밭 (모/뒷모/방). */}
       {(() => {
         const [x0, y0] = xy(0);
-        const [x, y] = inward(x0, y0, 8.5);
-        return <text x={x} y={y} className="board__glabel board__glabel--start">출발·집</text>;
+        const [x, y] = inward(x0, y0, 9);
+        return (
+          <g className="board__start">
+            <rect x={x - 9} y={y - 3.4} width={18} height={5.8} rx={2.9} className="board__startbg" />
+            <text x={x} y={y} className="board__starttxt">▶ 출발·집</text>
+          </g>
+        );
       })()}
       {[5, 10].map((n) => {
         const [x0, y0] = xy(n);
@@ -188,6 +202,28 @@ export function BoardSvg({ view }: { view: BoardView }) {
         },
       )}
     </svg>
+  );
+}
+
+/** Plain-language rules + legend, so a room that has never played 윷놀이 can follow
+ *  along at a glance. Rendered beside the board on both /p and /y. */
+export function HowToPlay() {
+  return (
+    <div className="howto">
+      <h2 className="howto__title">🎲 이렇게 놀아요</h2>
+      <ul className="howto__rules">
+        <li>윷을 던져 나온 수만큼 말이 <b>출발</b>에서 <b>화살표 방향</b>으로 돌아요.</li>
+        <li>도 <b>1</b> · 개 <b>2</b> · 걸 <b>3</b> · 윷 <b>4</b> · 모 <b>5</b></li>
+        <li><b>윷·모</b>가 나오거나 상대 말을 <b>잡으면</b> 한 번 더 던져요!</li>
+        <li>모서리 <b>갈림길</b>에 딱 서면 <b>지름길</b>로 질러갈 수 있어요.</li>
+        <li>말을 모두 <b>집</b>에 보내는 팀이 <b>승리</b> 🏆</li>
+      </ul>
+      <div className="howto__legend">
+        <span className="howto__leg"><i className="howto__ic howto__ic--star">★</i> 미니게임 칸</span>
+        <span className="howto__leg"><i className="howto__ic howto__ic--branch">◆</i> 갈림길(지름길)</span>
+        <span className="howto__leg"><i className="howto__ic howto__ic--home">◎</i> 집(도착)</span>
+      </div>
+    </div>
   );
 }
 
