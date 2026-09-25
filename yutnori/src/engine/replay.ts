@@ -15,6 +15,7 @@ export function setupOf(room: Room): RoomSetup {
     malPerTeam: room.malPerTeam,
     miniGames: room.miniGames,
     miniGameSet: room.miniGameSet,
+    captureDuel: room.captureDuel,
     teams: room.teams.map((t) => ({
       id: t.id,
       name: t.name,
@@ -52,6 +53,7 @@ function freshRunning(setup: RoomSetup): Room {
     malPerTeam: setup.malPerTeam,
     miniGames: setup.miniGames,
     miniGameSet: setup.miniGameSet,
+    captureDuel: setup.captureDuel,
     turnIndex: 0,
     throwQueue: 1,
     pendingThrow: null,

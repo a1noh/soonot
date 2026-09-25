@@ -259,6 +259,8 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 /* ---- mini-game stage ---------------------------------------------------- */
 .mg { display: flex; flex-direction: column; align-items: center; gap: 3vmin; }
 .mg__flag { font-family: var(--display); font-size: clamp(24px, 4.6vmin, 68px); font-weight: 800; color: var(--gold); margin: 0; }
+.mg__vs { font-family: var(--display); font-size: clamp(22px, 4.4vmin, 60px); font-weight: 800; color: var(--ink); }
+.mg__vsx { color: var(--red); margin: 0 1.2vmin; }
 .mg__reel { font-family: var(--display); font-size: clamp(40px, 10vmin, 150px); font-weight: 900; color: var(--ink);
   padding: 2vmin 5vmin; border: 3px dashed var(--gold-deep); border-radius: 22px; animation: shimmer 0.6s linear infinite alternate; }
 @keyframes shimmer { from { border-color: var(--gold-deep); } to { border-color: var(--gold); } }

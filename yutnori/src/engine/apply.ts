@@ -24,6 +24,7 @@ export function newRoom(p: { id: string; eventId: string; createdAt: number }): 
     malPerTeam: 2,
     miniGames: false,
     miniGameSet: MINI_GAMES,
+    captureDuel: false,
     turnIndex: 0,
     throwQueue: 0,
     pendingThrow: null,
@@ -147,6 +148,19 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
     });
   }
 
+  // 잡기 방어전: a catch freezes the turn for a 대표 1:1 duel. Reuse the mini-game
+  // pending/resolve machinery — the capture is already applied, and the duel decides
+  // whether it STANDS (attacker's rep won → resolve success) or is REVERTED (defender's
+  // rep won → resolve fail restores the captured 말). Takes precedence over a station
+  // mini-game on the same 밭.
+  if (r.captureDuel && captures.length > 0 && !finishedTeam) {
+    const victim = r.teams.find((t) => t.id === captures[0]!.teamId)!;
+    const duel = { vsTeam: victim.id, vsTeamName: victim.name, byTeamName: team.name };
+    r.pendingMiniGame = { teamId: team.id, malId: mal.id, station: cand.to, gameId: null, duel };
+    events.push({ e: 'minigame:triggered', teamId: team.id, teamName: team.name, station: cand.to, duel });
+    return events;
+  }
+
   // 미니게임 칸: freeze the turn until the master judges the challenge. The bonus
   // (if any) is already on the queue and will be honoured on success, forfeited on
   // fail. `isOnBoard` covers the outer ring AND the inner 지름길/방 밭 but never
@@ -201,11 +215,12 @@ function revertMove(r: Room, ev: TurnEvent): void {
 function resolveMiniGame(r: Room, success: boolean, now: number): Emit[] {
   const ev = r.history[r.history.length - 1]!;
   const gameId = r.pendingMiniGame?.gameId ?? '';
+  const duel = !!r.pendingMiniGame?.duel;
   ev.miniGame = { gameId, success };
   r.pendingMiniGame = null;
 
   if (success) {
-    const events: Emit[] = [{ e: 'minigame:resolved', success: true }];
+    const events: Emit[] = [{ e: 'minigame:resolved', success: true, duel }];
     events.push(...advanceAfterMove(r, now));
     return events;
   }
@@ -213,7 +228,7 @@ function resolveMiniGame(r: Room, success: boolean, now: number): Emit[] {
   revertMove(r, ev);
   r.throwQueue = 0; // forfeit any bonus this move granted
   const events: Emit[] = [
-    { e: 'minigame:resolved', success: false },
+    { e: 'minigame:resolved', success: false, duel },
     { e: 'board:update', mal: boardMal(r), lastMove: ev },
   ];
   r.turnIndex = nextTeamIndex(r, r.turnIndex);
@@ -246,6 +261,7 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
 
       r.malPerTeam = action.malPerTeam;
       r.miniGames = action.miniGames ?? false;
+      r.captureDuel = action.captureDuel ?? false;
       r.miniGameSet = action.miniGameSet && action.miniGameSet.length > 0 ? action.miniGameSet : MINI_GAMES;
       r.timeLimitMs = Math.round(action.timeLimitMin * MS_PER_MIN);
       r.teams = action.teams.map((t, i) => {

@@ -17,6 +17,9 @@ export interface Room {
   miniGames: boolean;
   /** The editable mini-game catalog for this event (the roulette picks from it). */
   miniGameSet: readonly MiniGame[];
+  /** 잡기 방어전: a capture triggers a 대표 1:1 duel (가위바위보/눈싸움). If the captured
+   *  team's rep wins, the capture is cancelled. Set at SETUP. */
+  captureDuel: boolean;
   turnIndex: number;
   throwQueue: number;         // throws still owed to the current team
 
@@ -76,6 +79,13 @@ export interface PendingMiniGame {
   station: number;
   /** The game the roulette landed on; null until the spin (MINIGAME_SPIN). */
   gameId: string | null;
+  /**
+   * Set when this "mini-game" is actually a 잡기 방어전 — a 대표 1:1 duel between the
+   * capturing team (`teamId`) and the captured team (`vsTeam`). Resolving with
+   * `success:true` means the CAPTURE STANDS (attacker's rep won); `success:false`
+   * means the defender's rep won and the capture is reverted.
+   */
+  duel?: { vsTeam: string; vsTeamName: string; byTeamName: string };
 }
 
 export interface TurnEvent {
@@ -109,6 +119,7 @@ export interface RoomSetup {
   malPerTeam: 1 | 2;
   miniGames: boolean;
   miniGameSet: readonly MiniGame[];
+  captureDuel: boolean;
   teams: TeamSetup[];
   timeLimitMs: number;
   startedAt: number | null;

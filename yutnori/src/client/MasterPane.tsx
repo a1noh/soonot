@@ -5,7 +5,7 @@
  * The app never rolls anything (req §7): randomness does not exist here.
  */
 import { useEffect, useState } from 'react';
-import { ROLLS, DEFAULT_TIME_LIMIT_MIN, MIN_TEAMS } from '../shared/constants';
+import { ROLLS, DEFAULT_TIME_LIMIT_MIN, MIN_TEAMS, DUEL_GAMES } from '../shared/constants';
 import { MINI_GAMES } from '../shared/minigames';
 import { nodeLabel, advancementOf } from '../shared/board';
 import type { MoveCandidate, Roll } from '../shared/types';
@@ -175,7 +175,11 @@ export function YutnoriMasterPane({ view, send }: MasterPaneProps) {
  */
 function MiniGamePanel({ view, send }: { view: BoardView; send: MasterPaneProps['send'] }) {
   const pending = view.pendingMiniGame!;
-  const games = view.miniGames.length > 0 ? view.miniGames : MINI_GAMES;
+  const duel = pending.duel;
+  // For a 방어전 the "games" are the quick 1:1 duel list; otherwise the mini-game DB.
+  const games = duel
+    ? DUEL_GAMES.map((n) => ({ id: n, name: n, instruction: '', seconds: undefined as number | undefined }))
+    : view.miniGames.length > 0 ? view.miniGames : MINI_GAMES;
   const game = pending.gameId ? games.find((g) => g.id === pending.gameId) : null;
   const [spinning, setSpinning] = useState(false);
   const [face, setFace] = useState(0);
@@ -194,6 +198,43 @@ function MiniGamePanel({ view, send }: { view: BoardView; send: MasterPaneProps[
       setSpinning(false);
       void send('master:minigame:spin', { game: games[idx]!.id });
     }, 900);
+  }
+
+  if (duel) {
+    // 잡기 방어전: {byTeamName} 대표 vs {vsTeamName} 대표. Winner side decides the catch.
+    return (
+      <div className="minigame minigame--duel">
+        <p className="minigame__flag">⚔️ 잡기! 대표 대결 — {duel.byTeamName} vs {duel.vsTeamName}</p>
+        {!pending.gameId ? (
+          <>
+            <div className={`minigame__reel${spinning ? ' is-spin' : ''}`}>
+              {spinning ? (games[face % games.length]?.name ?? '…') : '대결 종목 뽑기'}
+            </div>
+            <button className="btn btn--primary btn--big" disabled={spinning} onClick={spin}>
+              {spinning ? '두구두구…' : '룰렛 돌리기'}
+            </button>
+          </>
+        ) : (
+          <>
+            <div className="minigame__card">
+              <strong className="minigame__name">{pending.gameId}</strong>
+              <span className="minigame__inst">대표 1명씩 나와서 대결 — 이긴 팀을 눌러주세요</span>
+            </div>
+            <div className="minigame__judge">
+              <button className="btn btn--danger btn--big" onClick={() => void send('master:minigame:resolve', { success: true })}>
+                {duel.byTeamName} 승 · 잡기 성공
+              </button>
+              <button className="btn btn--primary btn--big" onClick={() => void send('master:minigame:resolve', { success: false })}>
+                {duel.vsTeamName} 승 · 수비 성공 🛡 (말 살아남음)
+              </button>
+            </div>
+            <button className="btn minigame__skip" onClick={() => void send('master:minigame:resolve', { success: true })}>
+              건너뛰기 (그냥 잡기)
+            </button>
+          </>
+        )}
+      </div>
+    );
   }
 
   return (
@@ -244,6 +285,7 @@ function SetupForm({ send }: { send: MasterPaneProps['send'] }) {
   const [malPerTeam, setMal] = useState<1 | 2>(2);
   const [minutes, setMinutes] = useState(DEFAULT_TIME_LIMIT_MIN);
   const [miniGames, setMiniGames] = useState(true);
+  const [captureDuel, setCaptureDuel] = useState(true);
   // The 미니게임 데이터베이스, one per line as "이름 | 설명". Prefilled from the pack.
   const [gamesRaw, setGamesRaw] = useState(MINI_GAMES.map((g) => `${g.name} | ${g.instruction}`).join('\n'));
   const teams = raw.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -267,6 +309,7 @@ function SetupForm({ send }: { send: MasterPaneProps['send'] }) {
           malPerTeam,
           timeLimitMin: minutes,
           miniGames,
+          captureDuel,
           miniGameSet,
         });
       }}
@@ -303,6 +346,10 @@ function SetupForm({ send }: { send: MasterPaneProps['send'] }) {
           />
         </label>
       </div>
+      <label className="yut-setup__check">
+        <input type="checkbox" checked={captureDuel} onChange={(e) => setCaptureDuel(e.currentTarget.checked)} />
+        <span>잡기 대표 대결 (방어전) — 잡히면 대표 1:1, 수비 이기면 말 살아남음</span>
+      </label>
       <label className="yut-setup__check">
         <input type="checkbox" checked={miniGames} onChange={(e) => setMiniGames(e.currentTarget.checked)} />
         <span>미니게임 켜기 (칸에 서면 룰렛 → 팀 미니게임)</span>

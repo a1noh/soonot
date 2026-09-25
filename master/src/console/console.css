@@ -407,6 +407,8 @@
 .minigame__timer { margin-top: 6px; font-variant-numeric: tabular-nums; font-weight: 800; font-size: 20px; color: var(--accent); }
 .minigame__timer.is-up { color: var(--danger); }
 .minigame__judge { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.minigame--duel .minigame__flag { color: var(--red, #e0523d); }
+.minigame__skip { margin-top: 8px; width: 100%; font-size: 12px; }
 .yut-setup__check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-dim); }
 
 .pane__reset { margin-left: 8px; font-size: 13px; min-height: 32px; padding: 0 10px; }

@@ -24,6 +24,9 @@ export function isMiniGameStation(progress: number): boolean {
   return MINIGAME_STATIONS.includes(progress);
 }
 
+/** Quick 1:1 head-to-head games for a 잡기 방어전 (대표 대결) — no equipment, instant. */
+export const DUEL_GAMES: readonly string[] = ['가위바위보', '눈싸움', '참참참', '손병호(팔씨름)'];
+
 export const MS_PER_MIN = 60_000;
 
 /** req §7 — five values, no 백도. */

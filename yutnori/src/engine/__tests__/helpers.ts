@@ -22,6 +22,7 @@ export function started(opts?: {
   malPerTeam?: 1 | 2;
   timeLimitMin?: number;
   miniGames?: boolean;
+  captureDuel?: boolean;
 }): Room {
   const teams = opts?.teams ?? 2;
   let r = newRoom({ id: 'r1', eventId: 'e1', createdAt: T0 });
@@ -31,6 +32,7 @@ export function started(opts?: {
     malPerTeam: opts?.malPerTeam ?? 2,
     timeLimitMin: opts?.timeLimitMin ?? 20,
     miniGames: opts?.miniGames ?? false,
+    captureDuel: opts?.captureDuel ?? false,
   });
   return act(r, { t: 'START' });
 }

@@ -16,6 +16,7 @@ import { BoardSvg, Clock, HomeTray, HowToPlay, Standings } from '@soonot/yutnori
 import type { SpectatorView, WinnerCard } from '@soonot/bingo/src/project.js';
 import { GRID } from '@soonot/bingo/src/shared/constants.js';
 import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
+import { DUEL_GAMES } from '@soonot/yutnori/src/shared/constants.js';
 import { Qr, joinUrl } from '../shared/Qr.js';
 import './projector.css';
 
@@ -150,14 +151,33 @@ function yutRank(standings: BoardView['standings']): RankEntry[] {
 }
 
 function MiniGameStage({ pending, games }: { pending: NonNullable<BoardView['pendingMiniGame']>; games: BoardView['miniGames'] }) {
-  const list = games.length > 0 ? games : MINI_GAMES;
-  const game = pending.gameId ? list.find((g) => g.id === pending.gameId) : null;
+  const duel = pending.duel;
+  const list = duel ? DUEL_GAMES.map((n) => ({ id: n, name: n, instruction: '' })) : games.length > 0 ? games : MINI_GAMES;
+  const game = pending.gameId
+    ? (duel ? { id: pending.gameId, name: pending.gameId, instruction: '' } : list.find((g) => g.id === pending.gameId))
+    : null;
   const [face, setFace] = useState(0);
   useEffect(() => {
     if (game) return undefined;
     const t = setInterval(() => setFace((f) => (f + 1) % list.length), 90);
     return () => clearInterval(t);
   }, [game, list.length]);
+  if (duel) {
+    return (
+      <Stage kind="minigame">
+        <div className="mg mg--duel">
+          <p className="mg__flag">⚔️ 대표 대결!</p>
+          <div className="mg__vs">{duel.byTeamName} <span className="mg__vsx">VS</span> {duel.vsTeamName}</div>
+          {game ? (
+            <div className="mg__card"><div className="mg__name">{game.name}</div></div>
+          ) : (
+            <div className="mg__reel">{list[face % list.length]?.name ?? '…'}</div>
+          )}
+          <p className="mg__hint">{game ? `${duel.vsTeamName}(수비)가 이기면 말이 살아남아요!` : '대결 종목 두구두구…'}</p>
+        </div>
+      </Stage>
+    );
+  }
   return (
     <Stage kind="minigame">
       <div className="mg">
@@ -340,19 +360,24 @@ export function App() {
       bump('yutnori');
       showFx('capture', '잡기! 🎯', `상대 말 ${d?.count ?? 1}개 원위치`);
     });
-    socket.on('minigame:triggered', () => {
+    socket.on('minigame:triggered', (d: { duel?: { byTeamName: string; vsTeamName: string } }) => {
       bump('yutnori');
-      showFx('minigame', '🎡 미니게임!', '룰렛을 돌려요');
+      if (d?.duel) showFx('minigame', '⚔️ 대표 대결!', `${d.duel.byTeamName} vs ${d.duel.vsTeamName}`);
+      else showFx('minigame', '🎡 미니게임!', '룰렛을 돌려요');
     });
-    socket.on('minigame:resolved', (d: { success?: boolean }) => {
+    socket.on('minigame:resolved', (d: { success?: boolean; duel?: boolean }) => {
       bump('yutnori');
       const ok = d?.success === true;
       // Delay so the roulette closes and the board is back FIRST, then the
-      // 이동 취소 / 통과 callout plays over the board (not over the roulette).
-      setTimeout(
-        () => showFx(ok ? 'pass' : 'cancel', ok ? '통과! ✅' : '이동 취소!', ok ? '미니게임 성공' : '미니게임 실패 · 말 제자리로'),
-        260,
-      );
+      // callout plays over the board (not over the roulette).
+      const fx = d?.duel
+        ? (ok
+            ? { kind: 'capture', text: '잡기 성공! 🎯', sub: '수비 실패 · 말 원위치' }
+            : { kind: 'pass', text: '수비 성공! 🛡', sub: '말이 살아남았어요' })
+        : (ok
+            ? { kind: 'pass', text: '통과! ✅', sub: '미니게임 성공' }
+            : { kind: 'cancel', text: '이동 취소!', sub: '미니게임 실패 · 말 제자리로' });
+      setTimeout(() => showFx(fx.kind, fx.text, fx.sub), 260);
     });
     socket.on('bingo:announced', () => {
       // Anonymous on purpose: the room sees a bingo happened + a green flash, but

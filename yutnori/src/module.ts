@@ -75,6 +75,8 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
       const timeLimitMin = typeof p.timeLimitMin === 'number' ? p.timeLimitMin : 30;
       // Mario-Party mode is the default for real play; the console can turn it off.
       const miniGames = (p as { miniGames?: unknown }).miniGames !== false;
+      // 잡기 방어전 (대표 대결) — on by default; the console can turn it off.
+      const captureDuel = (p as { captureDuel?: unknown }).captureDuel !== false;
       // The editable 미니게임 데이터베이스 for this event, if the console sent one.
       const rawSet = (p as { miniGameSet?: unknown }).miniGameSet;
       const miniGameSet = Array.isArray(rawSet)
@@ -87,7 +89,7 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
             })
             .filter((g): g is { id: string; name: string; instruction: string } => g !== null)
         : undefined;
-      return { t: 'SETUP', teams, malPerTeam, timeLimitMin, miniGames, miniGameSet };
+      return { t: 'SETUP', teams, malPerTeam, timeLimitMin, miniGames, captureDuel, miniGameSet };
     }
     case 'master:start':
       return { t: 'START' };

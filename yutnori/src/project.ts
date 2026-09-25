@@ -25,8 +25,15 @@ export interface BoardView {
   turnTeamName: string | null;
   throwQueue: number;
   pending: { teamId: string; roll: Roll; candidates: MoveCandidate[] } | null;
-  /** A team is playing a mini-game right now (the turn is frozen). */
-  pendingMiniGame: { teamId: string; teamName: string; station: number; gameId: string | null } | null;
+  /** A team is playing a mini-game right now (the turn is frozen). `duel` marks a
+   *  잡기 방어전 (대표 1:1 대결) between the capturing and captured teams. */
+  pendingMiniGame: {
+    teamId: string;
+    teamName: string;
+    station: number;
+    gameId: string | null;
+    duel?: { vsTeam: string; vsTeamName: string; byTeamName: string };
+  } | null;
   /** This event's mini-game catalog — the roulette + the reveal render from it. */
   miniGames: { id: string; name: string; instruction: string; seconds?: number }[];
   remainingMs: number;
@@ -69,6 +76,7 @@ export function project(room: Room, viewer: Viewer, now = Date.now()): BoardView
           teamName: room.teams.find((t) => t.id === room.pendingMiniGame!.teamId)?.name ?? '',
           station: room.pendingMiniGame.station,
           gameId: room.pendingMiniGame.gameId,
+          duel: room.pendingMiniGame.duel,
         }
       : null,
     miniGames: room.miniGameSet.map((g) => ({ id: g.id, name: g.name, instruction: g.instruction, seconds: g.seconds })),

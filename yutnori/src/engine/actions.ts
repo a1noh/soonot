@@ -2,7 +2,7 @@ import type { EndReason, MoveCandidate, Roll, TurnEvent } from '../shared/types'
 
 /** spec §4.2 — the complete action union. */
 export type Action =
-  | { t: 'SETUP'; teams: { name: string; roster?: string | null }[]; malPerTeam: 1 | 2; timeLimitMin: number; miniGames?: boolean; miniGameSet?: { id: string; name: string; instruction: string; seconds?: number }[] }
+  | { t: 'SETUP'; teams: { name: string; roster?: string | null }[]; malPerTeam: 1 | 2; timeLimitMin: number; miniGames?: boolean; captureDuel?: boolean; miniGameSet?: { id: string; name: string; instruction: string; seconds?: number }[] }
   | { t: 'START' }
   | { t: 'THROW'; roll: Roll }
   | { t: 'MOVE'; malId: string; to?: number }
@@ -31,9 +31,9 @@ export type Emit =
   | { e: 'undo:applied'; revertedSeq: number }
   | { e: 'game:ended'; endedAt: number; reason: EndReason }
   | { e: 'reveal:step'; step: number }
-  | { e: 'minigame:triggered'; teamId: string; teamName: string; station: number }
+  | { e: 'minigame:triggered'; teamId: string; teamName: string; station: number; duel?: { vsTeam: string; vsTeamName: string; byTeamName: string } }
   | { e: 'minigame:spun'; gameId: string }
-  | { e: 'minigame:resolved'; success: boolean };
+  | { e: 'minigame:resolved'; success: boolean; duel?: boolean };
 
 export type EngineErrorCode =
   | 'ILLEGAL_ACTION'
