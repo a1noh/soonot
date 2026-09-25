@@ -16,8 +16,8 @@ export const HOME = 20;     // 집   — finished, uncatchable
  * never 대기/집.
  */
 export const MINIGAME_STATIONS: readonly number[] = [
-  1, 3, 6, 8, 11, 13, 16, 18, // outer ring, every other 밭
-  21, 22, 24, 25, 26, 27, 28, 29, // the whole X — both 밭 of every 지름길 arm
+  1, 3, 6, 8, 11, 13, 16, 18, // outer ring — every other 밭
+  22, 25, 27, 29, // one per diagonal arm, staggered radius so they scatter (not a cluster)
   23, // 방 — the centre
 ];
 export function isMiniGameStation(progress: number): boolean {
