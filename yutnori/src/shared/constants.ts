@@ -8,16 +8,18 @@ export const WAITING = 0;   // 대기 — off-board, uncatchable
 export const HOME = 20;     // 집   — finished, uncatchable
 
 /**
- * 미니게임 칸 — landing a 말 exactly on one of these stations triggers a mini-game
- * (a roulette picks one; the team plays it in the room; a fail cancels the move).
- * Three on each of the three far sides of the ring, none ON a corner (0/5/10/15)
- * and none touching the 참/집 corner (so a 말 isn't sent to a mini-game on the very
- * step before finishing).
+ * 미니게임 칸 — landing a 말 exactly on one of these 밭 triggers a mini-game (a
+ * roulette picks one; the team plays it in the room; a fail cancels the move).
+ * Spread across the WHOLE map so a game keeps hitting them: every other 밭 on the
+ * outer ring (skipping the 4 corners 0/5/10/15), one on each diagonal 지름길 arm,
+ * and one dead centre (방). Never a corner (those are the 갈림길 choice 밭) and
+ * never 대기/집.
  */
-// All ≥ 6 on purpose: a 말 leaving 대기 moves at most 5 (모), so it can never hit
-// a mini-game on its first step — a fail then only ever reverts an already-on-board
-// 말 to where it was, never all the way back to 대기.
-export const MINIGAME_STATIONS: readonly number[] = [6, 7, 8, 11, 12, 13, 16, 17, 18];
+export const MINIGAME_STATIONS: readonly number[] = [
+  1, 3, 6, 8, 11, 13, 16, 18, // outer ring, every other 밭
+  21, 25, 26, 29, // one per diagonal arm (모/참/뒷모/모동 side)
+  23, // 방 — the centre
+];
 export function isMiniGameStation(progress: number): boolean {
   return MINIGAME_STATIONS.includes(progress);
 }

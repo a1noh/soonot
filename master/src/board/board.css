@@ -89,6 +89,8 @@ body { margin: 0; background: #0f1115; color: #f2f4f8;
 /* animated flow around the ring, in the travel direction — the "which way" cue */
 .board__flow { fill: none; stroke: #d29922; stroke-width: 1.5; stroke-dasharray: 2 7; stroke-linecap: round; opacity: 0.9; animation: boardFlow 1.05s linear infinite; }
 @keyframes boardFlow { to { stroke-dashoffset: -9; } }
+.board__bat--mini { fill: #f4d98a; }
+.board__star--center { font-size: 4.2px; }
 .board__startbg { fill: #1e8449; stroke: #6ee7a8; stroke-width: 0.5; }
 .board__starttxt { fill: #eafff4; font-size: 3px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; }
 

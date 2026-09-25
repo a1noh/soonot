@@ -108,19 +108,27 @@ export function BoardSvg({ view }: { view: BoardView }) {
         );
       })}
 
-      {/* inner diagonal 밭 */}
+      {/* inner diagonal 밭 (some are 미니게임 ★, spread along the 지름길) */}
       {DIAGONAL_NODES.map((n) => {
         const [x, y] = xy(n);
-        return <circle key={n} cx={x} cy={y} r={2.4} className="board__station board__station--diag" />;
+        const mini = isMiniGameStation(n);
+        return (
+          <g key={n}>
+            <circle cx={x} cy={y} r={2.6} className={`board__station board__station--diag${mini ? ' board__station--mini' : ''}`} />
+            {mini ? <text x={x} y={y + 1.35} className="board__star" aria-hidden="true">★</text> : null}
+          </g>
+        );
       })}
 
-      {/* centre 방 — a big double-ring 밭 */}
+      {/* centre 방 — a big double-ring 밭; a ★ when it is a 미니게임 칸 */}
       {(() => {
         const [x, y] = xy(CENTER);
+        const mini = isMiniGameStation(CENTER);
         return (
           <g>
-            <circle cx={x} cy={y} r={5.6} className="board__bat board__bat--big" />
+            <circle cx={x} cy={y} r={5.6} className={`board__bat board__bat--big${mini ? ' board__bat--mini' : ''}`} />
             <circle cx={x} cy={y} r={3.4} className="board__bat-inner" />
+            {mini ? <text x={x} y={y + 1.6} className="board__star board__star--center" aria-hidden="true">★</text> : null}
           </g>
         );
       })()}

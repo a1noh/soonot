@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { MINIGAME_STATIONS } from '../../shared/constants';
+import { isOnBoard } from '../../shared/board';
 import { replay, setupOf } from '../replay';
 import { act, malOf, currentTeam, started, step, T0 } from './helpers';
 
-// Spots are ≥6, so reach one with two throws that keep the same team's turn:
-// 윷(4) 대기→4 (bonus, turn stays), then 개(2) 4→6 (no bonus) lands on 미니게임 칸 6.
+// Reach a spot with two throws that keep the same team's turn:
+// 윷(4) 대기→4 (bonus, turn stays; 4 is not a spot), then 개(2) 4→6 triggers 미니게임 칸 6.
 const toSpot = () => {
   let s = started({ malPerTeam: 1, miniGames: true });
   s = act(s, { t: 'THROW', roll: '윷' }, T0); // 0→4, bonus keeps the turn
@@ -12,12 +13,13 @@ const toSpot = () => {
 };
 
 describe('mini-games (미니게임 칸)', () => {
-  it('spots are all ≥6 so a 말 can never hit one leaving 대기', () => {
-    expect(MINIGAME_STATIONS).toContain(6);
+  it('spots are spread on-board (ring + 지름길 + 방), never on a corner or 대기/집', () => {
+    expect(MINIGAME_STATIONS).toContain(6); // used by toSpot()
     expect(MINIGAME_STATIONS).toContain(8);
+    expect(MINIGAME_STATIONS).toContain(23); // the centre 방
     for (const s of MINIGAME_STATIONS) {
-      expect(s).toBeGreaterThanOrEqual(6); // > 모(5): unreachable from 대기 in one move
-      expect(s).toBeLessThan(20);
+      expect(isOnBoard(s)).toBe(true); // never 대기(0) or 집(20)
+      expect([0, 5, 10, 15]).not.toContain(s); // never a 갈림길 corner
     }
   });
 
@@ -49,6 +51,26 @@ describe('mini-games (미니게임 칸)', () => {
     expect(malOf(r, 't1m1').progress).toBe(4); // back to the pre-move station, still on the board
     expect(currentTeam(r).name).toBe('조2'); // turn passes
     expect(r.history.at(-1)!.miniGame!.success).toBe(false);
+  });
+
+  it('a spot reachable from 대기 (node 1) triggers, and a fail returns the 말 to 대기', () => {
+    // Spots now include low 밭 (1, 3): a 말 entering with 도 lands on 1 → mini-game.
+    const s = started({ malPerTeam: 1, miniGames: true });
+    const trig = step(s, { t: 'THROW', roll: '도' }, T0); // 대기(0) → 1, a ★
+    expect(trig.state.pendingMiniGame?.station).toBe(1);
+    const bad = act(trig.state, { t: 'MINIGAME_RESOLVE', success: false }, T0);
+    expect(malOf(bad, 't1m1').progress).toBe(0); // canceled entry → back to 대기, no crash
+  });
+
+  it('landing on the centre 방 (23) triggers a mini-game', () => {
+    // 모 0→5 (single candidate, auto-moved; bonus keeps the turn), then 걸 offers
+    // BOTH 8칸 and the 지름길 to 방 — take the 지름길 explicitly.
+    let r = started({ malPerTeam: 1, miniGames: true });
+    r = act(r, { t: 'THROW', roll: '모' }, T0); // 0→5 (모 corner)
+    r = act(r, { t: 'THROW', roll: '걸' }, T0); // two candidates: 8 or 방(23)
+    r = act(r, { t: 'MOVE', malId: 't1m1', to: 23 }, T0); // 지름길 → 방
+    expect(malOf(r, 't1m1').progress).toBe(23);
+    expect(r.pendingMiniGame?.station).toBe(23);
   });
 
   it('a bonus throw is honoured on success but forfeited on fail', () => {

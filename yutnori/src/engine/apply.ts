@@ -2,6 +2,7 @@ import { HOME, BONUS_ROLLS, MIN_TEAMS, MS_PER_MIN, MAX_REVEAL_STEP, TEAM_COLORS,
 import type { EndReason, MoveCandidate, Roll, Room, RoomState, Team, TurnEvent } from '../shared/types';
 import { EngineError, type Action, type Emit } from './actions';
 import { candidates } from './candidates';
+import { isOnBoard } from '../shared/board';
 import { replay, setupOf } from './replay';
 import { MINI_GAMES } from '../shared/minigames';
 
@@ -148,8 +149,9 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
 
   // 미니게임 칸: freeze the turn until the master judges the challenge. The bonus
   // (if any) is already on the queue and will be honoured on success, forfeited on
-  // fail. A finishing move never triggers one (`to` is 집, not a station).
-  if (r.miniGames && isMiniGameStation(cand.to) && cand.to > WAITING && cand.to < HOME && !finishedTeam) {
+  // fail. `isOnBoard` covers the outer ring AND the inner 지름길/방 밭 but never
+  // 대기/집, so a finishing move (`to` = 집) never triggers one.
+  if (r.miniGames && isMiniGameStation(cand.to) && isOnBoard(cand.to) && !finishedTeam) {
     r.pendingMiniGame = { teamId: team.id, malId: mal.id, station: cand.to, gameId: null };
     events.push({ e: 'minigame:triggered', teamId: team.id, teamName: team.name, station: cand.to });
     return events;
