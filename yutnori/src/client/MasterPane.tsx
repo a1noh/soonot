@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { ROLLS, DEFAULT_TIME_LIMIT_MIN, MIN_TEAMS } from '../shared/constants';
 import { MINI_GAMES } from '../shared/minigames';
-import { nodeLabel } from '../shared/board';
+import { nodeLabel, advancementOf } from '../shared/board';
 import type { MoveCandidate, Roll } from '../shared/types';
 import type { BoardView } from '../project';
 import { Clock } from './BoardSvg';
@@ -72,26 +72,40 @@ export function YutnoriMasterPane({ view, send }: MasterPaneProps) {
           <p className="yut__prompt">
             <b>{view.pending.roll}</b> — {view.turnTeamName} · 어느 말을 움직일까요?
           </p>
-          <div className="malpicker">
-            {view.pending.candidates.map((c: MoveCandidate) => (
-              <button
-                key={`${c.malId}-${c.to}`}
-                className={`malpicker__key${c.captures.length ? ' is-capture' : ''}${
-                  c.finishes ? ' is-finish' : ''
-                }`}
-                onClick={() => void send('master:move', { malId: c.malId, to: c.to })}
-              >
-                <strong className="malpicker__mal">{malLabel(c.malId)}</strong>
-                <span className="malpicker__path">
-                  <span className="malpicker__from">{stationLabel(c.from)}</span>
-                  <span aria-hidden="true">→</span>
-                  <span className="malpicker__to">{stationLabel(c.to)}</span>
-                </span>
-                {c.captures.length ? <em className="tag-capture">잡기 {c.captures.length}</em> : null}
-                {c.finishes ? <em className="tag-finish">골인</em> : null}
-              </button>
-            ))}
-          </div>
+          {(() => {
+            // Help an operator who doesn't know 윷놀이: mark the move that ends up
+            // CLOSEST to 집 (usually the 지름길). Capture/골인 tags still show so they
+            // can weigh a catch or a finish against pure speed.
+            const cands = view.pending!.candidates;
+            const maxAdv = Math.max(...cands.map((c) => advancementOf(c.to)));
+            const someFar = cands.some((c) => advancementOf(c.to) < maxAdv); // only hint when it's a real choice
+            return (
+              <div className="malpicker">
+                {cands.map((c: MoveCandidate) => {
+                  const fastest = someFar && advancementOf(c.to) === maxAdv;
+                  return (
+                    <button
+                      key={`${c.malId}-${c.to}`}
+                      className={`malpicker__key${c.captures.length ? ' is-capture' : ''}${
+                        c.finishes ? ' is-finish' : ''
+                      }${fastest ? ' is-fast' : ''}`}
+                      onClick={() => void send('master:move', { malId: c.malId, to: c.to })}
+                    >
+                      <strong className="malpicker__mal">{malLabel(c.malId)}</strong>
+                      <span className="malpicker__path">
+                        <span className="malpicker__from">{stationLabel(c.from)}</span>
+                        <span aria-hidden="true">→</span>
+                        <span className="malpicker__to">{stationLabel(c.to)}</span>
+                      </span>
+                      {fastest ? <em className="tag-fast">🏠 집에 더 가까움</em> : null}
+                      {c.captures.length ? <em className="tag-capture">잡기 {c.captures.length}</em> : null}
+                      {c.finishes ? <em className="tag-finish">골인</em> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </>
       ) : null}
 

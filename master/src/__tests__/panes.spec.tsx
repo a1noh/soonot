@@ -117,6 +117,32 @@ describe('YutnoriMasterPane (윷놀이 console)', () => {
     expect(send).toHaveBeenCalledWith('master:minigame:resolve', { success: false });
   });
 
+  it('marks the move that lands closest to 집 (the 지름길) for an operator who does not know 윷놀이', () => {
+    render(
+      <YutnoriMasterPane
+        view={boardView({
+          state: 'RUNNING',
+          turnTeamName: 'A조',
+          throwQueue: 0,
+          pending: {
+            teamId: 't1',
+            roll: '윷',
+            candidates: [
+              { malId: 't1m1', from: 5, to: 9, captures: [], finishes: false }, // outer, further from 집
+              { malId: 't1m1', from: 5, to: 24, captures: [], finishes: false }, // 지름길, closer to 집
+            ] as never,
+          },
+        })}
+        send={vi.fn()}
+      />,
+    );
+    // Exactly one candidate is flagged as closest to home — the 지름길 one.
+    const tags = screen.getAllByText(/집에 더 가까움/);
+    expect(tags).toHaveLength(1);
+    const btn = tags[0]!.closest('button')!;
+    expect(btn.textContent).toContain('지름길'); // node 24 labels as 지름길
+  });
+
   it('RUNNING: tapping a move candidate sends master:move with its malId', async () => {
     const send = vi.fn().mockResolvedValue({ ok: true });
     const user = userEvent.setup();

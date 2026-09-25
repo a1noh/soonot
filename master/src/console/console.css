@@ -344,7 +344,9 @@
 }
 .malpicker__key.is-capture { border-color: var(--danger); }
 .malpicker__key.is-finish { border-color: var(--ok); }
+.malpicker__key.is-fast { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .malpicker__key em { font-style: normal; font-size: 12px; color: var(--text-dim); }
+.tag-fast { color: var(--accent, #b98cff); font-style: normal; font-size: 12px; font-weight: 700; }
 .malpicker__from, .malpicker__to { font-weight: 700; }
 .yut__controls { display: flex; gap: 8px; flex-wrap: wrap; }
 .yut-setup { display: flex; flex-direction: column; gap: 12px; }
