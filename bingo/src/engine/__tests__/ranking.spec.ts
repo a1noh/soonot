@@ -22,58 +22,61 @@ function bingoLinesAt(room: ReturnType<typeof running>, who: string, lineIdxs: n
   return r;
 }
 
-describe('ranking (req §9)', () => {
-  it('ranks MORE bingos above fewer — even if the smaller board finished earlier', () => {
+describe('ranking (req §9) — by points (칸수 + 5×줄)', () => {
+  it('ranks by total points: more points wins', () => {
     let r = running(24);
-    r = bingoLinesAt(r, 'p1', [0], 1000); // one line, but early
-    r = bingoLinesAt(r, 'p2', [0, 1], 9000); // two lines, later
-    // most bingos wins regardless of time
+    r = bingoLinesAt(r, 'p1', [0], 1000); // 5칸 + 1줄 = 10점 (early)
+    r = bingoLinesAt(r, 'p2', [0, 1], 9000); // 10칸 + 2줄 = 20점 (later)
+    // 20 > 10, so p2 wins regardless of finishing later.
     expect(rankPlayers(r).slice(0, 2).map((p) => p.id)).toEqual(['p2', 'p1']);
   });
 
-  it('with equal bingos, ranks by finish time (earlier reaches the count first)', () => {
-    // Applied in clock order (the engine requires monotonic timestamps): p2 finishes
-    // at 6s, p1 at 8s. Both have two lines, so the earlier finisher (p2) ranks first.
+  it('with equal lines, more filled cells (more points) ranks first', () => {
     let r = running(24);
-    r = bingoLinesAt(r, 'p2', [0, 1], 6000);
-    r = bingoLinesAt(r, 'p1', [0, 1], 8000);
+    r = bingoLinesAt(r, 'p1', [0], 5000); // 5칸 + 1줄 = 10점
+    r = bingoLinesAt(r, 'p2', [0], 6000); // 5칸 + 1줄 = 10점 …
+    r = fillLine(r, 'p2', [10, 11, 12]); // +3칸 → 8칸 + 1줄 = 13점
     expect(rankPlayers(r).slice(0, 2).map((p) => p.id)).toEqual(['p2', 'p1']);
   });
 
-  it('with equal bingos and same finish time, breaks the tie by seq — a strict total order', () => {
+  it('POINTS beat lines: a heavily-filled 0줄 board outranks a light 1줄 board', () => {
+    let r = running(24);
+    r = bingoLinesAt(r, 'p1', [0], 5000); // 5칸 + 1줄 = 10점
+    // 11 cells that complete NO line (cols 1 & 2 stop at 4/5): 11칸 + 0줄 = 11점
+    r = fillLine(r, 'p2', [1, 2, 3, 6, 7, 8, 11, 12, 13, 16, 17]);
+    expect(r.players.get('p2')!.completedLines.length).toBe(0);
+    const ids = rankPlayers(r).map((p) => p.id);
+    expect(ids.indexOf('p2')).toBeLessThan(ids.indexOf('p1')); // 11점 > 10점
+  });
+
+  it('breaks a points tie by who reached it FIRST (먼저 달성한 사람 우선)', () => {
+    let r = running(24);
+    r = bingoLinesAt(r, 'p1', [0], 5000); // 10점, last fill @5000
+    r = bingoLinesAt(r, 'p2', [0], 7000); // 10점, last fill @7000
+    const [a, b] = rankPlayers(r);
+    expect(pointsFor(a!)).toBe(pointsFor(b!)); // truly tied on points
+    expect(a!.id).toBe('p1'); // earlier achiever ranks higher
+  });
+
+  it('with the same score and same finish time, falls back to the lower number', () => {
     let r = running(24);
     r = bingoAt(r, 'p1', 7000);
     r = bingoAt(r, 'p2', 7000);
     const [a, b] = rankPlayers(r);
-    expect(a!.completedLines.length).toBe(b!.completedLines.length);
-    expect(a!.firstBingoAt).toBe(b!.firstBingoAt);
-    expect(a!.id).toBe('p1'); // whoever the event loop processed first
+    expect(pointsFor(a!)).toBe(pointsFor(b!));
+    expect(a!.number).toBeLessThan(b!.number); // deterministic, not seq-of-processing
   });
 
-  it('ranks bingo holders above everyone else', () => {
-    let r = running(12);
-    r = fillLine(r, 'p5', LINES[0]!.cells);
-    expect(rankPlayers(r)[0]!.id).toBe('p5');
-    expect(rankPlayers(r).slice(1).every((p) => p.firstBingoAt === null)).toBe(true);
-  });
-
-  it('orders non-holders by best partial line then fill count', () => {
-    let r = running(12);
-    r = fillLine(r, 'p3', LINES[0]!.cells.slice(0, 7));
-    r = fillLine(r, 'p4', LINES[0]!.cells.slice(0, 3));
-    const ids = rankPlayers(r).map((p) => p.id);
-    expect(ids.indexOf('p3')).toBeLessThan(ids.indexOf('p4'));
-  });
-
-  it('awards at most three medals, and none without a bingo', () => {
+  it('awards at most three medals, and none to a 0점 player', () => {
     let r = running(12);
     r = bingoAt(r, 'p1', 1000);
     const entries = rank(r);
     expect(entries.filter((e) => e.medal !== undefined)).toHaveLength(1);
     expect(entries[0]!.medal).toBe(1);
+    expect(entries[0]!.detail).toContain('점'); // detail leads with points
   });
 
-  it('zero bingos: a full board, no medals', () => {
+  it('zero score: a full board, no medals', () => {
     const r = running(12);
     const entries = rank(r);
     expect(entries).toHaveLength(12);
@@ -87,3 +90,7 @@ describe('ranking (req §9)', () => {
     expect(entries.find((e) => e.self)!.id).toBe('p2');
   });
 });
+
+function pointsFor(p: { fills: readonly (string | null)[]; completedLines: readonly unknown[] }): number {
+  return p.fills.filter((f) => f !== null).length + 5 * p.completedLines.length;
+}

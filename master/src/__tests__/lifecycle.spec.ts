@@ -111,6 +111,14 @@ describe('the shared reveal machine', () => {
     expect(podiumAt(ranked, 4)).toHaveLength(3);
   });
 
+  it('the final step shows only the top 3 (never the whole field) so /p never scrolls', () => {
+    const ranked = Array.from({ length: 60 }, (_, i) => ({ id: `p${i}`, label: `${i}`, detail: '' }));
+    const shown = podiumAt(ranked, 4);
+    expect(shown).toHaveLength(3);
+    expect(shown.map((e) => e.id)).toEqual(['p0', 'p1', 'p2']);
+    expect(shown.map((e) => e.medal)).toEqual([1, 2, 3]);
+  });
+
   it('skips ranks that do not exist instead of erroring', () => {
     // bingo §9 and yutnori §11 both require the reveal to run with < 3 ranked.
     const ranked = [{ id: 'a', label: '1등', detail: '' }];

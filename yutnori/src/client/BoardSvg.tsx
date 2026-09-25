@@ -13,17 +13,29 @@ import type { BoardView } from '../project';
 
 const PAD = 9;
 const SPAN = 100 - PAD * 2;
-// Mirror x so the 말 starts at the bottom-LEFT corner and travels to the RIGHT
-// (clockwise). Rendering only — the engine graph/positions are unchanged.
+// Mirror x so the 말 starts at the bottom-LEFT corner and travels to the RIGHT,
+// then up the right side and around (counter-clockwise as drawn). Rendering only
+// — the engine graph/positions are unchanged.
 const xy = (i: number): [number, number] => {
   const [ux, uy] = nodeXY(i);
   return [PAD + (1 - ux) * SPAN, PAD + uy * SPAN];
+};
+
+/** Nudge a point `d` viewBox units toward the centre — keeps corner labels on-board. */
+const inward = (x: number, y: number, d: number): [number, number] => {
+  const dx = 50 - x;
+  const dy = 50 - y;
+  const len = Math.hypot(dx, dy) || 1;
+  return [x + (dx / len) * d, y + (dy / len) * d];
 };
 
 /** The 4 corner 밭 are bigger: 참(0), 모(5), 뒷모(10), 모동(15) (req §6). */
 const isCorner = (i: number) => i % 5 === 0;
 /** The inner diagonal 밭 (excluding centre 방). */
 const DIAGONAL_NODES = [21, 22, 24, 25, 26, 27, 28, 29];
+/** 지름길 choice 밭: landing exactly here opens the diagonal on the next throw
+ *  (모, 뒷모, 방 — see `firstOptions` in board.ts). */
+const BRANCH_NODES = new Set([5, 10, CENTER]);
 
 export function BoardSvg({ view }: { view: BoardView }) {
   const onBoard = view.teams.flatMap((t) =>
@@ -71,7 +83,7 @@ export function BoardSvg({ view }: { view: BoardView }) {
         className="board__ring"
       />
 
-      {/* direction arrows — 말 travels this way (bottom-left → right, clockwise) */}
+      {/* direction arrows — 말 travels this way (starts bottom-left, goes right, then around) */}
       {[2, 7, 12, 17].map((i) => {
         const [ax, ay] = xy(i);
         const [bx, by] = xy(i + 1);
@@ -125,6 +137,22 @@ export function BoardSvg({ view }: { view: BoardView }) {
         );
       })}
 
+      {/* orientation labels: 출발/집 at 참, and 갈림길 at the 지름길 choice 밭 (모/뒷모/방) */}
+      {(() => {
+        const [x0, y0] = xy(0);
+        const [x, y] = inward(x0, y0, 8.5);
+        return <text x={x} y={y} className="board__glabel board__glabel--start">출발·집</text>;
+      })()}
+      {[5, 10].map((n) => {
+        const [x0, y0] = xy(n);
+        const [x, y] = inward(x0, y0, 8.5);
+        return <text key={`gl${n}`} x={x} y={y} className="board__glabel">갈림길</text>;
+      })}
+      {(() => {
+        const [cx, cy] = xy(CENTER);
+        return <text key="glc" x={cx} y={cy + 8.6} className="board__glabel">갈림길</text>;
+      })()}
+
       {/* 말 — one stable node per id, so a move slides (CSS transition) */}
       {onBoard.map((m) => {
         const pos = placed.get(m.id)!;
@@ -144,6 +172,21 @@ export function BoardSvg({ view }: { view: BoardView }) {
           </g>
         );
       })}
+
+      {/* animated 지름길 prompt — pops up when a 말 rests on a choice 밭 (모/뒷모/방),
+          i.e. a diagonal shortcut is available on its next throw. */}
+      {[...new Set(onBoard.filter((m) => BRANCH_NODES.has(m.progress)).map((m) => m.progress))].map(
+        (node) => {
+          const [x0, y0] = xy(node);
+          const [x, y] = node === CENTER ? [x0, y0 - 10.5] : inward(x0, y0, 12);
+          return (
+            <g key={`choice-${node}`} className="board__choice" aria-hidden="true">
+              <rect x={x - 11} y={y - 4.4} width={22} height={6.6} rx={3.3} className="board__choicebg" />
+              <text x={x} y={y} className="board__choicetxt">지름길!</text>
+            </g>
+          );
+        },
+      )}
     </svg>
   );
 }

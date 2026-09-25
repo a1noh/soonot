@@ -3,6 +3,7 @@
  */
 import type { Player } from '../shared/types';
 import { linesThrough, type Line, type LineId } from '../shared/lines';
+import { LINE_BONUS } from '../shared/constants';
 
 /** Is every cell of this line filled on this card? */
 function complete(line: Line, fills: readonly (string | null)[]): boolean {
@@ -44,4 +45,21 @@ export function filledCount(player: Player): number {
   let n = 0;
   for (const f of player.fills) if (f !== null) n++;
   return n;
+}
+
+/** Score: 1 per filled cell + a bonus per completed line. THE ranking key (req §9). */
+export function pointsOf(player: Player): number {
+  return filledCount(player) + LINE_BONUS * player.completedLines.length;
+}
+
+/**
+ * When the player reached their *current* score — the timestamp of their most
+ * recent fill (every fill adds ≥1 point). Ties on points break by this: whoever
+ * reached the score first ranks higher (먼저 달성한 사람 우선). `Infinity` if they
+ * have filled nothing, so score-0 players sort after anyone who actually scored.
+ */
+export function lastFillAt(player: Player): number {
+  let last = -1;
+  for (const t of player.filledAt) if (t !== null && t > last) last = t;
+  return last === -1 ? Infinity : last;
 }

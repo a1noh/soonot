@@ -376,3 +376,11 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 .onlinebox--bingo .onlinebox__num { color: #b08aa0; }
 
 .board__station--diag { fill: #e8d9ba; stroke: #6b5233; stroke-width: 0.8; }
+
+/* orientation labels + animated 지름길 choice prompt (same as /y board) */
+.board__glabel { fill: #6b5233; font-size: 2.7px; font-weight: 700; text-anchor: middle; dominant-baseline: middle; opacity: 0.9; }
+.board__glabel--start { fill: #7a4f10; }
+.board__choicebg { fill: #f4c95d; stroke: #a9720f; stroke-width: 0.5; }
+.board__choicetxt { fill: #4a3320; font-size: 3px; font-weight: 800; text-anchor: middle; dominant-baseline: middle; }
+.board__choice { animation: choicePulse 0.85s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes choicePulse { 0%, 100% { opacity: 0.85; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }

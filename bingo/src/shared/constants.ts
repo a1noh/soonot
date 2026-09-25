@@ -6,6 +6,12 @@ export const LINE_COUNT = 2 * GRID + 2; // 12
 /** req §18 — hard cap; far above the 300 design target. */
 export const MAX_PLAYERS = 999;
 /**
+ * Points: 1 per filled cell + this bonus per completed line (빙고). The ranking,
+ * the live ladder and the reveal all score on `filledCount + LINE_BONUS*줄`, so
+ * this lives here where both the engine and `project` can import it.
+ */
+export const LINE_BONUS = 5;
+/**
  * Fewest players for a bingo LINE to be possible at all. A line is GRID cells,
  * each named with a DISTINCT OTHER person (you cannot name yourself — see
  * `commitFill`'s SELF/REUSED guards), so completing one needs GRID others **plus**

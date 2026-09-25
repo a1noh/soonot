@@ -7,9 +7,10 @@
  */
 import type { RankEntry, Viewer } from '@soonot/master';
 import type { Room } from './shared/types';
-import { filledCount, bestLineProgress } from './engine/bingo';
-import { rank, rankPlayers } from './engine/ranking';
+import { filledCount, bestLineProgress, pointsOf } from './engine/bingo';
+import { rank, rankPlayers, compareForRank } from './engine/ranking';
 import { lineById } from './shared/lines';
+import { LINE_BONUS } from './shared/constants';
 
 export interface RosterEntry {
   n: number;
@@ -117,7 +118,7 @@ function winnersOf(room: Room): WinnerCard[] {
         n: p.number,
         name: p.nickname,
         lines: p.completedLines.length,
-        points: filledCount(p) + LINE_BONUS * p.completedLines.length,
+        points: pointsOf(p),
         matched,
         grid,
       };
@@ -156,8 +157,8 @@ export interface ScoreEntry {
   lines: number;
 }
 
-/** Points: 1 per filled cell + a bonus per completed line (bingo). Tunable here. */
-export const LINE_BONUS = 5;
+/** Re-exported from constants so existing importers of `project` keep working. */
+export { LINE_BONUS };
 
 export interface SpectatorView extends PublicView {
   kind: 'spectator';
@@ -199,15 +200,14 @@ function publicOf(room: Room): PublicView {
   };
 }
 
-/** The live points ladder, number-only, ranked points→lines→number. */
+/** The live points ladder, number-only, in the SAME order as the reveal podium
+ *  (`compareForRank`), so the live leader is the eventual 1등. */
 function boardOf(room: Room): ScoreEntry[] {
-  return [...room.players.values()]
-    .map((p) => ({
-      n: p.number,
-      lines: p.completedLines.length,
-      points: filledCount(p) + LINE_BONUS * p.completedLines.length,
-    }))
-    .sort((a, b) => b.points - a.points || b.lines - a.lines || a.n - b.n);
+  return [...room.players.values()].sort(compareForRank).map((p) => ({
+    n: p.number,
+    lines: p.completedLines.length,
+    points: pointsOf(p),
+  }));
 }
 
 function rosterOf(room: Room): RosterEntry[] {

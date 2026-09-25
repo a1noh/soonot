@@ -20,14 +20,16 @@ export interface RankEntry {
 /**
  * The entries the shared podium shows at a given reveal step (req §4.2).
  *
- * Steps 1–3 count up: 3rd, then 2nd, then 1st. With fewer than three ranked
- * entries the missing steps yield nothing rather than erroring — bingo §9 and
- * yutnori §11 both require the reveal to run anyway, skipping ranks that do not
- * exist.
+ * Steps 1–3 count up: 3rd, then 2nd, then 1st. The final step shows the **top 3
+ * only** (🥇🥈🥉) — never the whole field: the projector is view-only and must fit
+ * on screen, and at 50–60 players dumping everyone made the podium scroll off the
+ * top and bottom. The full ranking lives on the number-only live board and the
+ * console. With fewer than three ranked entries the missing steps yield nothing
+ * rather than erroring — bingo §9 and yutnori §11 both run the reveal anyway.
  */
 export function podiumAt(ranked: readonly RankEntry[], step: number): RankEntry[] {
   if (step <= 0) return [];
-  if (step >= 4) return [...ranked];
+  if (step >= 4) return ranked.slice(0, 3).map((e, i) => ({ ...e, medal: (i + 1) as 1 | 2 | 3 }));
   const index = 3 - step; // step 1 → index 2 (3rd), step 2 → 1 (2nd), step 3 → 0 (1st)
   const entry = ranked[index];
   return entry ? [{ ...entry, medal: (index + 1) as 1 | 2 | 3 }] : [];
