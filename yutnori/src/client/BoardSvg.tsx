@@ -190,6 +190,16 @@ export function BoardSvg({ view }: { view: BoardView }) {
             <g className="board__malin">
               <circle r={3.4} fill={m.team.color} className="board__mal" filter="url(#malShadow)" />
               <text y={1.2} className="board__malnum">{view.teams.indexOf(m.team) + 1}</text>
+              {/* 말 index badge (말 1 / 말 2) so a team's two pieces are tellable apart —
+                  matches the console's "말 N". Only shown when a team has >1 말. */}
+              {m.team.mal.length > 1 ? (
+                <g className="board__malpip">
+                  <circle cx={2.9} cy={-2.9} r={1.9} className="board__malpip-bg" />
+                  <text x={2.9} y={-2.15} className="board__malpip-txt">
+                    {Number(m.id.split('m').pop())}
+                  </text>
+                </g>
+              ) : null}
             </g>
           </g>
         );
