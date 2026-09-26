@@ -1,30 +1,28 @@
 import { describe, expect, it } from 'vitest';
 import { rank } from '../ranking';
+import { advancementOf } from '../../shared/board';
 import { place, started, T0 } from './helpers';
 
 const order = (r: ReturnType<typeof rank>) => r.map((s) => s.teamId);
 
-describe('ranking (req §11)', () => {
-  it('puts finishers above everyone else, earliest finish first', () => {
-    const r = place(started({ teams: 3, malPerTeam: 1 }), { t1m1: 20, t2m1: 19, t3m1: 20 });
-    r.teams[0]!.finishedAt = T0 + 5000;
-    r.teams[2]!.finishedAt = T0 + 1000;
+describe('ranking (req §11) — by 완주(laps), then progress', () => {
+  it('ranks by 완주(laps), descending', () => {
+    const r = started({ teams: 3, malPerTeam: 1 });
+    r.teams[0]!.finishes = 1;
+    r.teams[1]!.finishes = 0;
+    r.teams[2]!.finishes = 2;
     expect(order(rank(r))).toEqual(['t3', 't1', 't2']);
   });
 
-  it('ranks unfinished teams by 말 home, descending', () => {
-    const r = place(started({ teams: 2, malPerTeam: 2 }), { t1m1: 20, t1m2: 1, t2m1: 15, t2m2: 5 });
+  it('more laps beats more on-board progress', () => {
+    const r = place(started({ teams: 2, malPerTeam: 2 }), { t1m1: 1, t1m2: 1, t2m1: 19, t2m2: 19 });
+    r.teams[0]!.finishes = 1; // 조1: 1 lap but barely on the board
+    r.teams[1]!.finishes = 0; // 조2: no laps, but two 말 nearly home
     expect(order(rank(r))).toEqual(['t1', 't2']);
+    expect(rank(r)[0]!.malHome).toBe(1); // "집" = laps
   });
 
-  it('prefers a 말 that is home over one that is not (말 home is the first tiebreak)', () => {
-    const r = place(started({ teams: 2, malPerTeam: 2 }), { t1m1: 20, t1m2: 0, t2m1: 10, t2m2: 10 });
-    const standings = rank(r);
-    expect(standings[0]!.teamId).toBe('t1'); // 1 말 home beats 0, whatever the distance
-    expect(standings[0]!.malHome).toBe(1);
-  });
-
-  it('falls back to total progress when 말 home is level', () => {
+  it('falls back to total progress when laps are level', () => {
     const r = place(started({ teams: 2, malPerTeam: 2 }), { t1m1: 4, t1m2: 3, t2m1: 19, t2m2: 1 });
     expect(order(rank(r))).toEqual(['t2', 't1']); // t2 has a 말 nearly home
   });
@@ -44,10 +42,11 @@ describe('ranking (req §11)', () => {
     expect(standings.map((s) => s.rank)).toEqual([1, 2, 3]);
   });
 
-  it('reports 말 home and total progress per team', () => {
-    const r = place(started({ teams: 2, malPerTeam: 2 }), { t1m1: 20, t1m2: 7 });
+  it('reports laps (malHome) and total progress per team', () => {
+    const r = place(started({ teams: 2, malPerTeam: 2 }), { t1m1: 7, t1m2: 3 });
+    r.teams[0]!.finishes = 2;
     const s = rank(r).find((x) => x.teamId === 't1')!;
-    expect(s.malHome).toBe(1);
-    expect(s.totalProgress).toBe(13); // adv(20)=11 + adv(7)=2 (shortcut-aware)
+    expect(s.malHome).toBe(2); // laps completed
+    expect(s.totalProgress).toBe(advancementOf(7) + advancementOf(3)); // on-board, shortcut-aware
   });
 });

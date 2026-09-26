@@ -233,8 +233,8 @@ export function HowToPlay() {
         <li>윷을 던져 나온 수만큼 말이 <b>출발</b>에서 <b>화살표 방향</b>으로 돌아요.</li>
         <li>도 <b>1</b> · 개 <b>2</b> · 걸 <b>3</b> · 윷 <b>4</b> · 모 <b>5</b></li>
         <li><b>윷·모</b>가 나오거나 상대 말을 <b>잡으면</b> 한 번 더 던져요!</li>
-        <li>모서리 <b>갈림길</b>에 딱 서면 <b>지름길</b>로 질러갈 수 있어요.</li>
-        <li>말을 모두 <b>집</b>에 보내는 팀이 <b>승리</b> 🏆</li>
+        <li>모서리 <b>갈림길</b>에 딱 서면 <b>지름길</b>로 질러갈 수 있어요 (방에 딱 서야 집길!).</li>
+        <li>집에 도착하면 <b>새 말</b>로 다시 출발 — 시간 안에 <b>많이 완주</b>한 팀이 <b>승리</b> 🏆</li>
       </ul>
       <div className="howto__legend">
         <span className="howto__leg"><i className="howto__ic howto__ic--star">★</i> 미니게임 칸</span>
@@ -254,7 +254,7 @@ export function HomeTray({ view }: { view: BoardView }) {
     <ul className="trays">
       {view.teams.map((t, i) => {
         const waiting = t.mal.filter((m) => m.progress === 0).length;
-        const home = t.mal.filter((m) => m.progress === 20).length;
+        const home = t.finishes; // 완주(lap) count — finished 말 respawn, so count the laps
         const isTurn = view.turnTeamId === t.id;
         return (
           <li key={t.id} className={`tray${isTurn ? ' tray--turn' : ''}`}>

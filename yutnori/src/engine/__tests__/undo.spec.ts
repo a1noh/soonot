@@ -36,7 +36,7 @@ describe('undo — 되돌리기 (req §7.1, §17)', () => {
     expect(undone).toEqual(before);
   });
 
-  it('puts a finished 말 back on the board and clears finishedAt', () => {
+  it('undo restores the 말 and un-counts the lap after a 완주', () => {
     let before = started({ malPerTeam: 1 });
     // 모/모/모/윷 = 19, and every one of them is a bonus roll, so 조1 keeps the turn.
     for (const roll of ['모', '모', '모', '윷'] as const) before = play(before, roll);
@@ -44,12 +44,12 @@ describe('undo — 되돌리기 (req §7.1, §17)', () => {
     expect(before.turnIndex).toBe(0);
 
     const after = play(before, '도');
-    expect(after.teams[0]!.finishedAt).toBe(T0);
-    expect(malOf(after, 't1m1').progress).toBe(HOME);
+    expect(after.teams[0]!.finishes).toBe(1);          // 완주 counted
+    expect(malOf(after, 't1m1').progress).toBe(0);     // 말 respawned in 대기
 
     const undone = act(after, { t: 'UNDO' }, LATER);
-    expect(undone.teams[0]!.finishedAt).toBeNull();
-    expect(malOf(undone, 't1m1').progress).toBe(19);
+    expect(undone.teams[0]!.finishes).toBe(0);         // lap un-counted
+    expect(malOf(undone, 't1m1').progress).toBe(19);   // 말 back before the finishing move
     expect(undone.turnIndex).toBe(0);                  // back in the turn order
     expect(undone).toEqual(before);
   });

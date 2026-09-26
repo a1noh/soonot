@@ -50,6 +50,7 @@ function freshRunning(setup: RoomSetup): Room {
       mal: t.malIds.map((id) => ({ id, progress: WAITING })),
       finishedAt: null,
       lastProgressAt: t0,
+      finishes: 0,
       miniWins: 0,
     })),
     malPerTeam: setup.malPerTeam,

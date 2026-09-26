@@ -1,4 +1,3 @@
-import { HOME } from '../shared/constants';
 import { advancementOf } from '../shared/board';
 import type { Room, Team } from '../shared/types';
 
@@ -11,29 +10,23 @@ export interface Standing {
   finishedAt: number | null;
 }
 
-const malHome = (t: Team) => t.mal.filter((m) => m.progress === HOME).length;
+// 완주(lap) count — with respawn no 말 sits at 집, so "집 N개" means N laps completed.
+const malHome = (t: Team) => t.finishes;
 // Distance along the board (0..20), shortcut-aware, so ranking reflects true progress.
 const totalProgress = (t: Team) => t.mal.reduce((s, m) => s + advancementOf(m.progress), 0);
 
 /**
  * req §11 — ranked on the state at the moment the game ended.
  *
- * Tier 1: teams with every 말 home, by `finishedAt` ascending.
- * Tier 2: 말 home desc → total progress desc → `lastProgressAt` asc → creation order.
- *
- * Criterion 1 of tier 2 is deliberately not redundant with criterion 2: one 말 all the
- * way home beats the same distance spread across two 말 (req §11).
+ * 말 respawn on 완주 (endless laps), so a team never permanently "finishes"; the key is
+ * total laps: 완주 수(=`finishes`, exposed as `malHome`) desc → total on-board progress
+ * desc → `lastProgressAt` asc → creation order.
  */
 export function rank(room: Room): Standing[] {
   const order = new Map(room.teams.map((t, i) => [t.id, i]));
 
   const sorted = [...room.teams].sort((a, b) => {
-    const af = a.finishedAt !== null;
-    const bf = b.finishedAt !== null;
-    if (af !== bf) return af ? -1 : 1;
-    if (af && bf) return a.finishedAt! - b.finishedAt!;
-
-    const homeDiff = malHome(b) - malHome(a);
+    const homeDiff = malHome(b) - malHome(a); // 완주(laps) desc
     if (homeDiff !== 0) return homeDiff;
 
     const progressDiff = totalProgress(b) - totalProgress(a);

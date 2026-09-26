@@ -3,9 +3,10 @@ import { HOME } from '../../shared/constants';
 import { malOf, place, play, started, step, T0 } from './helpers';
 
 describe('movement (req §8.1, §8.3)', () => {
-  it('sends an overshoot home instead of demanding an exact count', () => {
+  it('sends an overshoot home (counts a lap) and respawns the 말', () => {
     const r = play(place(started({ malPerTeam: 1 }), { t1m1: 19 }), '모');
-    expect(malOf(r, 't1m1').progress).toBe(HOME);
+    expect(r.teams[0]!.finishes).toBe(1); // one 완주
+    expect(malOf(r, 't1m1').progress).toBe(0); // 말 respawned in 대기 (endless laps)
   });
 
   it('brings a waiting 말 out onto the board', () => {
@@ -26,9 +27,9 @@ describe('movement (req §8.1, §8.3)', () => {
     expect(malOf(r, 't1m2').progress).toBe(3);
   });
 
-  it('grants no bonus throw for finishing a 말', () => {
+  it('grants no bonus throw for finishing a 말 (도 passes the turn)', () => {
     const r = play(place(started({ malPerTeam: 1 }), { t1m1: 19 }), '도');
-    expect(r.teams[0]!.finishedAt).toBe(T0);
+    expect(r.teams[0]!.finishes).toBe(1);            // 완주 counted
     expect(r.turnIndex).toBe(1);                      // turn passed, no bonus
   });
 

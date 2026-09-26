@@ -114,10 +114,14 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
 
   team.lastProgressAt = now;
 
-  let finishedTeam = false;
-  if (isFinished(team) && team.finishedAt === null) {
-    team.finishedAt = now;
-    finishedTeam = true;
+  // 완주(집 도착) → count a lap and RESPAWN the 말 in 대기, so a "winner" doesn't just
+  // sit at 집 — they start a fresh 말 and keep going (endless laps). The lap count
+  // accumulates (never resets), which is the ranking key.
+  let finished = false;
+  if (cand.to === HOME) {
+    team.finishes += 1;
+    mal.progress = WAITING;
+    finished = true;
   }
 
   const ev: TurnEvent = {
@@ -129,7 +133,7 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
     to: cand.to,
     captures,
     bonusGranted: bonus,
-    finishedTeam,
+    finishedTeam: finished,
     at: now,
   };
   r.history.push(ev);
@@ -139,13 +143,13 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
     events.push({ e: 'capture:announced', byTeam: team.id, victimTeam, station: cand.to, count });
   }
   events.push({ e: 'board:update', mal: boardMal(r), lastMove: ev });
-  if (finishedTeam) {
+  if (finished) {
     events.push({
       e: 'team:finished',
       teamId: team.id,
       teamName: team.name,
       at: now,
-      rankAmongFinishers: r.teams.filter((t) => t.finishedAt !== null).length,
+      rankAmongFinishers: team.finishes, // now = this team's total 완주(lap) count
     });
   }
 
@@ -154,7 +158,7 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
   // whether it STANDS (attacker's rep won → resolve success) or is REVERTED (defender's
   // rep won → resolve fail restores the captured 말). Takes precedence over a station
   // mini-game on the same 밭.
-  if (r.captureDuel && captures.length > 0 && !finishedTeam) {
+  if (r.captureDuel && captures.length > 0 && !finished) {
     const victim = r.teams.find((t) => t.id === captures[0]!.teamId)!;
     const duel = { vsTeam: victim.id, vsTeamName: victim.name, byTeamName: team.name };
     r.pendingMiniGame = { teamId: team.id, malId: mal.id, station: cand.to, gameId: null, duel };
@@ -166,7 +170,7 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
   // (if any) is already on the queue and will be honoured on success, forfeited on
   // fail. `isOnBoard` covers the outer ring AND the inner 지름길/방 밭 but never
   // 대기/집, so a finishing move (`to` = 집) never triggers one.
-  if (r.miniGames && isMiniGameStation(cand.to) && isOnBoard(cand.to) && !finishedTeam) {
+  if (r.miniGames && isMiniGameStation(cand.to) && isOnBoard(cand.to) && !finished) {
     r.pendingMiniGame = { teamId: team.id, malId: mal.id, station: cand.to, gameId: null };
     events.push({ e: 'minigame:triggered', teamId: team.id, teamName: team.name, station: cand.to });
     return events;
@@ -204,7 +208,7 @@ function revertMove(r: Room, ev: TurnEvent): void {
     const victim = r.teams.find((t) => t.id === cap.teamId)?.mal.find((m) => m.id === cap.malId);
     if (victim) victim.progress = cap.from;
   }
-  if (ev.finishedTeam) team.finishedAt = null;
+  if (ev.finishedTeam) team.finishes -= 1; // undo the lap if this move had sent a 말 home
 }
 
 /**
@@ -245,7 +249,6 @@ function resolveMiniGame(r: Room, success: boolean, now: number): Emit[] {
     const team = r.teams.find((t) => t.id === ev.teamId)!;
     const mal = team.mal.find((m) => m.id === ev.malId)!;
     mal.progress = stepBefore(ev.from, ROLL_STEPS[ev.roll], ev.to);
-    if (ev.finishedTeam) team.finishedAt = null;
   }
   r.throwQueue = 0; // forfeit any bonus this move granted
   const events: Emit[] = [
@@ -296,6 +299,7 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
           mal: Array.from({ length: action.malPerTeam }, (_, j) => ({ id: `${id}m${j + 1}`, progress: WAITING })),
           finishedAt: null,
           lastProgressAt: now,
+          finishes: 0,
           miniWins: 0,
         };
       });

@@ -51,8 +51,11 @@ export interface Team {
   roster: string | null;
   color: string;
   mal: Mal[];
-  finishedAt: number | null;
+  finishedAt: number | null;  // vestigial — 말 respawn on 완주, so a team never permanently finishes
   lastProgressAt: number;     // last time this team's total progress increased
+  /** Total 완주(집 도착) count = laps. A finished 말 respawns in 대기, so this keeps
+   *  climbing (2nd lap, 3rd lap …) and is the primary 윷놀이 ranking key. Derived by replay. */
+  finishes: number;
   /** Cumulative 미니게임/대결 wins (each win = +1 point). Derived by replay, not in RoomSetup. */
   miniWins: number;
 }

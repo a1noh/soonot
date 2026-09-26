@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { apply, newRoom } from '../apply';
+import { newRoom } from '../apply';
 import { rank } from '../ranking';
-import { act, started, step, T0 } from './helpers';
+import { act, malOf, started, step, T0 } from './helpers';
 import type { Room } from '../../shared/types';
 
 describe('a whole game, start to podium (spec §10, milestone 1)', () => {
-  it('plays 2 teams from SETUP to REVEAL without a server or a UI', () => {
+  it('plays 2 teams SETUP → RUNNING (endless laps) → 게임 종료 → REVEAL', () => {
     let r: Room = newRoom({ id: 'r1', eventId: 'e1', createdAt: T0 });
     expect(r.state).toBe('SETUP');
 
@@ -20,23 +20,31 @@ describe('a whole game, start to podium (spec §10, milestone 1)', () => {
     r = act(r, { t: 'START' });
     expect(r.state).toBe('RUNNING');
 
-    // 모 is 5 steps and grants a bonus, so each team runs the loop in four throws.
+    // 조1 runs a full lap with four 모 (모 grants a bonus, so the turn stays with 조1):
+    // 대기→5→10→15→집. On 완주 the 말 RESPAWNS in 대기 and a lap is counted — the game
+    // does NOT end (endless laps), it only ends on time or 게임 종료.
     let now = T0;
-    while (r.state === 'RUNNING') {
+    const outerMove = () => {
+      if (!r.pendingThrow) return; // single-candidate throws auto-apply
+      const c = r.pendingThrow.candidates.find((x) => x.to < 21) ?? r.pendingThrow.candidates[0]!;
+      r = act(r, { t: 'MOVE', malId: c.malId, to: c.to }, now);
+    };
+    for (let i = 0; i < 4; i++) {
       now += 1000;
-      const thrown = apply(r, { t: 'THROW', roll: '모' }, now);
-      r = thrown.state;
-      if (r.pendingThrow) r = apply(r, { t: 'MOVE', malId: r.pendingThrow.candidates[0]!.malId }, now).state;
+      r = act(r, { t: 'THROW', roll: '모' }, now);
+      outerMove();
     }
+    expect(r.teams[0]!.finishes).toBe(1); // one lap
+    expect(malOf(r, 't1m1').progress).toBe(0); // 말 respawned in 대기
+    expect(r.state).toBe('RUNNING'); // never ends by finishing
 
+    r = act(r, { t: 'END', reason: 'master' }, now);
     expect(r.state).toBe('ENDED');
-    expect(r.endReason).toBe('allFinished');
-    expect(r.history).toHaveLength(8);
-    expect(r.teams.every((t) => t.finishedAt !== null)).toBe(true);
+    expect(r.endReason).toBe('master');
 
     const standings = rank(r);
-    expect(standings.map((s) => s.teamName)).toEqual(['청년부 1조', '청년부 2조']);
-    expect(standings[0]!.finishedAt).toBeLessThan(standings[1]!.finishedAt!);
+    expect(standings[0]!.teamName).toBe('청년부 1조'); // leads on laps
+    expect(standings[0]!.malHome).toBe(1); // "집" = laps completed
 
     // 3rd → 2nd → 1st → full board (req §11). Two teams, so the podium is short.
     r = act(r, { t: 'REVEAL', step: 0 }, now);

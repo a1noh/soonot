@@ -33,8 +33,9 @@ describe('catching — 잡기 (req §8.2)', () => {
   it('cannot catch a 말 at 집 — home is safe', () => {
     const r = place(started({ malPerTeam: 1 }), { t1m1: 19, t2m1: HOME });
     const out = turn(r, '도');
-    expect(malOf(out.state, 't1m1').progress).toBe(HOME);
-    expect(malOf(out.state, 't2m1').progress).toBe(HOME);
+    expect(malOf(out.state, 't1m1').progress).toBe(0); // t1m1 완주 → respawned in 대기
+    expect(out.state.teams[0]!.finishes).toBe(1);
+    expect(malOf(out.state, 't2m1').progress).toBe(HOME); // the 집 말 was NOT captured
     expect(out.state.history[0]!.captures).toEqual([]);
   });
 

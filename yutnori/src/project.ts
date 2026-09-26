@@ -20,6 +20,7 @@ export interface BoardView {
     color: string;
     mal: { id: string; progress: number }[];
     finishedAt: number | null;
+    finishes: number;
     miniWins: number;
   }[];
   turnTeamId: string | null;
@@ -64,6 +65,7 @@ export function project(room: Room, viewer: Viewer, now = Date.now()): BoardView
       color: t.color,
       mal: t.mal.map((m) => ({ id: m.id, progress: m.progress })),
       finishedAt: t.finishedAt,
+      finishes: t.finishes,
       miniWins: t.miniWins,
     })),
     turnTeamId: turn?.id ?? null,

@@ -63,12 +63,8 @@ describe('clock (req §10)', () => {
     expect(ticked.state).toBe('RUNNING');
   });
 
-  it('ends immediately when every team has finished, whatever the clock says', () => {
-    const r = place(started({ malPerTeam: 1 }), { t1m1: 19, t2m1: 20 });
-    const ended = play(r, '도', undefined, T0 + 1000);
-    expect(ended.state).toBe('ENDED');
-    expect(ended.endReason).toBe('allFinished');
-  });
+  // (Removed: "ends when every team finished" — 말 respawn on 완주 = endless laps, so a
+  //  game never ends by finishing; it ends only on time (timeup) or 게임 종료 (master).)
 
   it('lets the master end on the spot', () => {
     const r = act(started(), { t: 'END', reason: 'master' }, T0 + 1000);
