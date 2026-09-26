@@ -30,7 +30,10 @@ function defaultNext(node: number): number {
   switch (node) {
     case 21: return 22;
     case 22: return CENTER;
-    case CENTER: return 24; // 방 flows to the 참 exit by default
+    // Flowing THROUGH 방 (not landing) continues the long way to the 15-side. The 참
+    // home-exit (24) is reachable ONLY by LANDING on 방 — see firstOptions(CENTER).
+    // So passing over 방 (e.g. 모+모) never earns the home shortcut.
+    case CENTER: return 28;
     case 24: return 25;
     case 25: return HOME;
     case 26: return 27;

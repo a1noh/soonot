@@ -44,9 +44,13 @@ describe('progress encoding + movement (req §6)', () => {
     expect(new Set(destinations(23, 3))).toEqual(new Set([20, 15]));
   });
 
-  it('the 모 지름길 reaches 집 in 11칸 total (shortest course)', () => {
-    // From 모(5), 6 more steps down the diagonal → 집. 5 + 6 = 11 from the start.
-    expect(destinations(5, 6)).toContain(HOME);
+  it('the home shortcut needs an EXACT landing on 방 — overshooting 방 goes the long way', () => {
+    // 모+모(5) or bigger passes THROUGH 방 and continues the long way — never near-집.
+    expect(destinations(5, 5)).not.toContain(HOME); // 모+모 = 바깥/15쪽, not home
+    expect(destinations(5, 6)).not.toContain(HOME);
+    // You must LAND on 방 first, then exit toward 참: 모+걸 → 방, 방+걸 → 집.
+    expect(destinations(5, 3)).toContain(23); // 모 + 걸 lands on 방
+    expect(destinations(23, 3)).toContain(HOME); // 방 + 걸 → 집 (home exit, only on landing)
   });
 
   it('advancement rises from 대기(0) to 집, and is shortcut-aware', () => {

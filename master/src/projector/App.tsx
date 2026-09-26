@@ -450,9 +450,6 @@ export function App() {
   const screen = (() => {
     if (!summary) return <Standby summary={null} joinable={false} />;
     if (active === 'yutnori') {
-      // During the hold, fall through to the board so the 미니게임! callout plays
-      // over it; the roulette only appears once the callout has finished (mgShow).
-      if (yView?.pendingMiniGame && mgShow) return <MiniGameStage pending={yView.pendingMiniGame} games={yView.miniGames} duelGames={yView.duelGames} />;
       if (yView && (yView.state === 'REVEAL' || yView.state === 'ENDED')) {
         return (
           <>
@@ -461,9 +458,22 @@ export function App() {
           </>
         );
       }
-      // The board is always on screen once the game exists — SETUP, LOBBY or
-      // RUNNING — exactly like /y. Standby only before any event.
-      if (yView) return <YutnoriBoard view={yView} />;
+      // The board is always on screen once the game exists — SETUP, LOBBY or RUNNING.
+      // The mini-game roulette is an OVERLAY on top of the (still-mounted) board, so the
+      // 말 visibly slides to the 밭 before it and slides back when it closes on a fail —
+      // instead of the board unmounting and snapping. Standby only before any event.
+      if (yView) {
+        return (
+          <>
+            <YutnoriBoard view={yView} />
+            {yView.pendingMiniGame && mgShow ? (
+              <div className="mg-overlay">
+                <MiniGameStage pending={yView.pendingMiniGame} games={yView.miniGames} duelGames={yView.duelGames} />
+              </div>
+            ) : null}
+          </>
+        );
+      }
       return <Standby summary={summary} joinable={false} />;
     }
     if (bView && (bView.state === 'REVEAL' || bView.state === 'ENDED')) {

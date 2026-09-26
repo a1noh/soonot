@@ -268,6 +268,10 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 .wcell--line { background: linear-gradient(160deg, #fff0f7, #ffe6c7);
   border-color: var(--gold-deep); box-shadow: 0 0.4vmin 1.6vmin rgba(255,143,194,0.35); }
 
+/* The mini-game roulette overlays the (still-mounted) board so the 말 can slide in
+   before it and slide back when it closes on a fail. */
+.mg-overlay { position: fixed; inset: 0; z-index: 5; }
+
 /* ---- mini-game stage ---------------------------------------------------- */
 .mg { display: flex; flex-direction: column; align-items: center; gap: 3vmin; }
 .mg__flag { font-family: var(--display); font-size: clamp(24px, 4.6vmin, 68px); font-weight: 800; color: var(--gold); margin: 0; }
