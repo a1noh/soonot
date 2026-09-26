@@ -42,7 +42,7 @@ export const DUEL_GAMES: readonly DuelGame[] = [
   { id: 'nolaugh', name: '웃음 참기', instruction: '먼저 웃으면 패' },
   { id: 'bottleflip', name: '물병 세우기', instruction: '먼저 성공하면 승' },
   { id: 'palmpush', name: '손바닥 밀치기', instruction: '먼저 발 움직이면 패' },
-  { id: 'category', name: '카테고리 배틀', instruction: '3초 안에 못 말하면 패' },
+  { id: 'category', name: '카테고리 배틀', instruction: '주제 정하고 번갈아 답하기 (3초 넘기거나 중복이면 패)' },
 ];
 
 export const MS_PER_MIN = 60_000;
