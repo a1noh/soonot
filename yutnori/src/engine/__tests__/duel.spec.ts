@@ -38,6 +38,27 @@ describe('잡기 방어전 (capture duel, req: A)', () => {
     expect(malOf(state, 't2m1').progress).toBe(0);
   });
 
+  it('awards +1 미니게임 point to the winner (duel + station) and survives replay', () => {
+    // Duel: attacker (조1) wins → 조1 +1.
+    let a = turn(armed(), '개').state;
+    a = act(a, { t: 'MINIGAME_RESOLVE', success: true }, T0);
+    expect(a.teams.find((t) => t.id === 't1')!.miniWins).toBe(1);
+    expect(a.teams.find((t) => t.id === 't2')!.miniWins).toBe(0);
+    // Duel: defender (조2) wins → 조2 +1.
+    let d = turn(armed(), '개').state;
+    d = act(d, { t: 'MINIGAME_RESOLVE', success: false }, T0);
+    expect(d.teams.find((t) => t.id === 't2')!.miniWins).toBe(1);
+
+    // Station mini-game success → acting team +1; a played game replays to the same points.
+    let r = started({ malPerTeam: 1, miniGames: true });
+    r = act(r, { t: 'THROW', roll: '윷' }, T0); // 대기→4 (bonus)
+    const trig = step(r, { t: 'THROW', roll: '개' }, T0); // 4→6 (미니게임)
+    const won = act(trig.state, { t: 'MINIGAME_RESOLVE', success: true }, T0);
+    expect(won.teams.find((t) => t.id === 't1')!.miniWins).toBe(1);
+    const rebuilt = replay(setupOf(won), won.history);
+    expect(rebuilt.teams.map((t) => t.miniWins)).toEqual(won.teams.map((t) => t.miniWins));
+  });
+
   it('replays a duel outcome deterministically', () => {
     let r = started({ malPerTeam: 1, captureDuel: true });
     r = play(r, '도'); // 조1: 0→1

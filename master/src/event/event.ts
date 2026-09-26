@@ -38,6 +38,9 @@ export interface EventRecord {
    * projector. Reveal-only on screen; harmless otherwise.
    */
   bingoSpotlight: number | null;
+  /** The 1등 mystery box on `/p` — false = closed 🎁, true = opened to reveal the prize
+   *  (목사님과 커피). Operator-toggled during the bingo reveal. */
+  bingoPrize: boolean;
   readonly games: Record<GameId, GameHandle>;
   readonly createdAt: number;
   closedAt: number | null;
@@ -74,6 +77,7 @@ export function createEvent(input: CreateEventInput): EventRecord {
     projector: 'auto',
     projectorLock: null,
     bingoSpotlight: null,
+    bingoPrize: false,
     games,
     createdAt: now,
     closedAt: null,
@@ -100,6 +104,7 @@ export interface EventSummary {
   projector: ProjectorSetting;
   projectorLock: GameId | null;
   bingoSpotlight: number | null;
+  bingoPrize: boolean;
   games: Record<GameId, { enabled: boolean; state: RoomState }>;
 }
 
@@ -121,6 +126,7 @@ export function summarize(
     projector: event.projector,
     projectorLock: event.projectorLock,
     bingoSpotlight: event.bingoSpotlight,
+    bingoPrize: event.bingoPrize,
     games,
   };
 }

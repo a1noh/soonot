@@ -44,11 +44,12 @@ describe('mini-games (미니게임 칸)', () => {
     expect(r.history.at(-1)!.miniGame).toEqual({ gameId: 'jegi', success: true });
   });
 
-  it('fail reverts the 말 to where it was (NOT 대기) and passes the turn', () => {
+  it('fail steps the 말 back ONE 밭 (not a full revert) and passes the turn', () => {
+    // toSpot lands on 6 via 4→6; a fail steps back one to 5, keeping net progress.
     let r = toSpot().state;
     r = act(r, { t: 'MINIGAME_RESOLVE', success: false }, T0);
     expect(r.pendingMiniGame).toBeNull();
-    expect(malOf(r, 't1m1').progress).toBe(4); // back to the pre-move station, still on the board
+    expect(malOf(r, 't1m1').progress).toBe(5); // one 밭 back from 6, still on the board
     expect(currentTeam(r).name).toBe('조2'); // turn passes
     expect(r.history.at(-1)!.miniGame!.success).toBe(false);
   });
@@ -85,7 +86,7 @@ describe('mini-games (미니게임 칸)', () => {
     expect(currentTeam(ok).name).toBe('조1'); // still 조1 — bonus throw owed
 
     const bad = act(trig.state, { t: 'MINIGAME_RESOLVE', success: false }, T0);
-    expect(malOf(bad, 't1m1').progress).toBe(4); // reverted to before the move
+    expect(malOf(bad, 't1m1').progress).toBe(7); // steps back ONE 밭 from 8 (not a full revert)
     expect(currentTeam(bad).name).toBe('조2'); // bonus forfeited, turn passed
   });
 

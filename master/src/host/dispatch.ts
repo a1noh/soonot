@@ -8,7 +8,7 @@
  */
 
 import type { GameId, RoomState } from '../shared/lifecycle';
-import { BASE_ALLOWED, sibling } from '../shared/lifecycle';
+import { BASE_ALLOWED } from '../shared/lifecycle';
 import type { EventRecord } from '../event/event';
 import type { Registry } from '../event/registry';
 import type { Action, AnyGameModule, Viewer } from './module';
@@ -50,18 +50,13 @@ export function hostGuards(
 
   if (action.t !== 'REVEAL') return;
 
-  const otherId = sibling(gameId);
-  const other = event.games[otherId];
-  const otherState = modules[otherId].lifecycle(other.state);
-
-  // req §5.3 — the reveal is exclusive. Two podiums at once is not a technical
-  // problem, it is a room problem: the reveal is the one moment the whole
-  // gathering looks at one screen together.
-  if (other.enabled && otherState === 'REVEAL') throw new HostError('REVEAL_BUSY');
-
-  // req §5.2 — a reveal seizes the projector, unconditionally, and suspends
-  // `'auto'` until it ends.
+  // A reveal ALWAYS seizes the projector, unconditionally, and suspends `'auto'`
+  // until it ends. We used to reject a reveal while the sibling was still in REVEAL
+  // (REVEAL_BUSY), but nothing ever leaves REVEAL except 다시 하기 — so a game left
+  // in REVEAL permanently blocked the other game's 순위 발표 and the screen never
+  // switched. Sequential reveals are the norm; starting one just moves the screen.
   event.projectorLock = gameId;
+  void modules;
 }
 
 /** Effective whitelist = host base table ∪ the module's own (spec §5). */

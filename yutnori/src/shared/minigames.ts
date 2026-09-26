@@ -15,18 +15,18 @@ export interface MiniGame {
 }
 
 export const MINI_GAMES: readonly MiniGame[] = [
-  { id: 'jegi', name: '제기차기', instruction: '제기를 3번 이상 차기', seconds: 20 },
-  { id: 'names5', name: '이름 5개', instruction: '순장님/목사님 이름 5개 빨리 말하기', seconds: 15 },
-  { id: 'ramen3', name: '라면 3개', instruction: '라면 종류 3개 빨리 말하기', seconds: 10 },
-  { id: 'guess', name: '숫자 맞추기', instruction: '진행자가 정한 1~10 숫자 한 번에 맞추기', seconds: 15 },
-  { id: 'squat', name: '스쿼트 10개', instruction: '온 팀이 스쿼트 10개', seconds: 20 },
-  { id: 'freeze', name: '무궁화꽃', instruction: '"무궁화꽃이 피었습니다" — 5초간 완전히 정지', seconds: 8 },
-  { id: 'praise3', name: '찬양 3곡', instruction: '찬양 제목 3개 대기', seconds: 15 },
-  { id: 'bible3', name: '성경 인물', instruction: '성경 인물 3명 말하기', seconds: 12 },
-  { id: 'food3', name: '음식 3개', instruction: '세 글자 음식 이름 3개 빨리 말하기', seconds: 10 },
-  { id: 'pushup', name: '팔굽혀펴기', instruction: '대표 한 명이 팔굽혀펴기 5개', seconds: 20 },
-  { id: 'country3', name: '나라 3개', instruction: '나라 이름 3개 말하기', seconds: 10 },
-  { id: 'balance', name: '한 발 서기', instruction: '눈 감고 한 발로 10초 버티기', seconds: 12 },
+  { id: 'ramen3', name: '라면 이름', instruction: '라면 이름 3개 연속으로 말하기', seconds: 12 },
+  { id: 'balance', name: '한 발 버티기', instruction: '팀원 전체 한 발로 10초 버티기', seconds: 12 },
+  { id: 'pushup', name: '팔굽혀펴기', instruction: '팔굽혀펴기 5개 성공하기', seconds: 20 },
+  { id: 'choseong', name: '초성 퀴즈', instruction: '진행자 초성 퀴즈 맞히기', seconds: 15 },
+  { id: 'telepathy', name: '텔레파시 하트', instruction: '하트 동작 텔레파시 맞추기', seconds: 10 },
+  { id: 'bottle', name: '물병 세우기', instruction: '물병 세우기 3번 안에 성공하기', seconds: 20 },
+  { id: 'elephant', name: '코끼리코', instruction: '코끼리코 5바퀴 돌고 일자로 걷기', seconds: 20 },
+  { id: 'standup', name: '등 맞대고 일어나기', instruction: '등 맞대고 손 안 쓰고 일어나기', seconds: 20 },
+  { id: 'songword', name: '제시어 노래', instruction: '제시어가 들어간 노래 부르기 (예: 사랑, 주)', seconds: 15 },
+  { id: 'nolaugh', name: '절대 웃지 않기', instruction: '10초 동안 웃지 않고 버티기', seconds: 10 },
+  { id: 'pencil', name: '연필 꽂기', instruction: '연필을 연필꽂이에 던져 넣기', seconds: 15 },
+  { id: 'coin', name: '동전 받기', instruction: '동전 손등 → 공중에 던지기 → 잡기', seconds: 15 },
 ];
 
 export function miniGameById(id: string): MiniGame | undefined {

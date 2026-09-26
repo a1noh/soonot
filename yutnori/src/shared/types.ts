@@ -20,6 +20,8 @@ export interface Room {
   /** 잡기 방어전: a capture triggers a 대표 1:1 duel (가위바위보/눈싸움). If the captured
    *  team's rep wins, the capture is cancelled. Set at SETUP. */
   captureDuel: boolean;
+  /** The editable 1:1 대결 종목 list (the duel roulette picks from it). {id,name,instruction}. */
+  duelGameSet: readonly MiniGame[];
   turnIndex: number;
   throwQueue: number;         // throws still owed to the current team
 
@@ -51,6 +53,8 @@ export interface Team {
   mal: Mal[];
   finishedAt: number | null;
   lastProgressAt: number;     // last time this team's total progress increased
+  /** Cumulative 미니게임/대결 wins (each win = +1 point). Derived by replay, not in RoomSetup. */
+  miniWins: number;
 }
 
 export interface Mal {
@@ -120,6 +124,7 @@ export interface RoomSetup {
   miniGames: boolean;
   miniGameSet: readonly MiniGame[];
   captureDuel: boolean;
+  duelGameSet: readonly MiniGame[];
   teams: TeamSetup[];
   timeLimitMs: number;
   startedAt: number | null;

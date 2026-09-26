@@ -2,7 +2,7 @@ import type { EndReason, MoveCandidate, Roll, TurnEvent } from '../shared/types'
 
 /** spec §4.2 — the complete action union. */
 export type Action =
-  | { t: 'SETUP'; teams: { name: string; roster?: string | null }[]; malPerTeam: 1 | 2; timeLimitMin: number; miniGames?: boolean; captureDuel?: boolean; miniGameSet?: { id: string; name: string; instruction: string; seconds?: number }[] }
+  | { t: 'SETUP'; teams: { name: string; roster?: string | null }[]; malPerTeam: 1 | 2; timeLimitMin: number; miniGames?: boolean; captureDuel?: boolean; miniGameSet?: { id: string; name: string; instruction: string; seconds?: number }[]; duelGameSet?: { id: string; name: string; instruction: string }[] }
   | { t: 'START' }
   | { t: 'THROW'; roll: Roll }
   | { t: 'MOVE'; malId: string; to?: number }

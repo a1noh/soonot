@@ -215,12 +215,12 @@ describe('yutnori — mini-games (Mario Party mode) over sockets', () => {
     // A throw is refused mid-challenge.
     expect((await h.send(m, 'master:throw', { gameId: 'yutnori', roll: '도' })).ok).toBe(false);
 
-    // Spin, then judge a FAIL — the move reverts (to 4, NOT 대기) and the turn passes.
-    await h.send(m, 'master:minigame:spin', { gameId: 'yutnori', game: 'jegi' });
+    // Spin, then judge a FAIL — the 말 steps back ONE 밭 (6→5, not a full revert) and the turn passes.
+    await h.send(m, 'master:minigame:spin', { gameId: 'yutnori', game: 'g1' });
     await h.send(m, 'master:minigame:resolve', { gameId: 'yutnori', success: false });
     await new Promise((r) => setTimeout(r, 120));
     expect(view.pendingMiniGame).toBeNull();
-    expect(view.teams[0].mal[0].progress).toBe(4); // back to the on-board spot, not 대기
+    expect(view.teams[0].mal[0].progress).toBe(5); // one 밭 back from 6, still on the board
     expect(view.turnTeamName).toBe('B조'); // turn passed
   });
 
@@ -299,7 +299,7 @@ describe('reset + robustness', () => {
 });
 
 describe('cross-game — one host, two games (req §5, §11)', () => {
-  it('both run at once; a reveal is exclusive and seizes the projector', async () => {
+  it('both run at once; a reveal seizes the projector (and a later reveal takes it over)', async () => {
     h = await boot();
     const m = await h.masterSocket();
 
@@ -339,9 +339,11 @@ describe('cross-game — one host, two games (req §5, §11)', () => {
     await new Promise((r) => setTimeout(r, 100));
     expect(summary.projectorLock).toBe('yutnori'); // reveal seized the screen (req §5.2)
 
-    // A second reveal while yutnori is revealing is refused (req §5.3).
-    const busy = await h.send(m, 'master:reveal', { gameId: 'bingo', step: 0 });
-    expect(busy.ok).toBe(false);
-    expect(busy.error.code).toBe('REVEAL_BUSY');
+    // A second reveal while yutnori is revealing now SEIZES the screen for bingo
+    // (we dropped REVEAL_BUSY — a game stuck in REVEAL must not block the other's 발표).
+    const second = await h.send(m, 'master:reveal', { gameId: 'bingo', step: 0 });
+    expect(second.ok).toBe(true);
+    await new Promise((r) => setTimeout(r, 100));
+    expect(summary.projectorLock).toBe('bingo');
   });
 });

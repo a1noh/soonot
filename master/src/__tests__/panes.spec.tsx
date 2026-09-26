@@ -25,6 +25,8 @@ const boardView = (o: Partial<BoardView> = {}): BoardView => ({
   pending: null,
   pendingMiniGame: null,
   miniGames: [],
+  duelGames: [],
+  miniRanking: [],
   remainingMs: 1_200_000,
   paused: false,
   revealStep: 0,
@@ -62,7 +64,7 @@ describe('YutnoriMasterPane (윷놀이 console)', () => {
     await user.click(screen.getByRole('button', { name: /준비 완료/ }));
     expect(send).toHaveBeenCalledWith('master:setup', expect.objectContaining({ malPerTeam: 2, timeLimitMin: expect.any(Number) }));
     const teams = send.mock.calls[0]![1].teams;
-    expect(teams).toHaveLength(3); // the default three teams
+    expect(teams).toHaveLength(5); // the default 선교/예배/양육/사역/섬김
   });
 
   it('RUNNING: tapping a throw result sends master:throw', async () => {

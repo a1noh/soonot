@@ -4,7 +4,7 @@
  * The master watches sticks thrown on a stage and taps what they landed on.
  * The app never rolls anything (req §7): randomness does not exist here.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ROLLS, DEFAULT_TIME_LIMIT_MIN, MIN_TEAMS, DUEL_GAMES } from '../shared/constants';
 import { MINI_GAMES } from '../shared/minigames';
 import { nodeLabel, advancementOf } from '../shared/board';
@@ -26,6 +26,16 @@ export interface MasterPaneProps {
 }
 
 export function YutnoriMasterPane({ view, send }: MasterPaneProps) {
+  // After 순위 발표 the podium holds on 두구두구 (step 0); auto-advance to 3rd once.
+  const drumRef = useRef(false);
+  useEffect(() => {
+    if (view?.state !== 'REVEAL') { drumRef.current = false; return undefined; }
+    if (view.revealStep !== 0 || drumRef.current) return undefined;
+    drumRef.current = true;
+    const t = setTimeout(() => void send('master:reveal', { step: 1 }), 2500);
+    return () => clearTimeout(t);
+  }, [view?.state, view?.revealStep, send]);
+
   if (!view) return <p className="pane__hint">불러오는 중…</p>;
   if (view.state === 'SETUP') return <SetupForm send={send} />;
 
@@ -40,6 +50,12 @@ export function YutnoriMasterPane({ view, send }: MasterPaneProps) {
         )}
         {view.throwQueue > 0 ? <span className="yut__owed">던질 횟수 {view.throwQueue}</span> : null}
       </div>
+
+      {view.miniRanking.some((r) => r.wins > 0) ? (
+        <p className="yut__miniwins">
+          🏅 미니게임: {view.miniRanking.filter((r) => r.wins > 0).map((r) => `${r.teamName} ${r.wins}`).join(' · ')}
+        </p>
+      ) : null}
 
       {view.state === 'LOBBY' ? (
         <button className="btn btn--primary btn--big" onClick={() => void send('master:start')}>
@@ -176,11 +192,15 @@ export function YutnoriMasterPane({ view, send }: MasterPaneProps) {
 function MiniGamePanel({ view, send }: { view: BoardView; send: MasterPaneProps['send'] }) {
   const pending = view.pendingMiniGame!;
   const duel = pending.duel;
-  // For a 방어전 the "games" are the quick 1:1 duel list; otherwise the mini-game DB.
+  // For a 방어전 the "games" are the event's 1:1 대결 종목 list; otherwise the mini-game DB.
   const games = duel
-    ? DUEL_GAMES.map((n) => ({ id: n, name: n, instruction: '', seconds: undefined as number | undefined }))
+    ? view.duelGames.length > 0 ? view.duelGames : DUEL_GAMES
     : view.miniGames.length > 0 ? view.miniGames : MINI_GAMES;
-  const game = pending.gameId ? games.find((g) => g.id === pending.gameId) : null;
+  // Fall back to a bare game when the id isn't in the current list (edited DB / stale id),
+  // so a spun game always shows the judge UI rather than dropping back to the roulette.
+  const game = pending.gameId
+    ? games.find((g) => g.id === pending.gameId) ?? { id: pending.gameId, name: pending.gameId, instruction: '' }
+    : null;
   const [spinning, setSpinning] = useState(false);
   const [face, setFace] = useState(0);
 
@@ -217,8 +237,8 @@ function MiniGamePanel({ view, send }: { view: BoardView; send: MasterPaneProps[
         ) : (
           <>
             <div className="minigame__card">
-              <strong className="minigame__name">{pending.gameId}</strong>
-              <span className="minigame__inst">대표 1명씩 나와서 대결 — 이긴 팀을 눌러주세요</span>
+              <strong className="minigame__name">{game?.name ?? pending.gameId}</strong>
+              <span className="minigame__inst">{game?.instruction || '대표 1명씩 나와서 대결'} — 이긴 팀을 눌러주세요</span>
             </div>
             <div className="minigame__judge">
               <button className="btn btn--danger btn--big" onClick={() => void send('master:minigame:resolve', { success: true })}>
@@ -254,7 +274,7 @@ function MiniGamePanel({ view, send }: { view: BoardView; send: MasterPaneProps[
           <div className="minigame__card">
             <strong className="minigame__name">{game.name}</strong>
             <span className="minigame__inst">{game.instruction}</span>
-            {game.seconds ? <Countdown seconds={game.seconds} /> : null}
+            {(game as { seconds?: number }).seconds ? <Countdown seconds={(game as { seconds?: number }).seconds!} /> : null}
           </div>
           <div className="minigame__judge">
             <button className="btn btn--primary btn--big" onClick={() => void send('master:minigame:resolve', { success: true })}>
@@ -281,23 +301,28 @@ function Countdown({ seconds }: { seconds: number }) {
 }
 
 function SetupForm({ send }: { send: MasterPaneProps['send'] }) {
-  const [raw, setRaw] = useState('청년 1조\n청년 2조\n장년부');
+  const [raw, setRaw] = useState('선교\n예배\n양육\n사역\n섬김');
   const [malPerTeam, setMal] = useState<1 | 2>(2);
   const [minutes, setMinutes] = useState(DEFAULT_TIME_LIMIT_MIN);
   const [miniGames, setMiniGames] = useState(true);
   const [captureDuel, setCaptureDuel] = useState(true);
   // The 미니게임 데이터베이스, one per line as "이름 | 설명". Prefilled from the pack.
   const [gamesRaw, setGamesRaw] = useState(MINI_GAMES.map((g) => `${g.name} | ${g.instruction}`).join('\n'));
+  // The 1:1 대결 종목 list (잡기 방어전), same "이름 | 설명" format. Prefilled from DUEL_GAMES.
+  const [duelRaw, setDuelRaw] = useState(DUEL_GAMES.map((g) => `${g.name} | ${g.instruction}`).join('\n'));
   const teams = raw.split('\n').map((l) => l.trim()).filter(Boolean);
-  const miniGameSet = gamesRaw
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean)
-    .map((line, i) => {
-      const [name, ...rest] = line.split('|');
-      return { id: `g${i + 1}`, name: (name ?? '').trim(), instruction: rest.join('|').trim() };
-    })
-    .filter((g) => g.name);
+  const parseList = (raw0: string, prefix: string) =>
+    raw0
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .map((line, i) => {
+        const [name, ...rest] = line.split('|');
+        return { id: `${prefix}${i + 1}`, name: (name ?? '').trim(), instruction: rest.join('|').trim() };
+      })
+      .filter((g) => g.name);
+  const miniGameSet = parseList(gamesRaw, 'g');
+  const duelGameSet = parseList(duelRaw, 'd');
 
   return (
     <form
@@ -311,6 +336,7 @@ function SetupForm({ send }: { send: MasterPaneProps['send'] }) {
           miniGames,
           captureDuel,
           miniGameSet,
+          duelGameSet,
         });
       }}
     >
@@ -350,6 +376,20 @@ function SetupForm({ send }: { send: MasterPaneProps['send'] }) {
         <input type="checkbox" checked={captureDuel} onChange={(e) => setCaptureDuel(e.currentTarget.checked)} />
         <span>잡기 대표 대결 (방어전) — 잡히면 대표 1:1, 수비 이기면 말 살아남음</span>
       </label>
+      {captureDuel ? (
+        <label className="field">
+          <span className="field__label">
+            1:1 대결 종목 — 한 줄에 하나, <b>이름 | 설명</b> ({duelGameSet.length}개)
+          </span>
+          <textarea
+            className="field__input yut-setup__games"
+            rows={6}
+            value={duelRaw}
+            onChange={(e) => setDuelRaw(e.currentTarget.value)}
+            placeholder="가위바위보 | 단판 승부"
+          />
+        </label>
+      ) : null}
       <label className="yut-setup__check">
         <input type="checkbox" checked={miniGames} onChange={(e) => setMiniGames(e.currentTarget.checked)} />
         <span>미니게임 켜기 (칸에 서면 룰렛 → 팀 미니게임)</span>

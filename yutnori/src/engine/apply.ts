@@ -1,8 +1,8 @@
-import { HOME, BONUS_ROLLS, MIN_TEAMS, MS_PER_MIN, MAX_REVEAL_STEP, TEAM_COLORS, DEFAULT_TIME_LIMIT_MIN, WAITING, isMiniGameStation } from '../shared/constants';
+import { HOME, BONUS_ROLLS, MIN_TEAMS, MS_PER_MIN, MAX_REVEAL_STEP, TEAM_COLORS, DEFAULT_TIME_LIMIT_MIN, WAITING, isMiniGameStation, DUEL_GAMES, ROLL_STEPS } from '../shared/constants';
 import type { EndReason, MoveCandidate, Roll, Room, RoomState, Team, TurnEvent } from '../shared/types';
 import { EngineError, type Action, type Emit } from './actions';
 import { candidates } from './candidates';
-import { isOnBoard } from '../shared/board';
+import { isOnBoard, stepBefore } from '../shared/board';
 import { replay, setupOf } from './replay';
 import { MINI_GAMES } from '../shared/minigames';
 
@@ -25,6 +25,7 @@ export function newRoom(p: { id: string; eventId: string; createdAt: number }): 
     miniGames: false,
     miniGameSet: MINI_GAMES,
     captureDuel: false,
+    duelGameSet: DUEL_GAMES,
     turnIndex: 0,
     throwQueue: 0,
     pendingThrow: null,
@@ -214,21 +215,41 @@ function revertMove(r: Room, ev: TurnEvent): void {
  */
 function resolveMiniGame(r: Room, success: boolean, now: number): Emit[] {
   const ev = r.history[r.history.length - 1]!;
-  const gameId = r.pendingMiniGame?.gameId ?? '';
-  const duel = !!r.pendingMiniGame?.duel;
+  const pending = r.pendingMiniGame!;
+  const gameId = pending.gameId ?? '';
+  const duel = pending.duel;
   ev.miniGame = { gameId, success };
   r.pendingMiniGame = null;
 
+  // Points (+1 to the winner): a station success → the acting team; a duel success →
+  // the attacker (teamId); a duel loss → the defender (vsTeam). A station loss awards none.
+  const winnerId = success ? pending.teamId : duel ? duel.vsTeam : null;
+  if (winnerId) {
+    const w = r.teams.find((t) => t.id === winnerId);
+    if (w) w.miniWins += 1;
+  }
+
   if (success) {
-    const events: Emit[] = [{ e: 'minigame:resolved', success: true, duel }];
+    const events: Emit[] = [{ e: 'minigame:resolved', success: true, duel: !!duel }];
     events.push(...advanceAfterMove(r, now));
     return events;
   }
 
-  revertMove(r, ev);
+  if (duel) {
+    // 방어전 수비 승: cancel the catch entirely — the challenger 말 returns to its
+    // original 밭 and the captured 말 is restored.
+    revertMove(r, ev);
+  } else {
+    // 미니게임 실패: NOT a full revert — the 말 only steps back ONE 밭 from the
+    // mini-game 밭, so it keeps net progress and the game still converges.
+    const team = r.teams.find((t) => t.id === ev.teamId)!;
+    const mal = team.mal.find((m) => m.id === ev.malId)!;
+    mal.progress = stepBefore(ev.from, ROLL_STEPS[ev.roll], ev.to);
+    if (ev.finishedTeam) team.finishedAt = null;
+  }
   r.throwQueue = 0; // forfeit any bonus this move granted
   const events: Emit[] = [
-    { e: 'minigame:resolved', success: false, duel },
+    { e: 'minigame:resolved', success: false, duel: !!duel },
     { e: 'board:update', mal: boardMal(r), lastMove: ev },
   ];
   r.turnIndex = nextTeamIndex(r, r.turnIndex);
@@ -263,6 +284,7 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       r.miniGames = action.miniGames ?? false;
       r.captureDuel = action.captureDuel ?? false;
       r.miniGameSet = action.miniGameSet && action.miniGameSet.length > 0 ? action.miniGameSet : MINI_GAMES;
+      r.duelGameSet = action.duelGameSet && action.duelGameSet.length > 0 ? action.duelGameSet : DUEL_GAMES;
       r.timeLimitMs = Math.round(action.timeLimitMin * MS_PER_MIN);
       r.teams = action.teams.map((t, i) => {
         const id = `t${i + 1}`;
@@ -274,6 +296,7 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
           mal: Array.from({ length: action.malPerTeam }, (_, j) => ({ id: `${id}m${j + 1}`, progress: WAITING })),
           finishedAt: null,
           lastProgressAt: now,
+          miniWins: 0,
         };
       });
       r.state = 'LOBBY';

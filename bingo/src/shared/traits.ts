@@ -132,3 +132,35 @@ export const STARTER_TRAITS: readonly StarterTrait[] = [
 ] as const;
 
 export const STARTER_TRAIT_COUNT = STARTER_TRAITS.length; // 104
+
+/**
+ * This event's real 5×5 card (온누리 Win2 순장 OT). Exactly CELLS (25) traits, in order —
+ * the console loads these as the default trait list. `STARTER_TRAITS` stays as an extra pool.
+ */
+export const DEFAULT_BINGO_TRAITS: readonly string[] = [
+  '선교 갔다 온 사람',
+  'ISFP인 사람',
+  '안경 쓴 사람',
+  '지난주 새벽기도 참석한 사람',
+  '성경 통독 완주해 본 사람',
+  '어제 QT 한 사람',
+  'MBTI가 J인 사람',
+  'MBTI가 I인 사람',
+  'MBTI가 T인 사람',
+  '나랑 신발 사이즈 같은 사람',
+  'Galaxy 쓰는 사람',
+  '세례 받은 지 10년 이상 된 사람',
+  '수련회에서 울어본 사람 😂',
+  'FREE — 옆 사람과 하이파이브 ✋',
+  '크로스 러닝 나가본 사람',
+  '최근 2주 안에 영화관에서 영화 본 사람',
+  '나랑 양말 색깔 같은 사람',
+  '귀 뚫은 사람',
+  '나랑 성이 같은 사람',
+  '오늘 처음 대화해보는 사람',
+  '다른 공동체에서 섬기는 사람',
+  '나랑 생일 달이 같은 사람',
+  '나랑 동갑인 사람',
+  '배터리 30% 이하인 사람 🔋',
+  '오늘 커피 마신 사람 ☕',
+] as const;

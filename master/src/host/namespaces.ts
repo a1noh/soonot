@@ -371,6 +371,20 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
     }
   });
 
+  /** Open/close the 1등 mystery box on `/p` (목사님과 커피). `projector:`-prefixed so
+   *  `onAny` skips it, like the spotlight. */
+  socket.on('projector:prize', (payload: unknown, ack: unknown) => {
+    try {
+      const open = (payload as { open?: unknown } | null)?.open === true;
+      registry.require().bingoPrize = open;
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
   socket.on('game:enable', (payload: unknown, ack: unknown) => {
     try {
       const { gameId, enabled } = (payload ?? {}) as { gameId?: unknown; enabled?: unknown };
@@ -396,7 +410,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       registry.commit(gameId, fresh);
       if (event.projectorLock === gameId) event.projectorLock = null;
       // A fresh bingo game has no winners — drop any lingering card spotlight.
-      if (gameId === 'bingo') event.bingoSpotlight = null;
+      if (gameId === 'bingo') { event.bingoSpotlight = null; event.bingoPrize = false; }
       deps.persistence?.enqueue({ gameId, state: fresh, action: { t: 'RESET' }, emits: [], at });
       broadcastSummary(deps);
       pushStateAll(deps.io, gameId, registry, 'everyone');

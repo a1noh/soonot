@@ -140,6 +140,7 @@ export function App() {
                 view={(api.views.bingo as never) ?? null}
                 send={(ev, payload) => api.send('bingo', ev, payload)}
                 spotlight={event.bingoSpotlight}
+                prize={event.bingoPrize}
               />
             )}
           </GamePane>

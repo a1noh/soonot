@@ -65,12 +65,15 @@ function Podium({
   title,
   theme,
   winners,
+  prizeOpen,
 }: {
   ranked: readonly RankEntry[];
   step: number;
   title: string;
   theme?: string;
   winners?: readonly WinnerCard[];
+  /** bingo only — the 1등 mystery box: undefined = no box, false = closed 🎁, true = opened. */
+  prizeOpen?: boolean;
 }) {
   const shown = podiumAt(ranked, step);
   const champ = winners && winners[0]; // 1등's matched people, once fully revealed
@@ -102,6 +105,17 @@ function Podium({
                 </span>
               ))}
             </div>
+          </div>
+        ) : null}
+        {/* 1등 mystery box — appears once 1등 is on screen; operator opens it. */}
+        {prizeOpen !== undefined && step >= 3 ? (
+          <div className={`prizebox${prizeOpen ? ' is-open' : ''}`}>
+            <div className="prizebox__lid" aria-hidden="true">🎁</div>
+            {prizeOpen ? (
+              <div className="prizebox__prize">🥇 1등 상품 · <b>목사님과 커피</b> ☕</div>
+            ) : (
+              <div className="prizebox__hint">1등 미스터리 박스 🎁</div>
+            )}
           </div>
         ) : null}
       </div>
@@ -150,12 +164,10 @@ function yutRank(standings: BoardView['standings']): RankEntry[] {
   }));
 }
 
-function MiniGameStage({ pending, games }: { pending: NonNullable<BoardView['pendingMiniGame']>; games: BoardView['miniGames'] }) {
+function MiniGameStage({ pending, games, duelGames }: { pending: NonNullable<BoardView['pendingMiniGame']>; games: BoardView['miniGames']; duelGames: BoardView['duelGames'] }) {
   const duel = pending.duel;
-  const list = duel ? DUEL_GAMES.map((n) => ({ id: n, name: n, instruction: '' })) : games.length > 0 ? games : MINI_GAMES;
-  const game = pending.gameId
-    ? (duel ? { id: pending.gameId, name: pending.gameId, instruction: '' } : list.find((g) => g.id === pending.gameId))
-    : null;
+  const list = duel ? (duelGames.length > 0 ? duelGames : DUEL_GAMES) : games.length > 0 ? games : MINI_GAMES;
+  const game = pending.gameId ? list.find((g) => g.id === pending.gameId) ?? { id: pending.gameId, name: pending.gameId, instruction: '' } : null;
   const [face, setFace] = useState(0);
   useEffect(() => {
     if (game) return undefined;
@@ -196,6 +208,27 @@ function MiniGameStage({ pending, games }: { pending: NonNullable<BoardView['pen
   );
 }
 
+/** The 🏅 미니게임 왕 board — teams by mini-game/duel wins (a second race alongside 말). */
+function MiniKing({ ranking }: { ranking: BoardView['miniRanking'] }) {
+  const shown = ranking.filter((r) => r.wins > 0);
+  if (shown.length === 0) return null;
+  return (
+    <div className="miniking">
+      <h2 className="miniking__cap">🏅 미니게임 왕</h2>
+      <ol className="miniking__list">
+        {shown.map((r, i) => (
+          <li key={r.teamId} className={`miniking__row${i === 0 ? ' is-top' : ''}`}>
+            <span className="miniking__rank">{i + 1}</span>
+            <span className="miniking__dot" style={{ background: r.color }} />
+            <span className="miniking__name">{r.teamName}</span>
+            <span className="miniking__wins">{r.wins}점</span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 function YutnoriBoard({ view }: { view: BoardView }) {
   const running = view.state === 'RUNNING';
   const label =
@@ -219,6 +252,7 @@ function YutnoriBoard({ view }: { view: BoardView }) {
           <HomeTray view={view} />
           <h2>순위</h2>
           <Standings view={view} />
+          <MiniKing ranking={view.miniRanking} />
           <HowToPlay />
         </aside>
       </div>
@@ -418,9 +452,14 @@ export function App() {
     if (active === 'yutnori') {
       // During the hold, fall through to the board so the 미니게임! callout plays
       // over it; the roulette only appears once the callout has finished (mgShow).
-      if (yView?.pendingMiniGame && mgShow) return <MiniGameStage pending={yView.pendingMiniGame} games={yView.miniGames} />;
+      if (yView?.pendingMiniGame && mgShow) return <MiniGameStage pending={yView.pendingMiniGame} games={yView.miniGames} duelGames={yView.duelGames} />;
       if (yView && (yView.state === 'REVEAL' || yView.state === 'ENDED')) {
-        return <Podium ranked={yutRank(yView.standings)} step={yView.state === 'ENDED' ? 0 : yView.revealStep} title="윷놀이" />;
+        return (
+          <>
+            <Podium ranked={yutRank(yView.standings)} step={yView.state === 'ENDED' ? 0 : yView.revealStep} title="윷놀이" />
+            <div className="miniking-corner"><MiniKing ranking={yView.miniRanking} /></div>
+          </>
+        );
       }
       // The board is always on screen once the game exists — SETUP, LOBBY or
       // RUNNING — exactly like /y. Standby only before any event.
@@ -433,7 +472,7 @@ export function App() {
       const spot = summary.bingoSpotlight;
       const winner = spot != null ? bView.winners.find((w) => w.n === spot) : undefined;
       if (winner) return <WinnerCardStage winner={winner} />;
-      return <Podium ranked={bView.standings} step={bView.state === 'ENDED' ? 0 : bView.revealStep} title="빙고" theme="bingo" winners={bView.winners} />;
+      return <Podium ranked={bView.standings} step={bView.state === 'ENDED' ? 0 : bView.revealStep} title="빙고" theme="bingo" winners={bView.winners} prizeOpen={summary.bingoPrize} />;
     }
     if (bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY')) {
       return <BingoScreen view={bView} summary={summary} flash={flash} />;

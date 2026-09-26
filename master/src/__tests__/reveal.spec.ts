@@ -11,44 +11,21 @@ async function toEnded(h: ReturnType<typeof harness>, gameId: 'bingo' | 'yutnori
   await h.dispatch(gameId, { t: 'END' }, MASTER);
 }
 
-describe('the reveal is exclusive', () => {
-  it('rejects a second podium while the first is running', async () => {
+describe('a reveal always seizes the projector (no exclusivity block)', () => {
+  it('lets the sibling reveal even while the first is still in REVEAL, moving the screen', async () => {
+    // We dropped REVEAL_BUSY: nothing ever leaves REVEAL except 다시 하기, so a game
+    // stuck in REVEAL used to permanently block the other game's 순위 발표. Now the
+    // second reveal simply takes over the screen.
     const h = harness();
     await toEnded(h, 'bingo');
     await toEnded(h, 'yutnori');
 
     await h.dispatch('bingo', { t: 'REVEAL' }, MASTER);
-
-    await expect(h.dispatch('yutnori', { t: 'REVEAL' }, MASTER)).rejects.toMatchObject({
-      code: 'REVEAL_BUSY',
-      message: '이미 다른 게임 순위를 발표 중이에요',
-    });
-    // The blocked game waits in ENDED; the master taps 순위 발표 when ready.
-    expect(h.stateOf('yutnori')).toBe('ENDED');
-  });
-
-  it('lets the sibling reveal once the first has left REVEAL', async () => {
-    const h = harness();
-    await toEnded(h, 'bingo');
-    await toEnded(h, 'yutnori');
-
-    await h.dispatch('bingo', { t: 'REVEAL' }, MASTER);
-    // A game leaves REVEAL only by the event being reworked; here the sibling
-    // is simply blocked until bingo's handle is no longer revealing.
-    h.registry.commit('bingo', { ...h.raw('bingo'), state: 'ENDED', revealStep: 0 });
+    expect(h.event.projectorLock).toBe('bingo');
 
     await expect(h.dispatch('yutnori', { t: 'REVEAL' }, MASTER)).resolves.toBeTruthy();
     expect(h.stateOf('yutnori')).toBe('REVEAL');
-  });
-
-  it('ignores a disabled sibling that happens to be in REVEAL', async () => {
-    const h = harness();
-    await toEnded(h, 'bingo');
-    await toEnded(h, 'yutnori');
-    await h.dispatch('bingo', { t: 'REVEAL' }, MASTER);
-
-    h.event.games.bingo.enabled = false;
-    await expect(h.dispatch('yutnori', { t: 'REVEAL' }, MASTER)).resolves.toBeTruthy();
+    expect(h.event.projectorLock).toBe('yutnori'); // the later reveal seizes the screen
   });
 });
 

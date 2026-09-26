@@ -89,7 +89,19 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
             })
             .filter((g): g is { id: string; name: string; instruction: string } => g !== null)
         : undefined;
-      return { t: 'SETUP', teams, malPerTeam, timeLimitMin, miniGames, captureDuel, miniGameSet };
+      // The editable 1:1 대결 종목 list (same shape as miniGameSet, minus seconds).
+      const rawDuel = (p as { duelGameSet?: unknown }).duelGameSet;
+      const duelGameSet = Array.isArray(rawDuel)
+        ? rawDuel
+            .map((g, i) => {
+              const name = typeof g?.name === 'string' ? g.name.trim() : '';
+              const instruction = typeof g?.instruction === 'string' ? g.instruction.trim() : '';
+              const id = typeof g?.id === 'string' && g.id ? g.id : `d${i + 1}`;
+              return name ? { id, name, instruction } : null;
+            })
+            .filter((g): g is { id: string; name: string; instruction: string } => g !== null)
+        : undefined;
+      return { t: 'SETUP', teams, malPerTeam, timeLimitMin, miniGames, captureDuel, miniGameSet, duelGameSet };
     }
     case 'master:start':
       return { t: 'START' };

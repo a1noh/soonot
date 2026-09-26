@@ -66,6 +66,20 @@ export function destinations(from: number, steps: number): number[] {
   return [...new Set(outs)];
 }
 
+/**
+ * The 밭 one step BEFORE `to` along the route a 말 took from `from` moving `steps`
+ * — used for the 미니게임 실패 penalty (the 말 steps back one 밭 instead of a full
+ * revert). Returns `from` when the move was a single step (or the route can't be
+ * reconstructed), so it never advances the 말.
+ */
+export function stepBefore(from: number, steps: number, to: number): number {
+  if (steps <= 1) return from;
+  for (const first of firstOptions(from)) {
+    if (walk(from, first, steps) === to) return walk(from, first, steps - 1);
+  }
+  return from;
+}
+
 export function isWaiting(node: number): boolean {
   return node === WAITING;
 }

@@ -49,8 +49,8 @@ function yutView(over: Record<string, unknown> = {}) {
     kind: 'board',
     state: 'RUNNING',
     teams: [
-      { id: 't1', name: 'A조', roster: null, color: '#C0392B', mal: [{ id: 't1m1', progress: 3 }], finishedAt: null },
-      { id: 't2', name: 'B조', roster: null, color: '#1F6FB2', mal: [{ id: 't2m1', progress: 0 }], finishedAt: null },
+      { id: 't1', name: 'A조', roster: null, color: '#C0392B', mal: [{ id: 't1m1', progress: 3 }], finishedAt: null, miniWins: 0 },
+      { id: 't2', name: 'B조', roster: null, color: '#1F6FB2', mal: [{ id: 't2m1', progress: 0 }], finishedAt: null, miniWins: 0 },
     ],
     turnTeamId: 't2',
     turnTeamName: 'B조',
@@ -63,6 +63,8 @@ function yutView(over: Record<string, unknown> = {}) {
     endReason: null,
     standings: [],
     miniGames: [{ id: 'jegi', name: '제기차기', instruction: '제기를 3번 차기' }],
+    duelGames: [],
+    miniRanking: [],
     ...over,
   };
 }

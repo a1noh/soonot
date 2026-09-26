@@ -24,8 +24,26 @@ export function isMiniGameStation(progress: number): boolean {
   return MINIGAME_STATIONS.includes(progress);
 }
 
-/** Quick 1:1 head-to-head games for a 잡기 방어전 (대표 대결) — no equipment, instant. */
-export const DUEL_GAMES: readonly string[] = ['가위바위보', '눈싸움', '참참참', '손병호(팔씨름)'];
+/** One quick 1:1 head-to-head game for a 잡기 방어전 (대표 대결). */
+export interface DuelGame {
+  readonly id: string;
+  readonly name: string;
+  readonly instruction: string;
+}
+
+/** Built-in 1:1 대결 종목 — the default `duelGameSet`; the console can edit the list. */
+export const DUEL_GAMES: readonly DuelGame[] = [
+  { id: 'rps', name: '가위바위보', instruction: '단판 승부' },
+  { id: 'chamchamcham', name: '참참참', instruction: '고개 방향 피하기' },
+  { id: 'staredown', name: '눈싸움', instruction: '먼저 눈 깜빡이면 패' },
+  { id: 'mukjjippa', name: '묵찌빠', instruction: '먼저 이기면 승' },
+  { id: 'thumbwar', name: '엄지씨름', instruction: '엄지로 상대 엄지 3초 누르면 승' },
+  { id: 'onefoot', name: '한 발 서기', instruction: '먼저 발 닿으면 패' },
+  { id: 'nolaugh', name: '웃음 참기', instruction: '먼저 웃으면 패' },
+  { id: 'bottleflip', name: '물병 세우기', instruction: '먼저 성공하면 승' },
+  { id: 'palmpush', name: '손바닥 밀치기', instruction: '먼저 발 움직이면 패' },
+  { id: 'category', name: '카테고리 배틀', instruction: '3초 안에 못 말하면 패' },
+];
 
 export const MS_PER_MIN = 60_000;
 

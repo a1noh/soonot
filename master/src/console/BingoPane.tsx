@@ -7,21 +7,41 @@
  * watches a live dashboard (counts + who's online + top bingos), and drives the
  * shared reveal.
  */
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MasterView } from '@soonot/bingo/src/project.js';
 import { CELLS, GRID, MIN_PLAYERS_FOR_BINGO } from '@soonot/bingo/src/shared/constants.js';
-import { STARTER_TRAITS } from '@soonot/bingo/src/shared/traits.js';
+import { DEFAULT_BINGO_TRAITS } from '@soonot/bingo/src/shared/traits.js';
 
 export interface BingoPaneProps {
   view: MasterView | null;
   send(ev: string, payload?: Record<string, unknown>): Promise<unknown>;
   /** Which winner's card is currently on /p (their number), from the event summary. */
   spotlight?: number | null;
+  /** Is the 1등 mystery box currently opened on /p? (event summary) */
+  prize?: boolean;
 }
 
-const DEFAULT_TRAITS = STARTER_TRAITS.slice(0, CELLS).map((t) => t.text).join('\n');
+const DEFAULT_TRAITS = DEFAULT_BINGO_TRAITS.join('\n');
 
-export function BingoMasterPane({ view, send, spotlight = null }: BingoPaneProps) {
+/** After 순위 발표 the podium holds on 두구두구 (step 0); auto-advance to 3rd (step 1)
+ *  once, after a short drumroll, so the operator doesn't have to click again. */
+function useRevealDrumroll(
+  state: string | undefined,
+  revealStep: number | undefined,
+  send: (ev: string, payload?: Record<string, unknown>) => Promise<unknown>,
+) {
+  const firedRef = useRef(false);
+  useEffect(() => {
+    if (state !== 'REVEAL') { firedRef.current = false; return undefined; }
+    if (revealStep !== 0 || firedRef.current) return undefined;
+    firedRef.current = true;
+    const t = setTimeout(() => void send('master:reveal', { step: 1 }), 2500);
+    return () => clearTimeout(t);
+  }, [state, revealStep, send]);
+}
+
+export function BingoMasterPane({ view, send, spotlight = null, prize = false }: BingoPaneProps) {
+  useRevealDrumroll(view?.state, view?.revealStep, send);
   if (!view) return <p className="pane__hint">불러오는 중…</p>;
 
   if (view.state === 'SETUP') return <TraitSetup send={send} />;
@@ -99,6 +119,14 @@ export function BingoMasterPane({ view, send, spotlight = null }: BingoPaneProps
           ) : (
             <p className="bingo__prompt">발표 완료</p>
           )}
+          {view.revealStep >= 3 ? (
+            <button
+              className={`btn ${prize ? 'btn--ghost' : 'btn--primary'}`}
+              onClick={() => void send('projector:prize', { open: !prize })}
+            >
+              {prize ? '🙈 상자 닫기' : '🎁 1등 상품 공개 (목사님과 커피)'}
+            </button>
+          ) : null}
           <p className="bingo__note">
             이대로 두면 참가자는 남아 윷놀이를 응원할 수 있어요. 새 판은 “다시 하기”.
           </p>

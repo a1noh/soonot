@@ -4,7 +4,11 @@
    the :root overrides below re-skin the shared tokens for players alone — the
    projector and console keep the dark theme. (grid is repeat(GRID,1fr), spec §2) */
 
-:root {
+/* `:root:root:root` (specificity 0,3,0) on purpose: the shared tokens.css also
+   defines a DARK `:root` and is emitted AFTER this file in the prod bundle, so at
+   equal specificity its dark vars won on a dark-mode phone and the card became
+   unreadable. Repeating `:root` out-specifies it — this light palette always wins. */
+:root:root:root {
   color-scheme: light;
 
   --bg: #fff3fa;
@@ -43,13 +47,16 @@
   --shadow-pop: 0 6px 0 rgba(196, 120, 170, 0.28);
 }
 
-body {
+/* `html body` (specificity 0,0,2) out-specifies tokens.css `body { background: var(--bg) }`
+   (emitted later in prod), so the dreamy pastel gradient isn't flattened. */
+html body {
   background:
     radial-gradient(120% 90% at 12% 0%, #fff0f8 0%, rgba(255,240,248,0) 60%),
     radial-gradient(120% 100% at 90% 8%, #eef1ff 0%, rgba(238,241,255,0) 55%),
     linear-gradient(160deg, #fff6fb 0%, #fdf1ff 45%, #eefaff 100%);
   background-attachment: fixed;
   min-height: 100dvh;
+  color: var(--text);
 }
 
 /* dreamy floating pastel blobs behind everything */

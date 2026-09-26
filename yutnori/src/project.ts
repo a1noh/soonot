@@ -20,6 +20,7 @@ export interface BoardView {
     color: string;
     mal: { id: string; progress: number }[];
     finishedAt: number | null;
+    miniWins: number;
   }[];
   turnTeamId: string | null;
   turnTeamName: string | null;
@@ -36,6 +37,10 @@ export interface BoardView {
   } | null;
   /** This event's mini-game catalog — the roulette + the reveal render from it. */
   miniGames: { id: string; name: string; instruction: string; seconds?: number }[];
+  /** This event's 1:1 대결 종목 list — the duel roulette renders from it. */
+  duelGames: { id: string; name: string; instruction: string }[];
+  /** Teams ranked by 미니게임/대결 wins (the "미니게임 왕" board), most first. */
+  miniRanking: { teamId: string; teamName: string; color: string; wins: number }[];
   remainingMs: number;
   paused: boolean;
   revealStep: number;
@@ -59,6 +64,7 @@ export function project(room: Room, viewer: Viewer, now = Date.now()): BoardView
       color: t.color,
       mal: t.mal.map((m) => ({ id: m.id, progress: m.progress })),
       finishedAt: t.finishedAt,
+      miniWins: t.miniWins,
     })),
     turnTeamId: turn?.id ?? null,
     turnTeamName: turn?.name ?? null,
@@ -80,6 +86,10 @@ export function project(room: Room, viewer: Viewer, now = Date.now()): BoardView
         }
       : null,
     miniGames: room.miniGameSet.map((g) => ({ id: g.id, name: g.name, instruction: g.instruction, seconds: g.seconds })),
+    duelGames: room.duelGameSet.map((g) => ({ id: g.id, name: g.name, instruction: g.instruction })),
+    miniRanking: room.teams
+      .map((t) => ({ teamId: t.id, teamName: t.name, color: t.color, wins: t.miniWins }))
+      .sort((a, b) => b.wins - a.wins || room.teams.findIndex((t) => t.id === a.teamId) - room.teams.findIndex((t) => t.id === b.teamId)),
     remainingMs: remainingMs(room, now),
     paused: room.pausedAt !== null,
     revealStep: room.revealStep,

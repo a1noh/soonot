@@ -93,6 +93,7 @@ export function recoverEvent(
     // A reveal in progress does not survive a restart: the room saw it stop.
     projectorLock: null,
     bingoSpotlight: null,
+    bingoPrize: false,
     games,
     createdAt: row.created_at,
     closedAt: null,
