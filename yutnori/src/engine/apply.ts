@@ -95,6 +95,12 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
 
   mal.progress = cand.to;
 
+  // 잡기 방어전: when a duel will decide the catch, DEFER it — the caught 말 stays put
+  // on the 밭 so the projector can show both 말 meet side by side; it is only sent home
+  // if the attacker's rep wins the duel (applied in `resolveMiniGame`). Without a duel,
+  // the catch is immediate as always.
+  const willDuel = r.captureDuel && cand.captures.length > 0 && cand.to !== HOME;
+
   const captures: TurnEvent['captures'] = [];
   const perVictimTeam = new Map<string, number>();
   for (const victimId of cand.captures) {
@@ -103,8 +109,10 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
       const v = t.mal.find((m) => m.id === victimId);
       if (!v) continue;
       captures.push({ malId: v.id, teamId: t.id, from: v.progress });
-      v.progress = WAITING;
-      perVictimTeam.set(t.id, (perVictimTeam.get(t.id) ?? 0) + 1);
+      if (!willDuel) {
+        v.progress = WAITING;
+        perVictimTeam.set(t.id, (perVictimTeam.get(t.id) ?? 0) + 1);
+      }
     }
   }
 
@@ -154,11 +162,11 @@ function commitMove(r: Room, roll: Roll, cand: MoveCandidate, now: number): Emit
   }
 
   // 잡기 방어전: a catch freezes the turn for a 대표 1:1 duel. Reuse the mini-game
-  // pending/resolve machinery — the capture is already applied, and the duel decides
-  // whether it STANDS (attacker's rep won → resolve success) or is REVERTED (defender's
-  // rep won → resolve fail restores the captured 말). Takes precedence over a station
-  // mini-game on the same 밭.
-  if (r.captureDuel && captures.length > 0 && !finished) {
+  // pending/resolve machinery — the catch is DEFERRED (both 말 sit on the 밭), and the
+  // duel decides whether it STANDS (attacker's rep won → resolve success sends the caught
+  // 말 home) or is CANCELLED (defender's rep won → resolve fail retreats the attacker).
+  // Takes precedence over a station mini-game on the same 밭.
+  if (willDuel) {
     const victim = r.teams.find((t) => t.id === captures[0]!.teamId)!;
     const duel = { vsTeam: victim.id, vsTeamName: victim.name, byTeamName: team.name };
     r.pendingMiniGame = { teamId: team.id, malId: mal.id, station: cand.to, gameId: null, duel };
@@ -235,13 +243,26 @@ function resolveMiniGame(r: Room, success: boolean, now: number): Emit[] {
 
   if (success) {
     const events: Emit[] = [{ e: 'minigame:resolved', success: true, duel: !!duel }];
+    if (duel) {
+      // 방어전 공격 승: the deferred catch now STANDS — send the caught 말(들) home.
+      const perVictimTeam = new Map<string, number>();
+      for (const cap of ev.captures) {
+        const victim = r.teams.find((t) => t.id === cap.teamId)?.mal.find((m) => m.id === cap.malId);
+        if (victim) victim.progress = WAITING;
+        perVictimTeam.set(cap.teamId, (perVictimTeam.get(cap.teamId) ?? 0) + 1);
+      }
+      for (const [victimTeam, count] of perVictimTeam) {
+        events.push({ e: 'capture:announced', byTeam: ev.teamId, victimTeam, station: ev.to, count });
+      }
+      events.push({ e: 'board:update', mal: boardMal(r), lastMove: ev });
+    }
     events.push(...advanceAfterMove(r, now));
     return events;
   }
 
   if (duel) {
     // 방어전 수비 승: cancel the catch entirely — the challenger 말 returns to its
-    // original 밭 and the captured 말 is restored.
+    // original 밭. The caught 말 was never moved (deferred), so it simply stays put.
     revertMove(r, ev);
   } else {
     // 미니게임 실패: NOT a full revert — the 말 only steps back ONE 밭 from the

@@ -14,6 +14,12 @@ describe('잡기 방어전 (capture duel, req: A)', () => {
     );
   });
 
+  it('defers the catch: BOTH 말 sit on the 밭 while the duel is pending', () => {
+    const { state } = turn(armed(), '개'); // t1m1 1→3, lands on t2m1
+    expect(malOf(state, 't1m1').progress).toBe(3); // attacker landed
+    expect(malOf(state, 't2m1').progress).toBe(3); // caught 말 NOT sent home yet — still there
+  });
+
   it('defender wins → the capture is reverted: both 말 go back where they were', () => {
     const { state } = turn(armed(), '개');
     const r = act(state, { t: 'MINIGAME_RESOLVE', success: false }, T0); // 수비 대표 승
