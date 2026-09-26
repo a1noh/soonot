@@ -60,7 +60,7 @@ export function BoardSvg({ view }: { view: BoardView }) {
     const [x, y] = xy(node);
     const stacked = mal.length > 1;
     mal.forEach((m, k) => {
-      const dx = stacked ? (k === 0 ? -3.4 : 3.4) : 0;
+      const dx = stacked ? (k === 0 ? -4.8 : 4.8) : 0;
       placed.set(m.id, { x: x + dx, y, team: m.team, stacked });
     });
   }
@@ -194,7 +194,7 @@ export function BoardSvg({ view }: { view: BoardView }) {
             {/* inner group so the entrance pop (scale) doesn't fight the wrapper's
                 position transform, nor the is-turn stroke pulse on the circle */}
             <g className="board__malin">
-              <circle r={pos.stacked ? 3.0 : 3.4} fill={m.team.color} className="board__mal" filter="url(#malShadow)" />
+              <circle r={pos.stacked ? 2.7 : 3.4} fill={m.team.color} className="board__mal" filter="url(#malShadow)" />
               <text y={1.2} className="board__malnum">{view.teams.indexOf(m.team) + 1}</text>
               {/* 말 index badge (말 1 / 말 2) so a team's two pieces are tellable apart —
                   matches the console's "말 N". Only shown when a team has >1 말. */}
