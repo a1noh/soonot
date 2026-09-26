@@ -23,7 +23,7 @@ export const MINI_GAMES: readonly MiniGame[] = [
   { id: 'bottle', name: '물병 세우기', instruction: '물병 세우기 3번 안에 성공하기', seconds: 20 },
   { id: 'elephant', name: '코끼리코', instruction: '코끼리코 5바퀴 돌고 일자로 걷기', seconds: 20 },
   { id: 'standup', name: '등 맞대고 일어나기', instruction: '등 맞대고 손 안 쓰고 일어나기', seconds: 20 },
-  { id: 'songword', name: '제시어 노래', instruction: '제시어가 들어간 노래 부르기 (예: 사랑, 주)', seconds: 15 },
+  { id: 'nunchi', name: '눈치게임', instruction: '팀원이 1~5를 겹치지 않게 외치기 (겹치면 실패)', seconds: 15 },
   { id: 'nolaugh', name: '절대 웃지 않기', instruction: '10초 동안 웃지 않고 버티기', seconds: 10 },
   { id: 'trash', name: '쓰레기통 슛', instruction: '쓰레기를 쓰레기통에 던져 넣기 (3번 안에 성공)', seconds: 15 },
   { id: 'coin', name: '동전 받기', instruction: '동전 손등 → 공중에 던지기 → 잡기', seconds: 15 },

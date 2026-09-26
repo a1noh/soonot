@@ -49,13 +49,19 @@ export function BoardSvg({ view }: { view: BoardView }) {
     list.push(m);
     atNode.set(m.progress, list);
   }
-  // Stable position per 말 id, so a move slides (CSS transition) not teleports.
-  const placed = new Map<string, { x: number; y: number; team: (typeof onBoard)[number]['team'] }>();
+  // Stable position per 말 id, so a move slides (CSS transition) not teleports. Two 말
+  // sharing a 밭 are pushed further apart AND drawn a touch smaller, so BOTH are clearly
+  // visible side by side (previously they overlapped into one blob).
+  const placed = new Map<
+    string,
+    { x: number; y: number; team: (typeof onBoard)[number]['team']; stacked: boolean }
+  >();
   for (const [node, mal] of atNode) {
     const [x, y] = xy(node);
+    const stacked = mal.length > 1;
     mal.forEach((m, k) => {
-      const dx = mal.length > 1 ? (k === 0 ? -2.2 : 2.2) : 0;
-      placed.set(m.id, { x: x + dx, y, team: m.team });
+      const dx = stacked ? (k === 0 ? -3.4 : 3.4) : 0;
+      placed.set(m.id, { x: x + dx, y, team: m.team, stacked });
     });
   }
 
@@ -188,7 +194,7 @@ export function BoardSvg({ view }: { view: BoardView }) {
             {/* inner group so the entrance pop (scale) doesn't fight the wrapper's
                 position transform, nor the is-turn stroke pulse on the circle */}
             <g className="board__malin">
-              <circle r={3.4} fill={m.team.color} className="board__mal" filter="url(#malShadow)" />
+              <circle r={pos.stacked ? 3.0 : 3.4} fill={m.team.color} className="board__mal" filter="url(#malShadow)" />
               <text y={1.2} className="board__malnum">{view.teams.indexOf(m.team) + 1}</text>
               {/* 말 index badge (말 1 / 말 2) so a team's two pieces are tellable apart —
                   matches the console's "말 N". Only shown when a team has >1 말. */}
