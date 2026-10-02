@@ -3,8 +3,9 @@ import react from '@vitejs/plugin-react';
 import { resolve } from 'node:path';
 
 /**
- * Four entries, one build (spec §2, §9): the master console, the 윷놀이 board,
- * the bingo player card, and the projector switcher.
+ * Five entries, one build (spec §2, §9): the master console, the 윷놀이 board,
+ * the bingo player card, the projector switcher, and the passcode-free 규칙 page
+ * that VBS 꿈당 opens on their own phones.
  */
 export default defineConfig({
   plugins: [react()],
@@ -18,6 +19,7 @@ export default defineConfig({
         board: resolve(__dirname, 'board.html'),
         player: resolve(__dirname, 'player.html'),
         projector: resolve(__dirname, 'projector.html'),
+        rules: resolve(__dirname, 'rules.html'),
       },
     },
   },

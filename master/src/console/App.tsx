@@ -13,8 +13,14 @@ import { EventBar } from './EventBar.js';
 import { GamePane } from './GamePane.js';
 import { YutnoriMasterPane } from '@soonot/yutnori/src/client/MasterPane.js';
 import { BingoMasterPane } from './BingoPane.js';
+import { RulesDoc } from '../rules/RulesDoc.js';
 import '../shared/tokens.css';
 import './console.css';
+
+const TABS: readonly (readonly ['ops' | 'rules', string])[] = [
+  ['ops', '🎲 게임 운영'],
+  ['rules', '📖 윷놀이 규칙'],
+] as const;
 
 function SignIn({ onSubmit }: { onSubmit(passcode: string): Promise<{ ok: boolean; locked?: boolean }> }) {
   const [passcode, setPasscode] = useState('');
@@ -96,6 +102,11 @@ export function App() {
   // req §5.4 — one operator cannot watch two games closely at once, so the
   // console names the one being driven and compacts the other.
   const [focus, setFocus] = useState<GameId>('yutnori');
+  // The 규칙 tab is a reading surface for the operator (and the handoff doc for
+  // VBS 꿈당). Both panels stay MOUNTED and are toggled with `hidden` rather than
+  // conditionally rendered: switching to the rules mid-setup must not discard a
+  // half-typed team list, and the board must not remount on the way back.
+  const [tab, setTab] = useState<'ops' | 'rules'>('ops');
 
   if (api.auth === 'checking') return <main className="signin" aria-busy="true" />;
   if (api.auth === 'signed-out') return <SignIn onSubmit={api.signIn} />;
@@ -113,7 +124,33 @@ export function App() {
         onResetEvent={() => void api.resetEvent()}
       />
 
-      <div className="console__panes">
+      <nav className="tabs" role="tablist" aria-label="진행자 화면">
+        {TABS.map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            id={`tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`tabpanel-${id}`}
+            className={`tabs__btn${tab === id ? ' is-on' : ''}`}
+            onClick={() => setTab(id)}
+          >
+            {label}
+          </button>
+        ))}
+        <a className="tabs__link" href="/rules" target="_blank" rel="noopener">
+          규칙 새 창으로 열기 ↗
+        </a>
+      </nav>
+
+      <div
+        className="console__panes"
+        role="tabpanel"
+        id="tabpanel-ops"
+        aria-labelledby="tab-ops"
+        hidden={tab !== 'ops'}
+      >
         {GAME_IDS.map((gameId) => (
           <GamePane
             key={gameId}
@@ -145,6 +182,16 @@ export function App() {
             )}
           </GamePane>
         ))}
+      </div>
+
+      <div
+        className="console__rules"
+        role="tabpanel"
+        id="tabpanel-rules"
+        aria-labelledby="tab-rules"
+        hidden={tab !== 'rules'}
+      >
+        <RulesDoc />
       </div>
 
       {api.error ? (

@@ -212,6 +212,13 @@ export function createHost(options: HostOptions): Host {
     // 윷놀이 board plus the roulette, podium and reactions. `/y` is kept as an
     // alias so old links/bookmarks still land on the same screen.
     app.get(['/p', '/p/:code', '/y', '/y/:code'], html('projector.html'));
+    // 윷놀이 규칙 + 진행 안내 — the VBS 꿈당 handoff document. Deliberately OUTSIDE
+    // the passcode gate: a 꿈당 leader scans the QR on the console and reads it on
+    // their own phone, so it must not require a master session. It carries no event
+    // data and no controls, only the rules, so there is nothing here to protect.
+    // Registered BEFORE `/:code` below, which is a catch-all that would otherwise
+    // serve the player card for `/rules`.
+    app.get('/rules', html('rules.html'));
     // The bingo player card (bingo §16.5): a static asset ~100 phones hit in a
     // minute. `/b` is the canonical player URL; `/` and `/:code` also land here.
     app.get(['/b', '/', '/:code'], html('player.html'));
@@ -225,6 +232,7 @@ export function createHost(options: HostOptions): Host {
     app.get('/master', unbuilt);
     app.get(['/y', '/y/:code'], unbuilt);
     app.get(['/p', '/p/:code'], unbuilt);
+    app.get('/rules', unbuilt);
     app.get(['/b', '/', '/:code'], unbuilt);
   }
 

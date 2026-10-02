@@ -256,6 +256,12 @@ function YutnoriBoard({ view }: { view: BoardView }) {
           <HowToPlay />
         </aside>
       </div>
+      {/* House motto. 변수 cuts both ways — a program's variable and a game's
+          unexpected twist — so a glitch reads as part of the play, not a stop. */}
+      <p className="board-motto">
+        <span className="board-motto__main">버그도 게임의 일부다</span>
+        <span className="board-motto__sub">오류는 없다 — 변수만 있을 뿐</span>
+      </p>
     </Stage>
   );
 }

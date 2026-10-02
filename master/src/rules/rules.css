@@ -1,0 +1,389 @@
+/*
+ * 규칙 문서 — a reading surface, not a control surface.
+ *
+ * Unlike the console (dense, tappable, glanceable) this page is read start to
+ * finish by someone who has never run the game, sometimes on a phone while
+ * standing beside a stage. So: one measured column, generous line-height, and
+ * headings that survive a skim. Colours come from tokens.css, so it follows the
+ * same dark/light switch as every other surface.
+ *
+ * It also has to print: 꿈당 may want it on paper, so the print block strips the
+ * chrome and forces ink-on-white.
+ */
+
+.rules {
+  --rules-measure: 76ch;
+  max-width: var(--rules-measure);
+  margin: 0 auto;
+  padding: 24px 16px 72px;
+  font-size: 16px;
+  line-height: 1.75;
+  color: var(--text);
+}
+
+.rules p,
+.rules li,
+.rules dd {
+  overflow-wrap: break-word;
+}
+
+/* ---- head ---------------------------------------------------------------- */
+
+.rules__head {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--line-strong);
+}
+
+/* The title block takes the room it needs and the QR rides alongside it; below
+   ~560px the basis stops being satisfiable and the QR wraps under, which is the
+   right order on a phone (read the title first, scan second). */
+.rules__head > div:first-child {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.rules__kicker {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--game-yutnori);
+  font-weight: 700;
+}
+
+.rules__title {
+  margin: 4px 0 8px;
+  font-size: clamp(1.5rem, 4.2vw, 2rem);
+  line-height: 1.25;
+}
+
+.rules__lede {
+  margin: 0;
+  color: var(--text-dim);
+}
+
+.rules__qr {
+  flex: 0 0 auto;
+  width: 160px;
+  margin: 0;
+  text-align: center;
+}
+
+.rules__qr .qr {
+  border-radius: 6px;
+  display: block;
+  margin: 0 auto;
+}
+
+.rules__qrCaption {
+  margin: 8px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+/* ---- table of contents --------------------------------------------------- */
+
+.rules__toc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0 8px;
+}
+
+.rules__toc a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-raised);
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.86rem;
+  font-weight: 600;
+}
+
+.rules__toc a:hover,
+.rules__toc a:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ---- sections ------------------------------------------------------------ */
+
+.rules__section {
+  margin-top: 40px;
+  scroll-margin-top: 16px;
+}
+
+.rules__h2 {
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  font-size: 1.32rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.rules__h3 {
+  margin: 30px 0 8px;
+  font-size: 1.08rem;
+  color: var(--accent);
+}
+
+.rules__section > p,
+.rules__section > ul,
+.rules__section > ol {
+  margin: 10px 0;
+}
+
+.rules__list,
+.rules__ranked,
+.rules__inner {
+  margin: 10px 0;
+  padding-left: 1.3em;
+}
+
+.rules__list li,
+.rules__ranked li,
+.rules__inner li {
+  margin: 6px 0;
+}
+
+.rules__note {
+  margin: 12px 0;
+  padding: 10px 14px;
+  border-left: 3px solid var(--warn);
+  border-radius: 0 var(--radius) var(--radius) 0;
+  background: color-mix(in srgb, var(--warn) 10%, var(--bg-raised));
+  font-size: 0.93rem;
+}
+
+.rules code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--bg-sunken);
+  font-family: var(--mono);
+  font-size: 0.9em;
+}
+
+/* ---- numbered steps ------------------------------------------------------ */
+
+.rules__steps {
+  list-style: none;
+  margin: 14px 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.rules__step {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.rules__stepNum {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--game-yutnori);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.rules__stepTitle {
+  margin: 4px 0 6px;
+  font-size: 1rem;
+}
+
+.rules__stepBody > :first-child { margin-top: 0; }
+.rules__stepBody > :last-child { margin-bottom: 0; }
+.rules__stepBody p { margin: 8px 0; }
+
+/* ---- tables -------------------------------------------------------------- */
+
+.rules__table {
+  width: 100%;
+  margin: 14px 0;
+  border-collapse: collapse;
+  font-size: 0.94rem;
+}
+
+.rules__table caption {
+  margin-bottom: 6px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+}
+
+.rules__table th,
+.rules__table td {
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  text-align: left;
+  vertical-align: top;
+}
+
+.rules__table thead th {
+  background: var(--bg-sunken);
+  font-size: 0.84rem;
+  white-space: nowrap;
+}
+
+.rules__table tbody th {
+  background: var(--bg-raised);
+  white-space: nowrap;
+}
+
+.rules__rollName {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--game-yutnori);
+}
+
+.rules__table--games tbody th { width: 11em; }
+.rules__secs {
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.rules__yes { color: var(--ok); font-weight: 700; }
+.rules__no { color: var(--text-dim); }
+
+/* ---- mini-game stations -------------------------------------------------- */
+
+.rules__stations {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.rules__stationGroup {
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+}
+
+.rules__stationLabel {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+}
+
+.rules__stationNodes {
+  margin: 0 0 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.rules__chip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--game-yutnori) 22%, var(--bg-sunken));
+  border: 1px solid color-mix(in srgb, var(--game-yutnori) 45%, transparent);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.rules__stationNote {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-dim);
+}
+
+/* ---- example tags (mirror the real console tags) ------------------------- */
+
+.tag-ex {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-style: normal;
+}
+
+.tag-ex--fast { background: color-mix(in srgb, var(--ok) 24%, var(--bg-sunken)); color: var(--text); }
+.tag-ex--capture { background: color-mix(in srgb, var(--danger) 24%, var(--bg-sunken)); color: var(--text); }
+.tag-ex--finish { background: color-mix(in srgb, var(--accent) 24%, var(--bg-sunken)); color: var(--text); }
+
+/* ---- FAQ ----------------------------------------------------------------- */
+
+.rules__faq {
+  margin: 14px 0 0;
+}
+
+.rules__faq dt {
+  margin-top: 18px;
+  padding-left: 1.4em;
+  font-weight: 700;
+  position: relative;
+}
+
+.rules__faq dt::before {
+  content: '?';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.rules__faq dd {
+  margin: 4px 0 0 1.4em;
+  color: var(--text-dim);
+}
+
+.rules__faq dd strong { color: var(--text); }
+
+/* ---- foot ---------------------------------------------------------------- */
+
+.rules__foot {
+  margin-top: 44px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 0.92rem;
+}
+
+.rules__foot p { margin: 0; }
+
+/* ---- print: ink on paper, no chrome -------------------------------------- */
+
+@media print {
+  .rules {
+    max-width: none;
+    padding: 0;
+    color: #000;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+  .rules__toc,
+  .rules__qr { display: none; }
+  .rules__section { margin-top: 20pt; break-inside: auto; }
+  .rules__h2 { break-after: avoid; }
+  .rules__h3 { break-after: avoid; color: #000; }
+  .rules__step,
+  .rules__stationGroup,
+  .rules__note { break-inside: avoid; background: none; border-color: #999; }
+  .rules__stepNum { background: #000; }
+  .rules__table thead th,
+  .rules__table tbody th { background: none; }
+  .rules__table { break-inside: auto; }
+  .rules__table tr { break-inside: avoid; }
+  .rules__rollName { color: #000; }
+}
