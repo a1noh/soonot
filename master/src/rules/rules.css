@@ -155,6 +155,16 @@
   margin: 6px 0;
 }
 
+.rules__big {
+  margin: 12px 0;
+  font-size: 1.06rem;
+  line-height: 1.6;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+}
+
 .rules__note {
   margin: 12px 0;
   padding: 10px 14px;
@@ -302,11 +312,6 @@
   font-variant-numeric: tabular-nums;
 }
 
-.rules__stationNote {
-  margin: 0;
-  font-size: 0.82rem;
-  color: var(--text-dim);
-}
 
 /* ---- example tags (mirror the real console tags) ------------------------- */
 
@@ -379,6 +384,7 @@
   .rules__h3 { break-after: avoid; color: #000; }
   .rules__step,
   .rules__stationGroup,
+  .rules__big,
   .rules__note { break-inside: avoid; background: none; border-color: #999; }
   .rules__stepNum { background: #000; }
   .rules__table thead th,

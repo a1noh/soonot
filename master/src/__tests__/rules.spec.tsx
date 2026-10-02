@@ -58,14 +58,14 @@ describe('윷놀이 규칙 문서', () => {
       const row = screen.getByRole('rowheader', { name: roll }).closest('tr')!;
       expect(row.textContent).toContain(`${ROLL_STEPS[roll]}칸`);
       // 윷/모 grant a bonus throw; the rest must not claim one.
-      expect(row.textContent).toContain(BONUS_ROLLS.includes(roll) ? '예' : '아니오');
+      expect(row.textContent).toContain(BONUS_ROLLS.includes(roll) ? '예' : '—');
     }
   });
 
   it('accounts for every 미니게임 칸, and says how many there are', () => {
     const { container } = render(<RulesDoc showQr={false} />);
     // The stated total is derived from the array, not typed in.
-    expect(screen.getByText(`${MINIGAME_STATIONS.length}곳`)).toBeTruthy();
+    expect(screen.getByText(`${MINIGAME_STATIONS.length}개 칸`)).toBeTruthy();
     // Every station is shown as a chip — 방(23) by name, the rest as "N칸" — and
     // the chips are exactly the array, so none is missing or invented.
     const chips = [...container.querySelectorAll('.rules__chip')].map((el) => el.textContent);
@@ -79,18 +79,22 @@ describe('윷놀이 규칙 문서', () => {
     const { container } = render(<RulesDoc showQr={false} />);
     const text = container.textContent ?? '';
     // 지름길 opens only on an EXACT landing — the single most-misplayed rule.
-    expect(text).toContain('정확히 멈췄을 때만');
-    expect(text).toContain('지나가면 열리지 않습니다');
+    expect(text).toContain('딱 멈췄을 때만');
+    expect(text).toContain('지나가면 안 열립니다');
     // No 백도 in this variant.
-    expect(text).toContain('백도');
+    expect(text).toContain('백도 없음');
     // A fail steps back ONE 밭 — not a full revert (engine: `stepBefore`).
     expect(text).toContain('한 칸만 뒤로');
     // Endless laps: 완주 respawns the 말, so ranking is lap count.
-    expect(text).toContain('대기로 돌아');
+    expect(text).toContain('대기로 돌아가 다시 돕니다');
     // One bonus per catch no matter how many 말 went home.
-    expect(text).toContain('추가 던지기는 한 번뿐');
+    expect(text).toContain('여러 개를 잡아도 한 번');
     // The app never randomizes the throw.
-    expect(text).toContain('앱이 굴리지 않습니다');
+    expect(text).toContain('앱은 윷을 굴리지 않습니다');
+    // Overshoot goes home — teams otherwise wait for an exact roll that never comes.
+    expect(text).toContain('딱 맞출 필요 없음');
+    // Ends on the clock, never on "everyone finished".
+    expect(text).toContain('시간으로 끊는 게임');
   });
 
   it('renders both parts and the troubleshooting section', () => {
