@@ -87,6 +87,36 @@
   color: var(--text-dim);
 }
 
+/* ---- quick start: the only thing a cold reader is guaranteed to read ------ */
+
+.rules__quick {
+  margin: 22px 0 4px;
+  padding: 18px 20px;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 9%, var(--bg-raised));
+}
+
+.rules__quickTitle {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.rules__quickList {
+  margin: 0;
+  padding-left: 1.3em;
+  font-size: 1.04rem;
+}
+
+.rules__quickList li { margin: 7px 0; }
+
+.rules__quickFoot {
+  margin: 12px 0 0;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+}
+
 /* ---- table of contents --------------------------------------------------- */
 
 .rules__toc {
@@ -379,6 +409,7 @@
   }
   .rules__toc,
   .rules__qr { display: none; }
+  .rules__quick { break-inside: avoid; background: none; border-color: #000; }
   .rules__section { margin-top: 20pt; break-inside: auto; }
   .rules__h2 { break-after: avoid; }
   .rules__h3 { break-after: avoid; color: #000; }

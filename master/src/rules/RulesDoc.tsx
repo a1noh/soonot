@@ -65,6 +65,20 @@ export function RulesDoc({ showQr = true }: { showQr?: boolean }) {
         ) : null}
       </header>
 
+      {/* The 30-second version. Someone handed this five minutes before the event
+          reads only this card; everything below is reference they look up mid-game. */}
+      <section className="rules__quick" aria-label="처음이면 이것만">
+        <h2 className="rules__quickTitle">처음이면 이것만</h2>
+        <ol className="rules__quickList">
+          <li>팀이 무대에서 <strong>윷을 던진다</strong></li>
+          <li>나온 결과 <strong>도·개·걸·윷·모</strong>를 누른다</li>
+          <li>움직일 <strong>말을 고른다</strong> — 모르겠으면 <strong>🏠 집에 더 가까움</strong></li>
+          <li>미니게임·대결이 뜨면 <strong>룰렛</strong> → <strong>성공/실패</strong></li>
+          <li>반복. 시간이 끝나면 <strong>순위 발표</strong></li>
+        </ol>
+        <p className="rules__quickFoot">아래는 전부 참고용입니다. 막히면 그때 찾아보세요.</p>
+      </section>
+
       <nav className="rules__toc" aria-label="목차">
         <a href="#part1">1부 · 게임 규칙</a>
         <a href="#part2">2부 · 진행 순서</a>
