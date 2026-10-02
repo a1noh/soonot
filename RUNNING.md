@@ -4,8 +4,8 @@ Requires **Node 18+** (`nvm use 20`).
 
 ```bash
 npm install
-npm run verify                 # tsc -b + vitest (279 tests) — both must pass
-npm run build                  # builds all four client surfaces
+npm run verify                 # tsc -b + vitest (299 tests) — both must pass
+npm run build                  # builds all five client surfaces
 npm start                      # http://localhost:3000
 ```
 
@@ -15,6 +15,7 @@ npm start                      # http://localhost:3000
 |---|---|---|
 | **Master console** | `/master` | The operator. Drives both games. Dev passcode `soonot`. |
 | **Bingo card** | `/b` (also `/`, `/:code`) | Each player, on their phone. Bare `/b` first asks for the **참여 코드** on the projector; the QR opens `/{code}` and skips straight to the **닉네임** join. |
+| **윷놀이 규칙** | `/rules` | **No passcode, no 참여 코드** — the handoff doc for VBS 꿈당. Rules + a tap-by-tap operator runbook. The console's **📖 윷놀이 규칙** tab shows the same page with a QR pointing here. Prints cleanly. |
 | **Projector** | `/p` (also `/y`) | The room screen: the full 윷놀이 board, the mini-game roulette, the reveal podium, a bottom-left who's-online box, and right-side emoji reactions. One presentation screen; a **⛶ 전체화면** button (top-right) goes fullscreen. |
 
 Set `MASTER_PASSCODE_HASH` before a real event (`npm run hash-passcode`).
@@ -34,10 +35,18 @@ Set `MASTER_PASSCODE_HASH` before a real event (`npm run hash-passcode`).
 
 - **윷놀이** — team setup, throw pad (도·개·걸·윷·모), move picker labelled by 말/destination/잡기,
   1 Hz clock with time-expiry auto-end, pause/resume/extend, undo, reveal podium.
-  - **미니게임 (Mario-Party)**: 6 ★ spots (stations 6, 8, 11, 13, 16, 18 — all past the start,
-    so a 말 leaving 대기 never lands on one). Landing triggers a **roulette** that picks a game
-    from the event's editable **미니게임 데이터베이스**; the master judges 성공/실패. **Fail =
-    the 말 reverts to where it was and the turn passes** (it never goes back to 대기).
+  - **미니게임 (Mario-Party)**: **15 ★ spots** scattered across the whole map — 8 on the outer
+    ring (every other 밭, never a corner), 4 on the diagonal 지름길 arms, and one dead centre (방).
+    The canonical list is `MINIGAME_STATIONS` in `yutnori/src/shared/constants.ts`. Landing
+    **exactly** on one triggers a **roulette** that picks a game from the event's editable
+    **미니게임 데이터베이스**; the master judges 성공/실패. **Fail = the 말 steps back exactly ONE
+    밭** (not a full revert — see `stepBefore`), the bonus throw is forfeited and the turn passes.
+  - **잡기 대표 대결 (방어전)**: optional. A catch freezes the turn for a 대표 1:1 duel. Attacker's
+    rep wins → the catch stands and the caught 말 goes to 대기. Defender's rep wins → the catch is
+    cancelled and the attacking 말 returns. Winner +1 point.
+  - **Endless laps**: reaching 집 counts a 완주 and **respawns the 말 in 대기**, so no team ever
+    permanently finishes. Ranking is 완주 수 → board progress → who advanced first. The game ends
+    on the clock or the operator, never on "everyone finished".
   - Board is a traditional 윷판: paper, brown lines, the **X** through the centre 방, big corner 밭.
 - **빙고** — **5×5** card, kawaii-pastel and phone-fitted (the grid fills the screen); join by
   닉네임 → number; fill by number / name / 초성; cute stamps + a confetti bingo celebration;

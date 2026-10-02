@@ -202,7 +202,7 @@ function MiniGameStage({ pending, games, duelGames }: { pending: NonNullable<Boa
         ) : (
           <div className="mg__reel">{list[face % list.length]?.name ?? '…'}</div>
         )}
-        <p className="mg__hint">{game ? '성공하면 통과! 실패하면 이동 취소!' : '두구두구두구…'}</p>
+        <p className="mg__hint">{game ? '성공하면 통과! 실패하면 한 칸 뒤로!' : '두구두구두구…'}</p>
       </div>
     </Stage>
   );
@@ -412,11 +412,11 @@ export function App() {
       // callout plays over the board (not over the roulette).
       const fx = d?.duel
         ? (ok
-            ? { kind: 'capture', text: '잡기 성공! 🎯', sub: '수비 실패 · 말 원위치' }
+            ? { kind: 'capture', text: '잡기 성공! 🎯', sub: '수비 실패 · 잡힌 말 대기로' }
             : { kind: 'pass', text: '수비 성공! 🛡', sub: '말이 살아남았어요' })
         : (ok
             ? { kind: 'pass', text: '통과! ✅', sub: '미니게임 성공' }
-            : { kind: 'cancel', text: '이동 취소!', sub: '미니게임 실패 · 말 제자리로' });
+            : { kind: 'cancel', text: '한 칸 뒤로!', sub: '미니게임 실패' });
       setTimeout(() => showFx(fx.kind, fx.text, fx.sub), 260);
     });
     socket.on('bingo:announced', () => {

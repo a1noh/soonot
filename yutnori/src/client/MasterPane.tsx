@@ -281,7 +281,7 @@ function MiniGamePanel({ view, send }: { view: BoardView; send: MasterPaneProps[
               성공 ✓
             </button>
             <button className="btn btn--danger btn--big" onClick={() => void send('master:minigame:resolve', { success: false })}>
-              실패 ✗ (이동 취소)
+              실패 ✗ (한 칸 뒤로)
             </button>
           </div>
         </>
