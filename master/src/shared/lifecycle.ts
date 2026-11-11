@@ -5,9 +5,9 @@
  * written once here and neither game may redefine them.
  */
 
-export type GameId = 'bingo' | 'yutnori';
+export type GameId = 'bingo' | 'yutnori' | 'stones';
 
-export const GAME_IDS = ['bingo', 'yutnori'] as const satisfies readonly GameId[];
+export const GAME_IDS = ['bingo', 'yutnori', 'stones'] as const satisfies readonly GameId[];
 
 export type RoomState = 'SETUP' | 'LOBBY' | 'RUNNING' | 'ENDED' | 'REVEAL';
 
@@ -51,10 +51,5 @@ export function nextRevealStep(step: RevealStep): RevealStep {
 }
 
 export function isGameId(v: unknown): v is GameId {
-  return v === 'bingo' || v === 'yutnori';
-}
-
-/** The other game. The host needs this for the two §5.1 rules; no game does. */
-export function sibling(id: GameId): GameId {
-  return id === 'bingo' ? 'yutnori' : 'bingo';
+  return v === 'bingo' || v === 'yutnori' || v === 'stones';
 }

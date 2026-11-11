@@ -25,7 +25,6 @@ export {
   isGameId,
   isRevealStep,
   nextRevealStep,
-  sibling,
   type GameId,
   type RevealStep,
   type RoomState,

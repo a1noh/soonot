@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS events (
   projector     TEXT NOT NULL DEFAULT 'auto',
   bingo_enabled INTEGER NOT NULL DEFAULT 1,
   yut_enabled   INTEGER NOT NULL DEFAULT 1,
+  stones_enabled INTEGER NOT NULL DEFAULT 1,
   created_at    INTEGER NOT NULL,
   closed_at     INTEGER
 );
@@ -25,6 +26,18 @@ CREATE TABLE IF NOT EXISTS host_config (
   v TEXT NOT NULL
 );
 `;
+
+/**
+ * Columns added after the first deploy. `CREATE TABLE IF NOT EXISTS` never
+ * alters a table that is already on the volume, so each one is added here
+ * when it is missing.
+ */
+function migrate(raw: Database.Database): void {
+  const cols = new Set((raw.prepare(`PRAGMA table_info(events)`).all() as { name: string }[]).map((c) => c.name));
+  if (!cols.has('stones_enabled')) {
+    raw.exec(`ALTER TABLE events ADD COLUMN stones_enabled INTEGER NOT NULL DEFAULT 1`);
+  }
+}
 
 export interface OpenedDb {
   db: HostDb;
@@ -43,6 +56,7 @@ export function openDb(path: string, schemas: readonly string[]): OpenedDb {
   raw.pragma('synchronous = NORMAL');
   raw.pragma('foreign_keys = ON');
   raw.exec(HOST_SCHEMA);
+  migrate(raw);
   for (const schema of schemas) raw.exec(schema);
   return {
     raw,

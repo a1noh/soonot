@@ -12,6 +12,7 @@ import { useConsole } from './useConsole.js';
 import { EventBar } from './EventBar.js';
 import { GamePane } from './GamePane.js';
 import { YutnoriMasterPane } from '@soonot/yutnori/src/client/MasterPane.js';
+import { StonesMasterPane } from '@soonot/stones/src/client/MasterPane.js';
 import { BingoMasterPane } from './BingoPane.js';
 import { RulesDoc } from '../rules/RulesDoc.js';
 import '../shared/tokens.css';
@@ -162,12 +163,17 @@ export function App() {
             onToggleEnabled={(next) => void api.enableGame(gameId, next)}
             onReset={() => void api.resetGame(gameId)}
             blocking={
-              gameId === 'yutnori'
-                ? (api.views.yutnori as { blocking?: boolean } | undefined)?.blocking
-                : undefined
+              gameId === 'bingo'
+                ? undefined
+                : (api.views[gameId] as { blocking?: boolean } | undefined)?.blocking
             }
           >
-            {gameId === 'yutnori' ? (
+            {gameId === 'stones' ? (
+              <StonesMasterPane
+                view={(api.views.stones as never) ?? null}
+                send={(ev, payload) => api.send('stones', ev, payload)}
+              />
+            ) : gameId === 'yutnori' ? (
               <YutnoriMasterPane
                 view={(api.views.yutnori as never) ?? null}
                 send={(ev, payload) => api.send('yutnori', ev, payload)}

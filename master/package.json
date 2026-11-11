@@ -19,6 +19,7 @@
   "dependencies": {
     "@soonot/bingo": "*",
     "@soonot/yutnori": "*",
+    "@soonot/stones": "*",
     "better-sqlite3": "^11.10.0",
     "cookie": "^0.7.2",
     "express": "^4.19.2",

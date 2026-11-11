@@ -20,7 +20,7 @@ export interface EventBarProps {
   onResetEvent(): void;
 }
 
-const CHANNELS: readonly (GameId | 'auto')[] = ['auto', 'bingo', 'yutnori'];
+const CHANNELS: readonly (GameId | 'auto')[] = ['auto', 'bingo', 'yutnori', 'stones'];
 
 export function EventBar({ event, connected, onSetProjector, onSignOut, onResetEvent }: EventBarProps) {
   const [copied, setCopied] = useState(false);

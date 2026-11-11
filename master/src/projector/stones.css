@@ -1,0 +1,366 @@
+/* 스톤 — a night sky the stones hang in. Readable at 10 m: big type, high
+   contrast, colour always paired with a name or a count. */
+
+/* `.stage.` beats the base `.stage` rules, which load after this file. */
+.stage.stage--stones {
+  --ink: #eef1ff;
+  --ink-dim: #9aa3c7;
+  --line: #2a3160;
+  --gold: #ffd76a;
+  --orbit-r: min(27vh, 21vw);
+  --gem: min(15vh, 11vw);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 30vw);
+  gap: 3vmin;
+  padding: 3.4vmin 3.4vmin 3.4vmin 4vmin;
+  background:
+    radial-gradient(70vmax 50vmax at 35% 45%, #1d1f55 0%, transparent 60%),
+    radial-gradient(60vmax 50vmax at 90% 0%, #2a1240 0%, transparent 55%),
+    #080a1f;
+}
+.stage--stones ::selection { background: var(--gold); color: #080a1f; }
+
+/* Beats `.stage > *`, which would otherwise make the sky position: relative. */
+.stage.stage--stones > .stars:not(.stage__glow):not(.stage__grain) {
+  position: absolute;
+  z-index: 0;
+}
+.stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.7;
+  background-image:
+    radial-gradient(1.2px 1.2px at 12% 18%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 28% 72%, #cfd6ff 50%, transparent 51%),
+    radial-gradient(1.4px 1.4px at 47% 12%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 63% 84%, #cfd6ff 50%, transparent 51%),
+    radial-gradient(1.2px 1.2px at 78% 30%, #fff 50%, transparent 51%),
+    radial-gradient(1px 1px at 88% 66%, #cfd6ff 50%, transparent 51%),
+    radial-gradient(1px 1px at 6% 52%, #fff 50%, transparent 51%),
+    radial-gradient(1.3px 1.3px at 38% 40%, #e6e9ff 50%, transparent 51%);
+  background-size: 420px 420px;
+  animation: twinkle 7s ease-in-out infinite alternate;
+}
+@keyframes twinkle { from { opacity: 0.45; } to { opacity: 0.8; } }
+
+/* ---- left: heading + orbit -------------------------------------------- */
+.stn-main { position: relative; display: flex; flex-direction: column; min-width: 0; }
+.stn-head { display: flex; align-items: baseline; gap: 3vmin; flex-wrap: wrap; }
+.stn-head__title {
+  margin: 0;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(30px, 5vmin, 72px);
+  letter-spacing: -0.01em;
+}
+.stn-head__turn {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 1.4vmin;
+  font-size: clamp(20px, 3.4vmin, 50px);
+  color: var(--ink-dim);
+}
+.stn-head__turn strong {
+  color: var(--ink);
+  padding: 0.1em 0.5em;
+  border-radius: 0.4em;
+  background: color-mix(in srgb, var(--team) 55%, transparent);
+  box-shadow: 0 0.4vmin 2vmin color-mix(in srgb, var(--team) 40%, transparent);
+}
+.stn-head__round { font-size: 0.62em; font-variant-numeric: tabular-nums; }
+.stn-head__turn--wait { font-size: clamp(18px, 2.6vmin, 38px); }
+
+.orbit-wrap { position: relative; flex: 1; display: grid; place-items: center; min-height: 0; }
+
+.orbit {
+  position: relative;
+  width: calc(var(--orbit-r) * 2 + var(--gem) * 1.6);
+  aspect-ratio: 1;
+  animation: orbit 60s linear infinite;
+  transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1), filter 500ms cubic-bezier(0.16, 1, 0.3, 1), transform 500ms;
+}
+.orbit__slot {
+  --a: calc(360deg / var(--n) * var(--i));
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: rotate(var(--a)) translateY(calc(var(--orbit-r) * -1));
+}
+.orbit__upright {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6vmin;
+  transform: translate(-50%, -50%) rotate(calc(var(--a) * -1));
+  animation: orbit-counter 60s linear infinite;
+}
+.orbit__bob { animation: bob 5.6s ease-in-out infinite; perspective: 600px; }
+.orbit__gem {
+  width: var(--gem);
+  height: var(--gem);
+  filter: drop-shadow(0 1.2vmin 2.4vmin color-mix(in srgb, var(--glow) 55%, transparent))
+    drop-shadow(0 0 1.2vmin color-mix(in srgb, var(--glow) 70%, transparent));
+  animation: turn 9s linear infinite;
+}
+.orbit__slot:nth-child(2n) .orbit__gem { animation-duration: 11s; animation-direction: reverse; }
+.orbit__name {
+  font-size: clamp(14px, 2vmin, 28px);
+  font-weight: 700;
+  color: var(--ink);
+  text-shadow: 0 0.2vmin 1vmin #000;
+  white-space: nowrap;
+}
+
+@keyframes orbit { to { transform: rotate(360deg); } }
+@keyframes orbit-counter {
+  from { transform: translate(-50%, -50%) rotate(calc(var(--a) * -1)); }
+  to { transform: translate(-50%, -50%) rotate(calc(var(--a) * -1 - 360deg)); }
+}
+@keyframes bob { 0%, 100% { transform: translateY(-0.8vmin); } 50% { transform: translateY(0.8vmin); } }
+@keyframes turn { to { transform: rotateY(360deg); } }
+
+.orbit-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+.orbit-center__prompt {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1vmin;
+  text-align: center;
+  font-size: clamp(16px, 2.6vmin, 38px);
+  color: var(--ink-dim);
+}
+.orbit-center__prompt strong {
+  font-family: var(--display);
+  font-size: clamp(28px, 5.6vmin, 84px);
+  line-height: 1.1;
+  color: var(--ink);
+  padding: 0 0.3em 0.08em;
+  border-bottom: 0.6vmin solid var(--team);
+  text-shadow: 0 0 3vmin color-mix(in srgb, var(--team) 80%, transparent);
+}
+
+/* Picked or resolving: the ring steps back. */
+.stage--stones.is-picked .orbit,
+.stage--stones.is-result .orbit { opacity: 0.18; filter: blur(3px) saturate(0.6); transform: scale(0.92); }
+
+/* ---- the mission -------------------------------------------------------- */
+.mission {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 4vmin;
+  padding: 0 2vmin;
+}
+.mission__gem {
+  display: grid;
+  place-items: center;
+  animation: come-forward 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mission__gem svg {
+  width: min(36vh, 24vw);
+  height: min(36vh, 24vw);
+  filter: drop-shadow(0 0 4vmin color-mix(in srgb, var(--glow) 80%, transparent))
+    drop-shadow(0 2vmin 5vmin color-mix(in srgb, var(--glow) 45%, transparent));
+  animation: turn 7s linear infinite;
+}
+.mission__card {
+  padding: 3.4vmin 3.8vmin;
+  border-radius: 2vmin;
+  background: linear-gradient(160deg, #161a44, #0e1030);
+  border: 1px solid color-mix(in srgb, var(--glow) 60%, transparent);
+  box-shadow: 0 2vmin 6vmin rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  animation: unveil 650ms 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mission__who {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 1.2vmin;
+  font-size: clamp(16px, 2.4vmin, 34px);
+  color: var(--ink-dim);
+}
+.mission__dot { width: 1.6vmin; height: 1.6vmin; border-radius: 0.4vmin; }
+.mission__name {
+  margin: 1vmin 0 2vmin;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(32px, 6.4vmin, 96px);
+  line-height: 1.05;
+  color: var(--glow);
+  text-wrap: balance;
+}
+.mission__text {
+  margin: 0;
+  max-width: 28ch;
+  font-size: clamp(22px, 4.2vmin, 62px);
+  font-weight: 700;
+  line-height: 1.35;
+  text-wrap: pretty;
+  white-space: pre-wrap;
+}
+@keyframes come-forward {
+  from { opacity: 0; transform: scale(0.45) translateY(6vmin); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+@keyframes unveil {
+  from { opacity: 0; clip-path: inset(0 0 100% 0 round 2vmin); transform: translateY(2vmin); }
+  to { opacity: 1; clip-path: inset(0 0 0 0 round 2vmin); transform: none; }
+}
+
+/* ---- the result ------------------------------------------------------- */
+.burst {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3vmin;
+  pointer-events: none;
+  animation: hold 2600ms linear both;
+}
+.burst__gem svg { width: min(30vh, 20vw); height: min(30vh, 20vw); }
+.burst__label {
+  margin: 0;
+  font-size: clamp(26px, 5vmin, 76px);
+  font-weight: 800;
+  text-align: center;
+  text-shadow: 0 0.4vmin 2vmin #000;
+}
+.burst__label strong { font-family: var(--display); }
+@keyframes hold { from { opacity: 1; } 85% { opacity: 1; } to { opacity: 0; } }
+
+/* 성공: a flare, then the stone flies into the team's row. */
+.burst--win .burst__gem {
+  filter: drop-shadow(0 0 6vmin var(--glow));
+  animation: win-fly 2400ms cubic-bezier(0.65, 0, 0.35, 1) both;
+}
+.burst--win .burst__label { color: var(--gold); animation: label-in 500ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes win-fly {
+  0% { transform: scale(0.8); opacity: 1; }
+  18% { transform: scale(1.18); }
+  48% { transform: scale(1); }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.14); opacity: 0.9; }
+}
+
+/* 실패: the stone shudders, greys and falls away. */
+.burst--lose .burst__gem { animation: crack 1600ms cubic-bezier(0.36, 0, 0.66, -0.56) both; }
+.burst--lose .burst__label { color: var(--ink-dim); animation: label-in 500ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+@keyframes crack {
+  0%, 30% { transform: translateX(0); filter: none; }
+  6% { transform: translateX(-2vmin) rotate(-4deg); }
+  12% { transform: translateX(2vmin) rotate(4deg); }
+  18% { transform: translateX(-1.2vmin) rotate(-2deg); }
+  24% { transform: translateX(1.2vmin) rotate(2deg); }
+  45% { filter: grayscale(1) brightness(0.6); opacity: 1; }
+  100% { transform: translateY(14vmin) scale(0.8); filter: grayscale(1) brightness(0.4); opacity: 0; }
+}
+@keyframes label-in { from { opacity: 0; transform: translateY(2vmin); } to { opacity: 1; transform: none; } }
+
+/* ---- right: rankings ---------------------------------------------------- */
+.ranks {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 2.6vmin 2.4vmin;
+  border-radius: 2vmin;
+  background: rgba(10, 12, 38, 0.72);
+  border: 1px solid var(--line);
+}
+.ranks__title {
+  margin: 0 0 1.6vmin;
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: clamp(22px, 3.6vmin, 52px);
+}
+.ranks__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1vmin; }
+.ranks__row {
+  display: grid;
+  grid-template-columns: 2.2em minmax(0, 1fr) auto;
+  grid-template-areas: 'place name count' 'place slots slots';
+  align-items: center;
+  column-gap: 1.2vmin;
+  row-gap: 0.4vmin;
+  padding: 1vmin 1.4vmin;
+  border-radius: 1.2vmin;
+  font-size: clamp(16px, 2.5vmin, 36px);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  transition: background 300ms, border-color 300ms;
+}
+.ranks__row.is-turn {
+  background: color-mix(in srgb, var(--team) 26%, transparent);
+  border-color: color-mix(in srgb, var(--team) 70%, transparent);
+}
+.ranks__row.is-out { opacity: 0.5; }
+.ranks__place {
+  grid-area: place;
+  font-size: 1.3em;
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+.ranks__row:first-child .ranks__place { color: var(--gold); }
+.ranks__name {
+  grid-area: name;
+  font-weight: 800;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-left: 0.5vmin solid var(--team);
+  padding-left: 1vmin;
+}
+.ranks__count {
+  grid-area: count;
+  font-size: 1.2em;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.ranks__slots { grid-area: slots; display: flex; gap: 0.4vmin; }
+.ranks__slot { display: grid; }
+.ranks__slot svg { width: clamp(18px, 3vmin, 40px); height: clamp(18px, 3vmin, 40px); transition: filter 400ms; }
+.ranks__slot.is-held svg { filter: drop-shadow(0 0 0.8vmin var(--glow)); animation: land 500ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes land { from { transform: scale(1.8); } to { transform: none; } }
+
+/* ---- podium on the night sky ------------------------------------------ */
+.stage.stage--theme-stones {
+  --ink: #eef1ff;
+  --ink-dim: #9aa3c7;
+  --line: #2a3160;
+  --gold: #ffd76a;
+  background:
+    radial-gradient(70vmax 50vmax at 50% 30%, #1d1f55 0%, transparent 60%),
+    radial-gradient(60vmax 50vmax at 90% 0%, #2a1240 0%, transparent 55%),
+    #080a1f;
+}
+.stage--theme-stones .stage__glow { background: radial-gradient(closest-side, rgba(178, 107, 255, 0.2), transparent 70%); }
+.stage--theme-stones .stage__grain { opacity: 0.03; }
+
+@media (max-width: 900px) {
+  .stage.stage--stones { grid-template-columns: 1fr; }
+  .mission { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orbit, .orbit__upright, .orbit__bob, .orbit__gem, .mission__gem svg, .stars { animation: none; }
+  .orbit__upright { transform: translate(-50%, -50%) rotate(calc(var(--a) * -1)); }
+  .mission__gem, .mission__card, .burst__label, .ranks__slot.is-held svg { animation-duration: 1ms; }
+  .burst--win .burst__gem, .burst--lose .burst__gem { animation: none; }
+}

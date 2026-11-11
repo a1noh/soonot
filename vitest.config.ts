@@ -12,6 +12,7 @@ export default defineConfig({
       { find: /^@soonot\/master\/(.*)$/, replacement: `${root}master/$1` },
       { find: /^@soonot\/bingo\/(.*)$/, replacement: `${root}bingo/$1` },
       { find: /^@soonot\/yutnori\/(.*)$/, replacement: `${root}yutnori/$1` },
+      { find: /^@soonot\/stones\/(.*)$/, replacement: `${root}stones/$1` },
       { find: '@soonot/master', replacement: `${root}master/src/index.ts` },
     ],
   },

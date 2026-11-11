@@ -18,6 +18,8 @@ import { GRID } from '@soonot/bingo/src/shared/constants.js';
 import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
 import { DUEL_GAMES } from '@soonot/yutnori/src/shared/constants.js';
 import { Qr, joinUrl } from '../shared/Qr.js';
+import type { StonesView } from '@soonot/stones/src/project.js';
+import { StonesStage } from './StonesStage.js';
 import './projector.css';
 
 const HOLD_MS = 20_000;
@@ -349,17 +351,28 @@ function Reactions({ items, onDone }: { items: FloatingReaction[]; onDone(id: nu
   );
 }
 
+/** 스톤 standings → the shared podium's entries. */
+function stonesRank(view: StonesView): RankEntry[] {
+  return view.standings.map((s, i) => ({
+    id: s.teamId,
+    label: s.teamName,
+    detail: `스톤 ${s.stoneIds.length}개`,
+    ...(i < 3 ? { medal: (i + 1) as 1 | 2 | 3 } : {}),
+  }));
+}
+
 export function App() {
   const [summary, setSummary] = useState<EventSummary | null>(null);
   const [yView, setYView] = useState<BoardView | null>(null);
   const [bView, setBView] = useState<BingoView | null>(null);
+  const [sView, setSView] = useState<StonesView | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [greenKey, setGreenKey] = useState(0); // bump to retrigger the green bingo flash
   const [fx, setFx] = useState<{ id: number; kind: string; text: string; sub?: string } | null>(null);
   const [autoGame, setAutoGame] = useState<GameId>('yutnori');
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const [mgShow, setMgShow] = useState(false); // hold the roulette until the 미니게임! callout finishes
-  const lastActivity = useRef<Record<GameId, number>>({ yutnori: 0, bingo: 0 });
+  const lastActivity = useRef<Record<GameId, number>>({ yutnori: 0, bingo: 0, stones: 0 });
   const reactId = useRef(0);
   const fxId = useRef(0);
 
@@ -377,13 +390,17 @@ export function App() {
     const bump = (game: GameId) => {
       const nowT = Date.now();
       lastActivity.current[game] = nowT;
-      const other: GameId = game === 'yutnori' ? 'bingo' : 'yutnori';
-      setAutoGame((cur) => (cur === game ? cur : nowT - lastActivity.current[other] >= HOLD_MS ? game : cur));
+      // Follow the game that moved, once every other game has been quiet for the hold.
+      const othersQuiet = (Object.keys(lastActivity.current) as GameId[])
+        .filter((g) => g !== game)
+        .every((g) => nowT - lastActivity.current[g] >= HOLD_MS);
+      setAutoGame((cur) => (cur === game ? cur : othersQuiet ? game : cur));
     };
     socket.on('event:summary', (s: EventSummary | null) => setSummary(s));
     socket.on('room:state', (msg: { gameId: GameId; view: unknown }) => {
       if (msg.gameId === 'yutnori') setYView(msg.view as BoardView);
       else if (msg.gameId === 'bingo') setBView(msg.view as BingoView);
+      else if (msg.gameId === 'stones') setSView(msg.view as StonesView);
       bump(msg.gameId);
     });
     const showFx = (kind: string, text: string, sub?: string) =>
@@ -455,6 +472,20 @@ export function App() {
 
   const screen = (() => {
     if (!summary) return <Standby summary={null} joinable={false} />;
+    if (active === 'stones') {
+      if (sView && (sView.state === 'REVEAL' || sView.state === 'ENDED')) {
+        return (
+          <Podium
+            ranked={stonesRank(sView)}
+            step={sView.state === 'ENDED' ? 0 : sView.revealStep}
+            title="스톤"
+            theme="stones"
+          />
+        );
+      }
+      if (sView && sView.stones.length > 0) return <StonesStage view={sView} />;
+      return <Standby summary={summary} joinable={false} theme="stones" />;
+    }
     if (active === 'yutnori') {
       if (yView && (yView.state === 'REVEAL' || yView.state === 'ENDED')) {
         return (

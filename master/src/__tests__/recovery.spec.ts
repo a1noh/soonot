@@ -15,6 +15,7 @@ import { hashPasscode } from '../identity/passcode.js';
 import { loadConfig } from '../config.js';
 import { bingoModule } from '@soonot/bingo/src/module.js';
 import { yutnoriModule } from '@soonot/yutnori/src/module.js';
+import { stonesModule } from '@soonot/stones/src/module.js';
 import { CELLS } from '@soonot/bingo/src/shared/constants.js';
 import type { Room as BingoRoom } from '@soonot/bingo/src/shared/types.js';
 import type { Room as YutRoom } from '@soonot/yutnori/src/shared/types.js';
@@ -33,7 +34,7 @@ function boot(dbPath: string): Host {
   const host = createHost({
     config: { ...loadConfig({}), production: false, tls: false, dbPath },
     passcodeHash: hashPasscode('x'),
-    modules: { bingo: bingoModule, yutnori: yutnoriModule },
+    modules: { bingo: bingoModule, yutnori: yutnoriModule, stones: stonesModule },
   });
   hosts.push(host);
   return host;

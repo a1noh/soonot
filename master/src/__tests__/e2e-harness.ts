@@ -13,6 +13,7 @@ import { loadConfig } from '../config.js';
 import { COOKIE_NAME } from '../identity/session.js';
 import { bingoModule } from '@soonot/bingo/src/module.js';
 import { yutnoriModule } from '@soonot/yutnori/src/module.js';
+import { stonesModule } from '@soonot/stones/src/module.js';
 
 export const PASSCODE = 'harness2026';
 
@@ -38,7 +39,7 @@ export async function boot(opts: { autoTick?: boolean; startAt?: number } = {}):
   const host = createHost({
     config: { ...loadConfig({}), production: false, tls: false, dbPath: ':memory:' },
     passcodeHash: hashPasscode(PASSCODE),
-    modules: { bingo: bingoModule, yutnori: yutnoriModule },
+    modules: { bingo: bingoModule, yutnori: yutnoriModule, stones: stonesModule },
     now: () => clock,
     autoTick: opts.autoTick ?? false,
   });

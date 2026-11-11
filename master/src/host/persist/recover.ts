@@ -22,19 +22,27 @@ interface EventRow {
   projector: string;
   bingo_enabled: number;
   yut_enabled: number;
+  stones_enabled: number;
   created_at: number;
   closed_at: number | null;
 }
 
+const ENABLED_COLUMN: Record<GameId, (row: EventRow) => number> = {
+  bingo: (row) => row.bingo_enabled,
+  yutnori: (row) => row.yut_enabled,
+  stones: (row) => row.stones_enabled,
+};
+
 export function writeEventRow(db: HostDb, event: EventRecord): void {
   db.prepare(
-    `INSERT INTO events (id, code, title, projector, bingo_enabled, yut_enabled, created_at, closed_at)
-     VALUES (?,?,?,?,?,?,?,?)
+    `INSERT INTO events (id, code, title, projector, bingo_enabled, yut_enabled, stones_enabled, created_at, closed_at)
+     VALUES (?,?,?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET
        title = excluded.title,
        projector = excluded.projector,
        bingo_enabled = excluded.bingo_enabled,
        yut_enabled = excluded.yut_enabled,
+       stones_enabled = excluded.stones_enabled,
        closed_at = excluded.closed_at`,
   ).run(
     event.id,
@@ -43,6 +51,7 @@ export function writeEventRow(db: HostDb, event: EventRecord): void {
     event.projector,
     event.games.bingo.enabled ? 1 : 0,
     event.games.yutnori.enabled ? 1 : 0,
+    event.games.stones.enabled ? 1 : 0,
     event.createdAt,
     event.closedAt,
   );
@@ -80,7 +89,7 @@ export function recoverEvent(
       // A game with nothing persisted was never started; a fresh SETUP state
       // is the honest restoration of that, not an error.
       state: (restored as EventRecord['games'][GameId]['state']) ?? module.create(row.id, now),
-      enabled: (gameId === 'bingo' ? row.bingo_enabled : row.yut_enabled) === 1,
+      enabled: ENABLED_COLUMN[gameId](row) === 1,
       lastRoomWideEmitAt: 0,
     };
   }

@@ -11,6 +11,7 @@ import { hashPasscode } from './identity/passcode.js';
 import { createHost } from './host/server.js';
 import { bingoModule } from '@soonot/bingo/src/module.js';
 import { yutnoriModule } from '@soonot/yutnori/src/module.js';
+import { stonesModule } from '@soonot/stones/src/module.js';
 
 const config = loadConfig();
 const passcodeHash = requirePasscodeHash(config, hashPasscode);
@@ -18,7 +19,7 @@ const passcodeHash = requirePasscodeHash(config, hashPasscode);
 const host = createHost({
   config,
   passcodeHash,
-  modules: { bingo: bingoModule, yutnori: yutnoriModule },
+  modules: { bingo: bingoModule, yutnori: yutnoriModule, stones: stonesModule },
   // The real process runs the shared 1 Hz clock; tests leave it off and drive
   // time deterministically.
   autoTick: true,

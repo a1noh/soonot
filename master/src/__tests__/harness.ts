@@ -15,6 +15,7 @@ export function harness(options: { disabled?: readonly GameId[] } = {}) {
   const modules = {
     bingo: createStubModule('bingo'),
     yutnori: createStubModule('yutnori'),
+    stones: createStubModule('stones'),
   } as const;
 
   const registry = createRegistry(modules);

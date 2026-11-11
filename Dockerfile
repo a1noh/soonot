@@ -10,6 +10,7 @@ COPY package.json package-lock.json ./
 COPY master/package.json master/
 COPY bingo/package.json bingo/
 COPY yutnori/package.json yutnori/
+COPY stones/package.json stones/
 RUN npm ci
 COPY . .
 RUN npm run build            # builds all four client surfaces into master/dist/client

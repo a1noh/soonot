@@ -19,6 +19,7 @@ export interface EventRow {
   projector: string;
   bingo_enabled: number;
   yut_enabled: number;
+  stones_enabled: number;
   created_at: number;
   closed_at: number | null;
 }

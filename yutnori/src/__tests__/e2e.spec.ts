@@ -27,7 +27,7 @@ async function boot() {
   host = createHost({
     config: { ...loadConfig({}), production: false, tls: false, dbPath: ':memory:' },
     passcodeHash: hashPasscode(PASSCODE),
-    modules: { bingo: createStubModule('bingo'), yutnori: yutnoriModule },
+    modules: { bingo: createStubModule('bingo'), yutnori: yutnoriModule, stones: createStubModule('stones') },
   });
   const port = await host.listen(0);
   return `http://127.0.0.1:${port}`;

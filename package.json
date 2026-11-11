@@ -6,7 +6,8 @@
   "workspaces": [
     "master",
     "bingo",
-    "yutnori"
+    "yutnori",
+    "stones"
   ],
   "engines": {
     "node": ">=18"

@@ -4,6 +4,6 @@
 set -euo pipefail
 export PATH="$HOME/.nvm/versions/node/v20.20.2/bin:$PATH"
 echo "── tsc ───────────────────────────────"
-npx tsc -b master bingo yutnori
+npx tsc -b master bingo yutnori stones
 echo "── vitest ────────────────────────────"
 npx vitest run
