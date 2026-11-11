@@ -4,11 +4,12 @@
  * (setup, idle ring, picked mission, win, podium). Fails on any page error.
  *
  *   npm run build && npm start      # in another terminal
- *   node scripts/shoot-stones.mjs   # → scripts/shots/stones-*.png
+ *   npx tsx scripts/shoot-stones.mjs   # → scripts/shots/stones-*.png (tsx: it reads the game defaults)
  */
 import { existsSync, mkdirSync } from 'node:fs';
 import puppeteer from 'puppeteer-core';
 import { io } from 'socket.io-client';
+import { DEFAULT_GAMES, DEFAULT_STONES } from '../stones/src/shared/constants.ts';
 
 const BASE = process.argv[2] ?? 'http://localhost:3000';
 const OUT = 'scripts/shots';
@@ -68,15 +69,8 @@ await shot(console_, '1-console-setup');
 
 await s('master:setup', {
   teams: ['아이언맨', '헐크', '캡틴 아메리카', '토르', '블랙 위도우', '호크아이'].map((name) => ({ name, playing: true })),
-  stones: ['스페이스 스톤', '마인드 스톤', '리얼리티 스톤', '파워 스톤', '타임 스톤', '소울 스톤'].map((name) => ({ name })),
-  games: [
-    { name: '코끼리 종이비행기', players: '2명', instructions: '각 팀 2명이 코끼리 코 10바퀴 후 종이비행기를 날려요. 가장 멀리 날린 팀이 스톤을 얻어요.' },
-    { name: '찬양 퀴즈', players: '모두', instructions: '찬양 전주를 듣고 제목을 맞혀요. 가장 많이 맞힌 팀이 스톤을 얻어요.' },
-    { name: '사지선다', players: '모두', instructions: '보기 4개 중 정답을 동시에 손가락으로 들어요.' },
-    { name: '이미지 퀴즈', players: '모두', instructions: '조금씩 드러나는 그림을 맞혀요.' },
-    { name: '넌센스', players: '모두', instructions: '넌센스 문제, 먼저 손 든 팀이 답해요.' },
-    { name: '일심동체', players: '3명', instructions: '3명이 같은 답을 적으면 1점.' },
-  ],
+  stones: DEFAULT_STONES.map((name) => ({ name })),
+  games: DEFAULT_GAMES,
 });
 await s('master:start');
 // Two stones played so the rankings have shape.

@@ -100,12 +100,12 @@ describe('StonesMasterPane', () => {
     expect(payload.teams.at(-1).playing).toBe(false);
     expect(payload.stones).toHaveLength(6);
     expect(payload.games.map((g: { name: string; players: string }) => `${g.name}/${g.players}`)).toEqual([
-      '코끼리 종이비행기/2명',
-      '찬양 퀴즈/모두',
-      '사지선다/모두',
-      '이미지 퀴즈/모두',
-      '넌센스/모두',
-      '일심동체/3명',
+      '퀸젯 발사/2명',
+      '헤임달의 귀/모두',
+      '자비스의 선택/모두',
+      '닥터 스트레인지의 눈/모두',
+      '로키의 속임수/모두',
+      '어벤져스 어셈블/3명',
     ]);
     expect(payload.games.every((g: { instructions: string }) => g.instructions.length > 20)).toBe(true);
   });
@@ -228,6 +228,7 @@ describe('스톤 rules', () => {
     expect(section.textContent).toContain(`스톤 ${DEFAULT_STONES.length}개`);
     expect(section.textContent).toContain('먼저 도달한');
     // The page is public: the secret game order must not be on it.
+    expect(section.textContent).not.toContain('퀸젯');
     expect(section.textContent).not.toContain('코끼리');
   });
 });

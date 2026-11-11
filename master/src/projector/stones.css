@@ -399,7 +399,12 @@
 .stage--theme-stones .stage__grain { opacity: 0.03; }
 
 @media (max-width: 900px) {
-  .stage.stage--stones { grid-template-columns: 1fr; }
+  .stage.stage--stones { grid-template-columns: 1fr; --orbit-r: 34vw; --gem: 12vw; }
+  .orbit-wrap { min-height: 92vw; }
+  .orbit__name { font-size: 12px; }
+  .orbit-center__prompt strong { font-size: 7vw; }
+  .orbit-center__prompt { font-size: 3.4vw; max-width: 40vw; }
+  .stn-head__turn { flex-basis: 100%; white-space: nowrap; font-size: 5vw; }
   .mission { grid-template-columns: 1fr; justify-items: center; text-align: center; }
 }
 
