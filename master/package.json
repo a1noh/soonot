@@ -20,7 +20,7 @@
     "@soonot/bingo": "*",
     "@soonot/yutnori": "*",
     "better-sqlite3": "^11.10.0",
-    "cookie": "^0.6.0",
+    "cookie": "^0.7.2",
     "express": "^4.19.2",
     "qrcode-generator": "^1.5.2",
     "socket.io": "^4.7.5"
