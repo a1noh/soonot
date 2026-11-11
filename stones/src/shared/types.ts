@@ -64,6 +64,12 @@ export interface Room {
   pending: { chooserId: string; stoneId: string; gameId: string } | null;
   claims: Claim[];
   history: TurnRecord[];
+  /** The 동점 결정전 game (컵 멀리 놓기), played after 게임 종료. */
+  tiebreak: Game;
+  /** Decided 결정전 groups, best team first. Each was one whole tied group. */
+  tiebreaks: string[][];
+  /** The tied teams playing the 결정전 right now, in setup order. */
+  activeTiebreak: string[] | null;
   lastResult: LastResult | null;
   seq: number;
   startedAt: number | null;

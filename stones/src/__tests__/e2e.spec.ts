@@ -128,4 +128,46 @@ describe('스톤 end to end', () => {
     await send(m, 'master:reveal', { step: 1 });
     expect((await revealed).standings[0]!.stoneIds).toEqual(['s3']);
   }, 20000);
+
+  it('a tie at 1st goes to 엔드게임, and the podium shows the decided order', async () => {
+    const base = await boot();
+    const m = await masterSocket(base);
+    await new Promise((r) => m.emit('event:create', { title: '한마당' }, r));
+    const p = await connect(base, '/p');
+    await send(m, 'master:setup', {
+      teams: [{ name: '아이언맨' }, { name: '헐크' }, { name: '토르' }].map((t) => ({ ...t, playing: true })),
+      stones: [{ name: '예배 스톤' }, { name: '섬김 스톤' }],
+      games: [
+        { name: 'a', players: '모두', instructions: 'x' },
+        { name: 'b', players: '모두', instructions: 'y' },
+      ],
+    });
+    await send(m, 'master:start');
+    await send(m, 'master:pick', { stone: 's1' });
+    await send(m, 'master:resolve', { winners: ['t1', 't2'] });
+    await send(m, 'master:pick', { stone: 's2' });
+    await send(m, 'master:resolve', { winners: [] });
+    await send(m, 'master:end');
+
+
+    // 아이언맨 and 헐크 share 1st until 엔드게임 decides it.
+    const open = nextView(p, (v) => v.activeTiebreak !== null);
+    expect(await send(m, 'master:tiebreak:start', { teamIds: ['t1', 't2'] })).toMatchObject({ ok: true });
+    const shown = await open;
+    expect(shown.activeTiebreak).toMatchObject({ teams: [{ name: '아이언맨' }, { name: '헐크' }], game: { name: '엔드게임' } });
+    expect(await send(m, 'master:reveal', { step: 0 })).toMatchObject({ ok: false, error: { code: 'TIEBREAK_PENDING' } });
+
+    const decided = nextView(p, (v) => v.activeTiebreak === null && v.standings[0]?.teamName === '헐크');
+    expect(await send(m, 'master:tiebreak:resolve', { order: ['t2', 't1'] })).toMatchObject({ ok: true });
+    const after = await decided;
+    expect(after.standings.map((s) => [s.teamName, s.rank])).toEqual([
+      ['헐크', 1],
+      ['아이언맨', 2],
+      ['토르', 3],
+    ]);
+
+    const podium = nextView(p, (v) => v.state === 'REVEAL' && v.revealStep === 3);
+    for (const step of [0, 1, 2, 3]) await send(m, 'master:reveal', { step });
+    expect((await podium).standings[0]!.teamName).toBe('헐크');
+  }, 20000);
 });

@@ -95,10 +95,20 @@ await s('master:pick', { stone: 's2' });
 await s('master:resolve', { winners: [] });
 await shot(p, '8-projector-none', 500);
 
+// Finish so 아이언맨 and 헐크 tie at 1st, then settle it with 엔드게임.
+await s('master:pick', { stone: 's4' });
+await s('master:resolve', { winners: ['t2'] });
+await s('master:pick', { stone: 's6' });
+await s('master:resolve', { winners: [] });
 await s('master:end');
+await shot(console_, '9a-console-tie', 400);
+await s('master:tiebreak:start', { teamIds: ['t1', 't2'] });
+await shot(p, '9b-projector-tiebreak', 1400);
+await shot(console_, '9c-console-tiebreak', 200);
+await s('master:tiebreak:resolve', { order: ['t2', 't1'] });
 await s('master:reveal', { step: 0 });
 for (const step of [1, 2, 3, 4]) await s('master:reveal', { step });
-await shot(p, '9-projector-podium', 1200);
+await shot(p, '9d-projector-podium', 1200);
 
 await browser.close();
 m.close();

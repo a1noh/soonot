@@ -60,7 +60,11 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
             : null,
         )
         .filter((g): g is { name: string; players: string; instructions: string } => g !== null);
-      return { t: 'SETUP', teams, stones, games };
+      const tb = rec(p.tiebreak);
+      const tiebreak = tb && text(tb, 'name')
+        ? { name: text(tb, 'name'), players: text(tb, 'players'), instructions: text(tb, 'instructions') }
+        : undefined;
+      return { t: 'SETUP', teams, stones, games, tiebreak };
     }
     case 'master:start':
       return { t: 'START' };
@@ -95,6 +99,16 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
         ? { t: 'REVEAL', step }
         : null;
     }
+    case 'master:tiebreak:start': {
+      const v = rec(payload)?.teamIds;
+      return Array.isArray(v) && v.every((w) => typeof w === 'string') ? { t: 'TIEBREAK_START', teamIds: v as string[] } : null;
+    }
+    case 'master:tiebreak:resolve': {
+      const v = rec(payload)?.order;
+      return Array.isArray(v) && v.every((w) => typeof w === 'string') ? { t: 'TIEBREAK_RESOLVE', order: v as string[] } : null;
+    }
+    case 'master:tiebreak:cancel':
+      return { t: 'TIEBREAK_CANCEL' };
     default:
       return null;
   }

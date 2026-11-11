@@ -624,3 +624,29 @@
 .stn__done { margin: 0; padding: 10px 12px; border-radius: var(--radius); background: color-mix(in srgb, var(--ok) 14%, transparent); }
 .stn-setup__hint { font-size: 0.8rem; color: var(--text-dim); }
 .stn-setup__games { font-size: 0.9rem; }
+.stn__ties { display: flex; flex-direction: column; gap: 6px; }
+.stn__tie {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 8px 12px; border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--warn) 55%, transparent);
+  background: color-mix(in srgb, var(--warn) 10%, transparent);
+}
+.stn__tieplace { font-weight: 700; color: var(--warn); font-variant-numeric: tabular-nums; }
+.stn__tienames { font-weight: 600; }
+.stn__tie .btn { margin-left: auto; }
+.stn__tiechip { font-size: 11px; color: var(--warn); border: 1px solid var(--warn); border-radius: 999px; padding: 0 6px; }
+.stn__mission--tiebreak { border-color: var(--warn); }
+.stn__orderbtn {
+  display: inline-flex; align-items: center; gap: 8px;
+  min-height: 48px; padding: 0 14px;
+  font: inherit; font-weight: 600; color: var(--text);
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong); border-radius: 999px; cursor: pointer;
+}
+.stn__orderbtn.is-set { background: color-mix(in srgb, var(--team) 30%, transparent); border-color: var(--team); }
+.stn__orderbtn:focus-visible { outline: 2px solid var(--game-stones); outline-offset: 2px; }
+.stn__ordernum {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  background: var(--bg-sunken); font-variant-numeric: tabular-nums; font-weight: 800;
+}
+.stn__orderbtn.is-set .stn__ordernum { background: var(--game-stones); color: #000; }

@@ -22,7 +22,7 @@ import {
   ROLL_STEPS,
 } from '@soonot/yutnori/src/shared/constants.js';
 import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
-import { DEFAULT_GAMES, DEFAULT_STONES } from '@soonot/stones/src/shared/constants.js';
+import { DEFAULT_GAMES, DEFAULT_STONES, DEFAULT_TIEBREAK } from '@soonot/stones/src/shared/constants.js';
 import { Qr } from '../shared/Qr.js';
 import './rules.css';
 
@@ -329,7 +329,7 @@ export function RulesDoc({ showQr = true }: { showQr?: boolean }) {
         <h3 className="rules__h3">순위</h3>
         <ol className="rules__ranked">
           <li><strong>스톤</strong>을 많이 모은 팀</li>
-          <li>같으면 그 개수에 <strong>먼저 도달한</strong> 팀</li>
+          <li>같으면 <strong>동점 결정전</strong> — {DEFAULT_TIEBREAK.name} (컵 멀리 놓기), 팀 전원이 함께 해요</li>
         </ol>
       </section>
 

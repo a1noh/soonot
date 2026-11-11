@@ -6,7 +6,7 @@
  * the master ticks the winning team(s), and each gets that stone.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { DEFAULT_GAMES, DEFAULT_STONES, DEFAULT_TEAMS, MAX_STONES, MAX_TEAMS, MIN_TEAMS } from '../shared/constants';
+import { DEFAULT_GAMES, DEFAULT_STONES, DEFAULT_TEAMS, DEFAULT_TIEBREAK, MAX_STONES, MAX_TEAMS, MIN_TEAMS } from '../shared/constants';
 import { playersLabel } from '../shared/labels';
 import type { StonesView } from '../project';
 import { Gem } from './Gem';
@@ -198,6 +198,32 @@ export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
         </ul>
       </section>
 
+      {view.state === 'ENDED' && view.activeTiebreak ? (
+        <TiebreakPanel view={view} send={send} />
+      ) : null}
+
+      {view.state === 'ENDED' && !view.activeTiebreak && (view.tiedGroups?.length ?? 0) > 0 ? (
+        <section className="stn__ties" aria-label="동점">
+          {view.tiedGroups!.map((g) => {
+            const place = view.standings.find((s) => s.teamId === g[0])?.rank ?? 0;
+            const names = g.map((id) => view.teams.find((t) => t.id === id)?.name ?? id).join(' · ');
+            return (
+              <div key={g.join()} className="stn__tie">
+                <span className="stn__tieplace">공동 {place}위</span>
+                <span className="stn__tienames">{names}</span>
+                <button
+                  type="button"
+                  className={`btn ${place <= 3 ? 'btn--primary' : ''}`}
+                  onClick={() => void send('master:tiebreak:start', { teamIds: g })}
+                >
+                  동점 결정전 · {view.tiebreak?.name ?? '엔드게임'}
+                </button>
+              </div>
+            );
+          })}
+        </section>
+      ) : null}
+
       {view.state === 'ENDED' || view.state === 'REVEAL' ? (
         <div className="rankbox">
           <p className="rankbox__head">
@@ -211,6 +237,7 @@ export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
                 <li key={s.teamId} className={`rankbox__row${shown ? ' is-shown' : ''}`}>
                   <span className="rankbox__rank">{s.rank}</span>
                   <span className="rankbox__name">{s.teamName}</span>
+                  {view.tiedGroups?.some((g) => g.includes(s.teamId)) ? <span className="stn__tiechip">동점</span> : null}
                   <span className="rankbox__detail">스톤 {s.stoneIds.length}개</span>
                   {shown ? <span className="rankbox__live">화면 공개</span> : null}
                 </li>
@@ -242,10 +269,24 @@ export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
         ) : null}
         {view.state === 'ENDED' ? (
           <>
-            <button type="button" className="btn" onClick={() => void send('master:resumeFromEnded')}>
+            <button type="button" className="btn" disabled={!!view.activeTiebreak} onClick={() => void send('master:resumeFromEnded')}>
               다시 이어하기
             </button>
-            <button type="button" className="btn btn--primary" onClick={() => void send('master:reveal', { step: 0 })}>
+            {view.canUndoTiebreak ? (
+              <button type="button" className="btn" onClick={() => void send('master:undo')}>
+                결정전 되돌리기
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className="btn btn--primary"
+              disabled={!!view.activeTiebreak}
+              onClick={() => {
+                const topTie = (view.tiedGroups ?? []).some((g) => (view.standings.find((s) => s.teamId === g[0])?.rank ?? 99) <= 3);
+                if (topTie && !confirm('3위 안에 동점이 남아 있어요. 그대로 공동 순위로 발표할까요?')) return;
+                void send('master:reveal', { step: 0 });
+              }}
+            >
               순위 발표
             </button>
           </>
@@ -260,10 +301,60 @@ export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
   );
 }
 
+/** The open 결정전: the game card, then tap the teams in finishing order. */
+function TiebreakPanel({ view, send }: StonesMasterPaneProps & { view: StonesView }) {
+  const tb = view.activeTiebreak!;
+  const [order, setOrder] = useState<string[]>([]);
+  const key = tb.teams.map((t) => t.id).join();
+  useEffect(() => setOrder([]), [key]);
+  return (
+    <section className="stn__mission stn__mission--tiebreak" aria-label="동점 결정전">
+      <header className="stn__missionhead">
+        <h3>동점 결정전 · {tb.game.name}</h3>
+        <span className="stn__players">{playersLabel(tb.game.players)}</span>
+      </header>
+      <p className="stn__missiontext">{tb.game.instructions}</p>
+      <fieldset className="stn__winners">
+        <legend>들어온 순서대로 누르세요 (1등부터)</legend>
+        {tb.teams.map((t) => {
+          const at = order.indexOf(t.id);
+          return (
+            <button
+              key={t.id}
+              type="button"
+              className={`stn__orderbtn${at >= 0 ? ' is-set' : ''}`}
+              style={{ '--team': t.color } as CSSProperties}
+              aria-pressed={at >= 0}
+              onClick={() => setOrder(at >= 0 ? order.filter((id) => id !== t.id) : [...order, t.id])}
+            >
+              <span className="stn__ordernum">{at >= 0 ? `${at + 1}` : '–'}</span>
+              {t.name}
+            </button>
+          );
+        })}
+      </fieldset>
+      <div className="stn__judge">
+        <button
+          type="button"
+          className="btn stn__ok"
+          disabled={order.length !== tb.teams.length}
+          onClick={() => void send('master:tiebreak:resolve', { order })}
+        >
+          결과 확정
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={() => void send('master:tiebreak:cancel')}>
+          취소
+        </button>
+      </div>
+    </section>
+  );
+}
+
 type SetupPayload = {
   teams: { name: string; playing: boolean }[];
   stones: { name: string }[];
   games: { name: string; players: string; instructions: string }[];
+  tiebreak: { name: string; players: string; instructions: string };
 };
 
 const lines = (text: string) => text.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -285,6 +376,8 @@ function SetupForm({
   const [gameText, setGameText] = useState(
     (initial?.games ?? DEFAULT_GAMES).map((g) => `${g.name} | ${g.players} | ${g.instructions}`).join('\n'),
   );
+  const tb0 = initial?.tiebreak ?? DEFAULT_TIEBREAK;
+  const [tbText, setTbText] = useState(`${tb0.name} | ${tb0.players} | ${tb0.instructions}`);
   const [busy, setBusy] = useState(false);
 
   const names = useMemo(() => lines(teamText), [teamText]);
@@ -328,6 +421,10 @@ function SetupForm({
           teams: names.map((name) => ({ name, playing: !sitOut.has(name) })),
           stones: stones.map((name) => ({ name })),
           games,
+          tiebreak: (() => {
+            const [name = '', players = '', ...rest] = tbText.split('|');
+            return { name: name.trim(), players: players.trim(), instructions: rest.join('|').trim() };
+          })(),
         }).finally(() => setBusy(false));
       }}
     >
@@ -368,6 +465,12 @@ function SetupForm({
         <span className="stn-setup__hint">
           어떤 스톤을 고르든 이 순서대로 열려요. 팀들에겐 순서가 보이지 않아요. 인원은 “2명”, “모두”처럼 적어요.
         </span>
+      </label>
+
+      <label className="field">
+        <span className="field__label">동점 결정전 · 이름 | 인원 | 설명</span>
+        <textarea className="field__input stn-setup__games" rows={2} value={tbText} onChange={(e) => setTbText(e.currentTarget.value)} />
+        <span className="stn-setup__hint">게임이 끝나고 스톤 수가 같은 팀끼리만 해요.</span>
       </label>
 
       {problem ? <p className="stn-setup__problem" role="alert">{problem}</p> : null}

@@ -4,6 +4,7 @@ export type Action =
       teams: { name: string; playing: boolean }[];
       stones: { name: string }[];
       games: { name: string; players: string; instructions: string }[];
+      tiebreak?: { name: string; players: string; instructions: string };
     }
   | { t: 'START' }
   | { t: 'PICK'; stoneId: string }
@@ -14,7 +15,10 @@ export type Action =
   | { t: 'UNDO' }
   | { t: 'END' }
   | { t: 'RESUME_FROM_ENDED' }
-  | { t: 'REVEAL'; step: number };
+  | { t: 'REVEAL'; step: number }
+  | { t: 'TIEBREAK_START'; teamIds: string[] }
+  | { t: 'TIEBREAK_RESOLVE'; order: string[] }
+  | { t: 'TIEBREAK_CANCEL' };
 
 /** Everything is public on the projector except which game comes next. */
 export type Emit =
@@ -24,7 +28,9 @@ export type Emit =
   | { e: 'turn:changed'; teamId: string; teamName: string; round: number }
   | { e: 'undo:applied' }
   | { e: 'game:ended'; endedAt: number }
-  | { e: 'reveal:step'; step: number };
+  | { e: 'reveal:step'; step: number }
+  | { e: 'tiebreak:started'; teamIds: string[] }
+  | { e: 'tiebreak:resolved'; order: string[] | null };
 
 export const EMIT_NAMES: readonly Emit['e'][] = [
   'stones:update',
@@ -34,6 +40,8 @@ export const EMIT_NAMES: readonly Emit['e'][] = [
   'undo:applied',
   'game:ended',
   'reveal:step',
+  'tiebreak:started',
+  'tiebreak:resolved',
 ];
 
 export type EngineErrorCode =
@@ -53,7 +61,11 @@ export type EngineErrorCode =
   | 'LAST_TEAM'
   | 'NOTHING_TO_UNDO'
   | 'REVEAL_STARTED'
-  | 'BAD_REVEAL_STEP';
+  | 'BAD_REVEAL_STEP'
+  | 'NOT_TIED'
+  | 'TIEBREAK_PENDING'
+  | 'NO_TIEBREAK'
+  | 'BAD_ORDER';
 
 export class EngineError extends Error {
   constructor(readonly code: EngineErrorCode, message?: string) {

@@ -66,9 +66,10 @@ function view(o: Partial<StonesView> = {}): StonesView {
     pending: null,
     lastResult: null,
     revealStep: 0,
+    activeTiebreak: null,
     standings: [
-      { rank: 1, teamId: 't1', teamName: '아이언맨', color: '#C0392B', playing: true, stoneIds: ['s2'], reachedAt: 1 },
-      { rank: 2, teamId: 't2', teamName: '헐크', color: '#1F6FB2', playing: true, stoneIds: [], reachedAt: null },
+      { rank: 1, teamId: 't1', teamName: '아이언맨', color: '#C0392B', playing: true, stoneIds: ['s2'] },
+      { rank: 2, teamId: 't2', teamName: '헐크', color: '#1F6FB2', playing: true, stoneIds: [] },
     ],
     games: [game1, game2],
     nextGame: game2,
@@ -100,14 +101,16 @@ describe('StonesMasterPane', () => {
     expect(payload.teams.at(-1).playing).toBe(false);
     expect(payload.stones).toHaveLength(6);
     expect(payload.games.map((g: { name: string; players: string }) => `${g.name}/${g.players}`)).toEqual([
-      '퀸젯 발사/2명',
-      '헤임달의 귀/모두',
-      '자비스의 선택/모두',
-      '닥터 스트레인지의 눈/모두',
-      '로키의 속임수/모두',
+      '타노스 격추 작전/2명',
+      '그루트 노래방/모두',
+      '닥터 스트레인지의 선택/모두',
+      '앤트맨 돋보기/모두',
+      '스파이더맨 아재개그/모두',
       '어벤져스 어셈블/3명',
     ]);
     expect(payload.games.every((g: { instructions: string }) => g.instructions.length > 20)).toBe(true);
+    expect(payload.tiebreak).toMatchObject({ name: '엔드게임', players: '모두' });
+    expect(payload.tiebreak.instructions).toContain('컵 멀리 놓기');
   });
 
   it('RUNNING: shows the next game to the master only, and a played stone cannot be picked', async () => {
@@ -143,6 +146,54 @@ describe('StonesMasterPane', () => {
     render(<StonesMasterPane view={view()} send={send} />);
     await user.click(within(screen.getByRole('region', { name: '참가 팀' })).getByRole('checkbox', { name: /아이언맨/ }));
     expect(send).toHaveBeenCalledWith('master:playing', { team: 't1', playing: false });
+  });
+});
+
+
+const endgame = { id: 'tb', name: '엔드게임', players: '모두', instructions: '컵 멀리 놓기! 선을 넘지 마세요.' };
+
+describe('동점 결정전 on the console', () => {
+  const ended = (o: Partial<StonesView> = {}) =>
+    view({
+      state: 'ENDED',
+      tiebreak: endgame,
+      tiedGroups: [['t1', 't2']],
+      standings: [
+        { rank: 1, teamId: 't1', teamName: '아이언맨', color: '#C0392B', playing: true, stoneIds: ['s2'] },
+        { rank: 1, teamId: 't2', teamName: '헐크', color: '#1F6FB2', playing: true, stoneIds: ['s1'] },
+      ],
+      ...o,
+    });
+
+  it('marks the tie and opens 엔드게임 for that group', async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    render(<StonesMasterPane view={ended()} send={send} />);
+    expect(screen.getByText('공동 1위')).toBeTruthy();
+    expect(screen.getAllByText('동점').length).toBe(2);
+    await user.click(screen.getByRole('button', { name: /동점 결정전 · 엔드게임/ }));
+    expect(send).toHaveBeenCalledWith('master:tiebreak:start', { teamIds: ['t1', 't2'] });
+  });
+
+  it('tap teams in finishing order, then 결과 확정', async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    const active = {
+      teams: [
+        { id: 't1', name: '아이언맨', color: '#C0392B' },
+        { id: 't2', name: '헐크', color: '#1F6FB2' },
+      ],
+      game: endgame,
+    };
+    render(<StonesMasterPane view={ended({ activeTiebreak: active })} send={send} />);
+    expect(screen.getByText('컵 멀리 놓기! 선을 넘지 마세요.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '순위 발표' })).toHaveProperty('disabled', true);
+    const confirmBtn = screen.getByRole('button', { name: '결과 확정' });
+    expect(confirmBtn).toHaveProperty('disabled', true);
+    await user.click(screen.getByRole('button', { name: /헐크/ }));
+    await user.click(screen.getByRole('button', { name: /아이언맨/ }));
+    await user.click(confirmBtn);
+    expect(send).toHaveBeenCalledWith('master:tiebreak:resolve', { order: ['t2', 't1'] });
   });
 });
 
@@ -204,6 +255,29 @@ describe('스톤 on the projector', () => {
     expect(screen.getByText('스톤 1개')).toBeTruthy();
   });
 
+  it('shows 엔드게임 while a 결정전 is open, then the podium', () => {
+    render(<App />);
+    const sock = sockets[0]!;
+    const active = {
+      teams: [
+        { id: 't1', name: '아이언맨', color: '#C0392B' },
+        { id: 't2', name: '헐크', color: '#1F6FB2' },
+      ],
+      game: endgame,
+    };
+    act(() => {
+      sock.fire('event:summary', summary);
+      sock.fire('room:state', { gameId: 'stones', view: board({ state: 'ENDED', activeTiebreak: active }) });
+    });
+    expect(screen.getByText('엔드게임')).toBeTruthy();
+    expect(screen.getByText(/동점 결정전 · 공동/)).toBeTruthy();
+    expect(screen.getByText('컵 멀리 놓기! 선을 넘지 마세요.')).toBeTruthy();
+    act(() => {
+      sock.fire('room:state', { gameId: 'stones', view: board({ state: 'ENDED' }) });
+    });
+    expect(screen.getByText(/스톤 순위 발표/)).toBeTruthy();
+  });
+
   it('does not replay an old result when it reconnects', () => {
     render(<App />);
     const sock = sockets[0]!;
@@ -226,9 +300,9 @@ describe('스톤 rules', () => {
     render(<RulesDoc showQr={false} />);
     const section = document.getElementById('stones')!;
     expect(section.textContent).toContain(`스톤 ${DEFAULT_STONES.length}개`);
-    expect(section.textContent).toContain('먼저 도달한');
     // The page is public: the secret game order must not be on it.
-    expect(section.textContent).not.toContain('퀸젯');
+    expect(section.textContent).not.toContain('타노스');
+    expect(section.textContent).toContain('컵 멀리 놓기');
     expect(section.textContent).not.toContain('코끼리');
   });
 });

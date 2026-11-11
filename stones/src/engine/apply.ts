@@ -1,13 +1,14 @@
 import type { RoomState } from '@soonot/master';
-import { MAX_STONES, MAX_TEAMS, MIN_TEAMS, STONE_COLORS, TEAM_COLORS } from '../shared/constants';
+import { DEFAULT_TIEBREAK, MAX_STONES, MAX_TEAMS, MIN_TEAMS, STONE_COLORS, TEAM_COLORS } from '../shared/constants';
 import type { Room } from '../shared/types';
 import { EngineError, type Action, type Emit } from './actions';
+import { tiedGroups } from './ranking';
 
 export const ALLOWED: Readonly<Record<RoomState, readonly Action['t'][]>> = {
   SETUP: ['SETUP'],
   LOBBY: ['SETUP', 'START', 'SET_PLAYING'],
   RUNNING: ['PICK', 'CANCEL_PICK', 'RESOLVE', 'SKIP', 'SET_PLAYING', 'UNDO', 'END'],
-  ENDED: ['RESUME_FROM_ENDED', 'REVEAL'],
+  ENDED: ['RESUME_FROM_ENDED', 'REVEAL', 'UNDO', 'TIEBREAK_START', 'TIEBREAK_RESOLVE', 'TIEBREAK_CANCEL'],
   REVEAL: ['REVEAL'],
 };
 
@@ -25,6 +26,9 @@ export function newRoom(opts: { id: string; eventId: string; createdAt: number }
     pending: null,
     claims: [],
     history: [],
+    tiebreak: { id: 'tb', ...DEFAULT_TIEBREAK },
+    tiebreaks: [],
+    activeTiebreak: null,
     lastResult: null,
     seq: 0,
     startedAt: null,
@@ -106,6 +110,8 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
         players: g.players.trim(),
         instructions: g.instructions.trim(),
       }));
+      const tb = action.tiebreak && action.tiebreak.name.trim() ? action.tiebreak : DEFAULT_TIEBREAK;
+      r.tiebreak = { id: 'tb', name: tb.name.trim(), players: tb.players.trim(), instructions: tb.instructions.trim() };
       r.state = 'LOBBY';
       events.push({ e: 'stones:update' });
       break;
@@ -190,6 +196,14 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
     }
 
     case 'UNDO': {
+      // After 게임 종료, undo takes back the last 결정전 result instead.
+      if (r.state === 'ENDED') {
+        if (r.activeTiebreak !== null) throw new EngineError('TIEBREAK_PENDING');
+        if (r.tiebreaks.length === 0) throw new EngineError('NOTHING_TO_UNDO');
+        r.tiebreaks.pop();
+        events.push({ e: 'undo:applied' });
+        break;
+      }
       if (r.pending !== null) throw new EngineError('PICK_PENDING');
       const last = r.history.pop();
       if (!last) throw new EngineError('NOTHING_TO_UNDO');
@@ -214,12 +228,16 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       if (r.revealStep > 0) throw new EngineError('REVEAL_STARTED');
       r.state = 'RUNNING';
       r.endedAt = null;
+      // More stones may change hands, so any 결정전 result no longer applies.
+      r.tiebreaks = [];
+      r.activeTiebreak = null;
       events.push(turnEmit(r));
       break;
     }
 
     case 'REVEAL': {
       if (r.state === 'ENDED') {
+        if (r.activeTiebreak !== null) throw new EngineError('TIEBREAK_PENDING');
         if (action.step !== 0) throw new EngineError('BAD_REVEAL_STEP');
         r.state = 'REVEAL';
         r.revealStep = 0;
@@ -230,6 +248,36 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
         r.revealStep = action.step;
       }
       events.push({ e: 'reveal:step', step: r.revealStep });
+      break;
+    }
+
+    case 'TIEBREAK_START': {
+      if (r.activeTiebreak !== null) throw new EngineError('TIEBREAK_PENDING');
+      const want = new Set(action.teamIds);
+      const group = tiedGroups(r).find((g) => g.length === want.size && g.every((id) => want.has(id)));
+      if (!group || want.size !== action.teamIds.length) throw new EngineError('NOT_TIED');
+      r.activeTiebreak = r.teams.map((t) => t.id).filter((id) => want.has(id));
+      events.push({ e: 'tiebreak:started', teamIds: r.activeTiebreak });
+      break;
+    }
+
+    case 'TIEBREAK_RESOLVE': {
+      const active = r.activeTiebreak;
+      if (active === null) throw new EngineError('NO_TIEBREAK');
+      const order = action.order;
+      if (order.length !== active.length || new Set(order).size !== order.length || !order.every((id) => active.includes(id))) {
+        throw new EngineError('BAD_ORDER');
+      }
+      r.tiebreaks.push([...order]);
+      r.activeTiebreak = null;
+      events.push({ e: 'tiebreak:resolved', order: [...order] });
+      break;
+    }
+
+    case 'TIEBREAK_CANCEL': {
+      if (r.activeTiebreak === null) throw new EngineError('NO_TIEBREAK');
+      r.activeTiebreak = null;
+      events.push({ e: 'tiebreak:resolved', order: null });
       break;
     }
   }

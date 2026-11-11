@@ -55,15 +55,15 @@ export function StonesStage({ view }: { view: StonesView }) {
   const arriving = new Set(burst ? burst.winners.map((w) => `${w}:${burst.stoneId}`) : []);
 
   return (
-    <main className={`stage stage--stones is-${focus}`}>
-      <div className="stars" aria-hidden="true" />
+    <main className={`stage stage--stones stage--theme-stones is-${focus}`}>
+      <Deck />
       <section className="stn-main">
         <header className="stn-head">
           <h1 className="stn-head__title">스톤</h1>
           {view.state === 'RUNNING' && chooser ? (
             <p className="stn-head__turn" style={{ '--team': chooser.color } as CSSProperties}>
               <span className="stn-head__round">
-                {Math.min(view.played + 1, view.total)} / {view.total}
+                STONE {Math.min(view.played + 1, view.total)} / {view.total}
               </span>
               <strong>{chooser.name}</strong> 차례
             </p>
@@ -73,6 +73,7 @@ export function StonesStage({ view }: { view: StonesView }) {
         </header>
 
         <div className="orbit-wrap">
+          <HoloTable />
           <div className="orbit" style={{ '--n': n } as CSSProperties} aria-label="스톤">
             {view.stones.map((s, i) => (
               <div
@@ -242,5 +243,72 @@ function Rankings({
         })}
       </ol>
     </aside>
+  );
+}
+
+/** Stars and a slow scan line. The planet edge, hex grid and HUD corners are
+ *  CSS on `.stage--theme-stones`, so the podium gets them too. */
+function Deck() {
+  return (
+    <>
+      <div className="stars" aria-hidden="true" />
+      <div className="deck-sweep" aria-hidden="true" />
+    </>
+  );
+}
+
+/** A projection table under the orbit: rings and ticks, turning the other way. */
+function HoloTable() {
+  const ticks = Array.from({ length: 72 }, (_, i) => i);
+  return (
+    <svg className="holo" viewBox="-100 -100 200 200" aria-hidden="true">
+      <circle r="96" className="holo__ring" />
+      <circle r="78" className="holo__ring holo__ring--dash" />
+      <circle r="46" className="holo__ring" />
+      <circle r="20" className="holo__ring holo__ring--faint" />
+      {ticks.map((i) => (
+        <line
+          key={i}
+          x1="0"
+          y1={i % 6 === 0 ? -96 : -92}
+          x2="0"
+          y2="-88"
+          className="holo__tick"
+          transform={`rotate(${i * 5})`}
+        />
+      ))}
+      <path d="M -96 0 H -50 M 50 0 H 96 M 0 -96 V -50 M 0 50 V 96" className="holo__cross" />
+    </svg>
+  );
+}
+
+/**
+ * The 동점 결정전 on the projector: the tied teams face each other over the
+ * game card (엔드게임 · 컵 멀리 놓기).
+ */
+export function TiebreakStage({ view }: { view: StonesView }) {
+  const tb = view.activeTiebreak!;
+  const place = view.standings.find((s) => s.teamId === tb.teams[0]?.id)?.rank ?? 0;
+  return (
+    <main className="stage stage--stones stage--theme-stones stage--tiebreak">
+      <Deck />
+      <section className="tb">
+        <h1 className="tb__title">
+          <span className="tb__game">{tb.game.name}</span>
+          <span className="tb__sub">동점 결정전 · 공동 {place}위</span>
+        </h1>
+        <ul className="tb__teams">
+          {tb.teams.map((t, i) => (
+            <li key={t.id} className="tb__team" style={{ '--team': t.color, '--i': i } as CSSProperties}>
+              {t.name}
+            </li>
+          ))}
+        </ul>
+        <div className="tb__card">
+          {tb.game.players ? <p className="mission__players">{playersLabel(tb.game.players)}</p> : null}
+          <p className="tb__text">{tb.game.instructions}</p>
+        </div>
+      </section>
+    </main>
   );
 }

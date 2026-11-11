@@ -19,7 +19,7 @@ import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
 import { DUEL_GAMES } from '@soonot/yutnori/src/shared/constants.js';
 import { Qr, joinUrl } from '../shared/Qr.js';
 import type { StonesView } from '@soonot/stones/src/project.js';
-import { StonesStage } from './StonesStage.js';
+import { StonesStage, TiebreakStage } from './StonesStage.js';
 import './projector.css';
 
 const HOLD_MS = 20_000;
@@ -473,6 +473,7 @@ export function App() {
   const screen = (() => {
     if (!summary) return <Standby summary={null} joinable={false} />;
     if (active === 'stones') {
+      if (sView && sView.state === 'ENDED' && sView.activeTiebreak) return <TiebreakStage view={sView} />;
       if (sView && (sView.state === 'REVEAL' || sView.state === 'ENDED')) {
         return (
           <Podium

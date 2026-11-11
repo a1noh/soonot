@@ -1,28 +1,34 @@
 import { describe, expect, it } from 'vitest';
-import { rank } from '../ranking';
+import { rank, tiedGroups } from '../ranking';
 import { stonesModule } from '../../module';
 import { act, play, started, T0 } from './helpers';
 
+const places = (r: Parameters<typeof rank>[0]) => rank(r).map((x) => [x.teamName, x.stoneIds.length, x.rank]);
+
 describe('ranking', () => {
-  it('most stones first; a tie goes to whoever got there first', () => {
+  it('most stones first; level teams share a place — never broken by time', () => {
     let r = started({ teams: 3 });
     r = play(r, 's1', ['t2'], T0 + 1);
     r = play(r, 's2', ['t3'], T0 + 2);
     r = play(r, 's3', ['t2', 't1'], T0 + 3);
-    expect(rank(r).map((x) => [x.teamName, x.stoneIds.length, x.rank])).toEqual([
+    expect(places(r)).toEqual([
       ['조2', 2, 1],
+      ['조1', 1, 2], // setup order inside a shared place
       ['조3', 1, 2],
-      ['조1', 1, 3],
     ]);
+    expect(tiedGroups(r)).toEqual([['t1', 't3']]);
   });
 
-  it('joint winners of the same stone share a place', () => {
-    const r = play(started({ teams: 3 }), 's1', ['t1', 't3'], T0 + 1);
-    expect(rank(r).map((x) => [x.teamId, x.rank])).toEqual([
-      ['t1', 1],
-      ['t3', 1],
-      ['t2', 3],
+  it('a three-way tie at the top shares 1st, and the next team is 4th', () => {
+    let r = started({ teams: 4 });
+    r = play(r, 's1', ['t1', 't2', 't4']);
+    expect(places(r)).toEqual([
+      ['조1', 1, 1],
+      ['조2', 1, 1],
+      ['조4', 1, 1],
+      ['조3', 0, 4],
     ]);
+    expect(tiedGroups(r)).toEqual([['t1', 't2', 't4']]);
   });
 
   it('leaves out a team that sits out and won nothing', () => {

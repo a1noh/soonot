@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { apply } from '../apply';
 import { EngineError, type Action } from '../actions';
 import { assertInvariants } from '../invariants';
+import { tiedGroups } from '../ranking';
 import { started, T0 } from './helpers';
 
 /** Tiny seeded PRNG so a failure reproduces. */
@@ -39,6 +40,24 @@ describe('random play never breaks the invariants', () => {
         assertInvariants(r);
       }
       expect(ok).toBeGreaterThan(400);
+
+      // Then end, and play every 결정전 in random order, with undos.
+      r = apply(r, { t: 'END' }, T0 + 9999).state;
+      for (let i = 0; i < 200; i++) {
+        const groups = tiedGroups(r);
+        const action: Action = one<Action>([
+          { t: 'TIEBREAK_START', teamIds: groups.length ? one(groups) : ['t1', 't2'] },
+          { t: 'TIEBREAK_RESOLVE', order: [...(r.activeTiebreak ?? [])].sort(() => rand() - 0.5) },
+          { t: 'TIEBREAK_CANCEL' },
+          { t: 'UNDO' },
+        ]);
+        try {
+          r = apply(r, action, T0 + 10000 + i).state;
+        } catch (e) {
+          if (!(e instanceof EngineError)) throw e;
+        }
+        assertInvariants(r);
+      }
     });
   }
 });

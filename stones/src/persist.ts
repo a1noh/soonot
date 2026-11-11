@@ -32,6 +32,6 @@ export const snapshot: SnapshotStrategy<Room> = {
     const room = JSON.parse(row.room) as Partial<Room>;
     // A row written by an older shape of this game starts fresh rather than
     // crashing the projector on a missing field.
-    return Array.isArray(room.claims) && Array.isArray(room.games) ? (room as Room) : null;
+    return Array.isArray(room.claims) && Array.isArray(room.games) && Array.isArray(room.tiebreaks) ? (room as Room) : null;
   },
 };

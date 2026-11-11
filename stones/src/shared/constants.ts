@@ -44,34 +44,34 @@ export const DEFAULT_TEAMS: readonly string[] = ['아이언맨', '헐크', '캡�
  */
 export const DEFAULT_GAMES: readonly { name: string; players: string; instructions: string }[] = [
   {
-    name: '퀸젯 발사',
+    name: '타노스 격추 작전',
     players: '2명',
     instructions:
       '코끼리 종이비행기! 각 팀 2명이 나와요. 한 명씩 코끼리 코로 10바퀴 돈 뒤 종이비행기를 날려요. 두 비행기 중 더 멀리 간 기록으로 겨뤄, 가장 멀리 날린 팀이 스톤을 얻어요.',
   },
   {
-    name: '헤임달의 귀',
+    name: '그루트 노래방',
     players: '모두',
     instructions:
-      '찬양 퀴즈! 모든 소리를 듣는 헤임달처럼, 찬양 전주나 한 소절을 듣고 제목을 맞혀요. 아는 팀은 손을 들고, 먼저 든 팀이 답해요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
+      '찬양 퀴즈! 찬양 전주나 한 소절을 듣고 제목을 맞혀요. 아는 팀은 손을 들고, 먼저 든 팀이 답해요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
   },
   {
-    name: '자비스의 선택',
+    name: '닥터 스트레인지의 선택',
     players: '모두',
     instructions:
       '사지선다! 화면에 문제와 보기 4개가 나와요. 신호에 맞춰 모든 팀이 동시에 손가락으로 1~4를 들어요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
   },
   {
-    name: '닥터 스트레인지의 눈',
+    name: '앤트맨 돋보기',
     players: '모두',
     instructions:
-      '이미지 퀴즈! 화면의 그림이 조금씩 드러나요. 무엇인지 아는 팀은 손을 들고, 먼저 든 팀이 답해요. 틀리면 다른 팀에게 기회가 넘어가요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
+      '이미지 퀴즈! 아주 크게 확대한 그림이 조금씩 드러나요. 무엇인지 아는 팀은 손을 들고, 먼저 든 팀이 답해요. 틀리면 다른 팀에게 기회가 넘어가요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
   },
   {
-    name: '로키의 속임수',
+    name: '스파이더맨 아재개그',
     players: '모두',
     instructions:
-      '넌센스 퀴즈! 로키가 낸 엉뚱한 문제예요. 먼저 손을 든 팀이 답해요. 속지 마세요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
+      '넌센스 퀴즈! 엉뚱한 아재개그 문제예요. 먼저 손을 든 팀이 답해요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
   },
   {
     name: '어벤져스 어셈블',
@@ -80,3 +80,11 @@ export const DEFAULT_GAMES: readonly { name: string; players: string; instructio
       '일심동체! 각 팀 3명이 나와요. 같은 질문에 서로 보지 않고 동시에 답을 적어요. 세 명의 답이 모두 같으면 1점. 가장 많이 맞춘 팀이 스톤을 얻어요.',
   },
 ];
+
+/** The 동점 결정전. Played only by teams level on stones, after 게임 종료. */
+export const DEFAULT_TIEBREAK: { name: string; players: string; instructions: string } = {
+  name: '엔드게임',
+  players: '모두',
+  instructions:
+    '컵 멀리 놓기! 바닥에 선을 긋고, 팀 전원이 서로 붙잡고 도와서 컵을 선 너머로 최대한 멀리 내려놓아요. 컵을 던지면 안 되고, 선을 넘으면 실격이에요. 선에서 컵이 가장 먼 팀이 이겨요.',
+};

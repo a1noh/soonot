@@ -40,6 +40,24 @@ export function assertInvariants(room: Room): void {
     if (claimed.has(room.pending.stoneId)) fail('pending pick on a played stone');
     if (room.games[room.claims.length]?.id !== room.pending.gameId) fail('pending pick opened the wrong game');
   }
+  // 결정전: decided groups never overlap, and each is still level on stones.
+  const inGroup = new Set<string>();
+  const count = (id: string) => room.claims.filter((c) => c.winners.includes(id)).length;
+  for (const g of room.tiebreaks) {
+    if (g.length < 2) fail('a 결정전 group with fewer than two teams');
+    for (const id of g) {
+      if (inGroup.has(id)) fail(`team ${id} is in two 결정전 groups`);
+      inGroup.add(id);
+      if (!teamIds.has(id)) fail(`결정전 team ${id} is not a team`);
+    }
+    if (new Set(g.map(count)).size !== 1) fail('a 결정전 group is not level on stones');
+  }
+  if (room.activeTiebreak !== null) {
+    if (room.state !== 'ENDED') fail('결정전 open outside ENDED');
+    for (const id of room.activeTiebreak) if (inGroup.has(id)) fail(`team ${id} is in an open and a decided 결정전`);
+  }
+  if (room.tiebreaks.length > 0 && room.state === 'RUNNING') fail('결정전 results kept while running');
+
   const claimsInHistory = room.history.filter((h) => h.kind === 'claim').length;
   if (claimsInHistory !== room.claims.length) fail(`history has ${claimsInHistory} claims but ${room.claims.length} exist`);
 }

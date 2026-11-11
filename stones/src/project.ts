@@ -7,7 +7,7 @@
  */
 import type { Viewer } from '@soonot/master';
 import { heldBy, nextGame, picksLeft } from './engine/apply';
-import { rank, type Standing } from './engine/ranking';
+import { rank, tiedGroups, type Standing } from './engine/ranking';
 import type { Game, LastResult, Room, Stone } from './shared/types';
 
 export interface StonesView {
@@ -28,6 +28,12 @@ export interface StonesView {
   lastResult: LastResult | null;
   revealStep: number;
   standings: Standing[];
+  /** The 동점 결정전 being played right now (after 게임 종료). */
+  activeTiebreak: { teams: { id: string; name: string; color: string }[]; game: Game } | null;
+  /** Master only: the 결정전 game, and every group still tied. */
+  tiebreak?: Game;
+  tiedGroups?: string[][];
+  canUndoTiebreak?: boolean;
   /** Master only. */
   games?: Game[];
   nextGame?: Game | null;
@@ -66,12 +72,24 @@ export function project(room: Room, viewer: Viewer): StonesView {
     lastResult: room.lastResult,
     revealStep: room.revealStep,
     standings: rank(room),
+    activeTiebreak: room.activeTiebreak
+      ? {
+          teams: room.activeTiebreak.map((id) => {
+            const t = room.teams.find((x) => x.id === id)!;
+            return { id: t.id, name: t.name, color: t.color };
+          }),
+          game: room.tiebreak,
+        }
+      : null,
   };
   if (viewer.kind === 'master') {
     view.games = room.games;
     view.nextGame = room.state === 'RUNNING' && picksLeft(room) > 0 ? nextGame(room) : null;
     view.blocking = room.state === 'RUNNING' && room.pending !== null;
     view.canUndo = room.history.length > 0;
+    view.tiebreak = room.tiebreak;
+    view.tiedGroups = room.state === 'ENDED' ? tiedGroups(room) : [];
+    view.canUndoTiebreak = room.state === 'ENDED' && room.activeTiebreak === null && room.tiebreaks.length > 0;
   }
   return view;
 }
