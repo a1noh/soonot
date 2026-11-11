@@ -22,7 +22,7 @@ import {
   ROLL_STEPS,
 } from '@soonot/yutnori/src/shared/constants.js';
 import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
-import { DEFAULT_STONES, MIN_TEAMS as STONES_MIN_TEAMS } from '@soonot/stones/src/shared/constants.js';
+import { DEFAULT_GAMES, DEFAULT_STONES } from '@soonot/stones/src/shared/constants.js';
 import { Qr } from '../shared/Qr.js';
 import './rules.css';
 
@@ -318,18 +318,19 @@ export function RulesDoc({ showQr = true }: { showQr?: boolean }) {
       <section className="rules__section" id="stones">
         <h2 className="rules__h2">스톤 · 팀 미션 게임</h2>
         <ul className="rules__list">
-          <li>팀이 <strong>차례대로</strong> 돌아가며 스톤 하나에 도전합니다. 기본 스톤은 {DEFAULT_STONES.length}개입니다.</li>
-          <li>진행자가 그 팀이 도전할 스톤을 고르면 화면에 <strong>미션</strong>이 뜹니다.</li>
-          <li><strong>성공</strong>하면 그 스톤을 얻습니다. <strong>실패</strong>하면 아무것도 얻지 못합니다. 어느 쪽이든 차례가 넘어갑니다.</li>
-          <li>한 스톤을 여러 팀이 얻을 수 있습니다. 같은 팀이 같은 스톤을 두 번 얻을 수는 없습니다.</li>
-          <li>참가 팀은 설정에서 고릅니다 (최소 {STONES_MIN_TEAMS}팀). 게임 중에도 팀을 빼거나 넣을 수 있습니다.</li>
+          <li>팀이 <strong>돌아가며</strong> 스톤을 하나 고릅니다. 고른 스톤 뒤에 숨은 게임이 화면에 열립니다.</li>
+          <li>열린 게임은 <strong>모든 팀</strong>이 함께 합니다. 게임마다 나오는 인원이 다릅니다.</li>
+          <li>이긴 팀은 그 스톤을 얻습니다. 여러 팀이 함께 이기면 모두 얻습니다.</li>
+          <li>스톤은 한 번씩만 씁니다. 스톤 {DEFAULT_STONES.length}개 = 게임 {DEFAULT_GAMES.length}판.</li>
         </ul>
+        <p className="rules__note">
+          게임 목록과 순서는 진행자 화면(스톤 칸의 설정)에만 있습니다. 이 페이지는 누구나 열 수 있어서 여기엔 적지 않습니다.
+        </p>
         <h3 className="rules__h3">순위</h3>
         <ol className="rules__ranked">
           <li><strong>스톤</strong>을 많이 모은 팀</li>
           <li>같으면 그 개수에 <strong>먼저 도달한</strong> 팀</li>
         </ol>
-        <p className="rules__note">시간 제한은 없습니다. 진행자가 <strong>게임 종료</strong>를 누르면 끝나고, <strong>순위 발표</strong>로 3위부터 공개합니다.</p>
       </section>
 
       {/* ---- 문제 해결 ------------------------------------------------------ */}

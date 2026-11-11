@@ -1,4 +1,5 @@
 import type { Room } from '../shared/types';
+import { heldBy } from './apply';
 
 export interface Standing {
   rank: number;
@@ -13,24 +14,24 @@ export interface Standing {
 
 /**
  * Most stones first. A tie goes to the team that reached that count first,
- * then to setup order. Teams that never played are left out.
+ * then to setup order. Teams that sit out and won nothing are left out.
  */
 export function rank(room: Room): Standing[] {
-  const played = new Set(room.history.map((h) => h.teamId));
   const rows = room.teams
     .map((t, order) => {
-      const wins = room.wins.filter((w) => w.teamId === t.id);
+      const stoneIds = heldBy(room, t.id);
+      const lastWin = [...room.claims].reverse().find((c) => c.winners.includes(t.id));
       return {
         order,
         teamId: t.id,
         teamName: t.name,
         color: t.color,
         playing: t.playing,
-        stoneIds: wins.map((w) => w.stoneId),
-        reachedAt: wins.length > 0 ? wins[wins.length - 1]!.at : null,
+        stoneIds,
+        reachedAt: lastWin ? lastWin.at : null,
       };
     })
-    .filter((row) => row.playing || played.has(row.teamId) || row.stoneIds.length > 0);
+    .filter((row) => row.playing || row.stoneIds.length > 0);
 
   rows.sort(
     (a, b) =>
@@ -42,7 +43,7 @@ export function rank(room: Room): Standing[] {
   let prev: (typeof rows)[number] | null = null;
   let place = 0;
   return rows.map((row, i) => {
-    // Equal count and equal time share a place; anything else takes its position.
+    // Equal count at the same moment (several winners of one stone) share a place.
     if (!prev || prev.stoneIds.length !== row.stoneIds.length || prev.reachedAt !== row.reachedAt) place = i + 1;
     prev = row;
     const { order: _order, ...rest } = row;

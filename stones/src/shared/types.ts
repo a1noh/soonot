@@ -4,7 +4,7 @@ export interface Team {
   id: string;
   name: string;
   color: string;
-  /** Ticked "참가" — only playing teams take turns. */
+  /** Ticked "참가" — only playing teams take a turn as the chooser. */
   playing: boolean;
 }
 
@@ -12,32 +12,42 @@ export interface Stone {
   id: string;
   name: string;
   color: string;
-  /** What the team has to do to win it. Placeholder text until the event writes real ones. */
-  mission: string;
 }
 
-export interface Win {
-  teamId: string;
+/**
+ * One game in the order the master fixed beforehand. The chooser thinks the
+ * stone they tap decides the game; it doesn't — pick N always opens game N.
+ */
+export interface Game {
+  id: string;
+  name: string;
+  /** Who plays from each team: '2명', '3명', '모두' … shown as written. */
+  players: string;
+  instructions: string;
+}
+
+/** A stone that has been played for: which game came up and who won it. */
+export interface Claim {
   stoneId: string;
-  at: number;
-}
-
-/** One finished turn. `UNDO` pops these. */
-export interface TurnRecord {
-  kind: 'resolve' | 'skip';
-  teamId: string;
+  gameId: string;
+  chooserId: string;
   round: number;
-  stoneId: string | null;
-  success: boolean | null;
+  /** Zero, one or several teams. Each gets the stone. */
+  winners: string[];
   at: number;
 }
 
-/** The last thing that happened, so the projector can animate it once. */
+/** One finished turn, for UNDO. */
+export type TurnRecord =
+  | { kind: 'claim'; chooserId: string; round: number }
+  | { kind: 'skip'; chooserId: string; round: number };
+
+/** The last result, so the projector can animate it once. */
 export interface LastResult {
   seq: number;
-  teamId: string;
   stoneId: string;
-  success: boolean;
+  gameId: string;
+  winners: string[];
 }
 
 export interface Room {
@@ -47,10 +57,12 @@ export interface Room {
   state: RoomState;
   teams: Team[];
   stones: Stone[];
+  games: Game[];
+  /** Whose turn it is to "choose" the next stone. */
   turnTeamId: string | null;
   round: number;
-  pending: { teamId: string; stoneId: string } | null;
-  wins: Win[];
+  pending: { chooserId: string; stoneId: string; gameId: string } | null;
+  claims: Claim[];
   history: TurnRecord[];
   lastResult: LastResult | null;
   seq: number;

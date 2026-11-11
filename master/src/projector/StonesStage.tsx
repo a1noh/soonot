@@ -1,25 +1,30 @@
 /**
  * 스톤 on the projector.
  *
- * Idle: the stones orbit slowly, each turning on its own axis. Picked: the ring
- * falls back and the chosen stone comes forward with its mission. Resolved: on
- * 성공 the stone flies into the team's row in the rankings; on 실패 it cracks
- * and fades. The rankings column is always on screen and reorders in place.
+ * Idle: the stones orbit slowly, each turning in its own light, and the
+ * chooser's name sits in the middle. Picked: the ring falls back, the stone
+ * comes forward and the game behind it is revealed — who plays and how. The
+ * room believes the stone chose the game; the projector only ever learns a
+ * game once it is open. Resolved: the stone splits and flies into every
+ * winning team's row; with no winner it greys and falls.
  */
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import type { StonesView } from '@soonot/stones/src/project.js';
 import { Gem } from '@soonot/stones/src/client/Gem.js';
+import { playersLabel } from '@soonot/stones/src/shared/labels.js';
 import './stones.css';
 
 const reducedMotion = () =>
   typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-type Burst = { seq: number; stoneId: string; teamId: string; success: boolean; dx: number; dy: number };
+type Flight = { teamId: string; dx: number; dy: number };
+type Burst = { seq: number; stoneId: string; winners: string[]; flights: Flight[] };
 
 export function StonesStage({ view }: { view: StonesView }) {
-  const turn = view.teams.find((t) => t.id === view.turnTeamId) ?? null;
-  const pending = view.pending ? view.stones.find((s) => s.id === view.pending!.stoneId) ?? null : null;
-  const pendingTeam = view.pending ? view.teams.find((t) => t.id === view.pending!.teamId) ?? null : null;
+  const chooser = view.teams.find((t) => t.id === view.turnTeamId) ?? null;
+  const pending = view.pending;
+  const pendingStone = pending ? view.stones.find((s) => s.id === pending.stoneId) ?? null : null;
+  const pendingTeam = pending ? view.teams.find((t) => t.id === pending.chooserId) ?? null : null;
 
   const centerRef = useRef<HTMLDivElement>(null);
   const slotRefs = useRef(new Map<string, HTMLElement>());
@@ -32,16 +37,22 @@ export function StonesStage({ view }: { view: StonesView }) {
     if (!r || r.seq === seenSeq.current) return;
     seenSeq.current = r.seq;
     const from = centerRef.current?.getBoundingClientRect();
-    const to = slotRefs.current.get(`${r.teamId}:${r.stoneId}`)?.getBoundingClientRect();
-    const dx = from && to ? to.left + to.width / 2 - (from.left + from.width / 2) : 0;
-    const dy = from && to ? to.top + to.height / 2 - (from.top + from.height / 2) : 0;
-    setBurst({ ...r, dx, dy });
+    const flights = r.winners.map((teamId) => {
+      const to = slotRefs.current.get(`${teamId}:${r.stoneId}`)?.getBoundingClientRect();
+      return {
+        teamId,
+        dx: from && to ? to.left + to.width / 2 - (from.left + from.width / 2) : 0,
+        dy: from && to ? to.top + to.height / 2 - (from.top + from.height / 2) : 0,
+      };
+    });
+    setBurst({ seq: r.seq, stoneId: r.stoneId, winners: r.winners, flights });
   }, [view.lastResult]);
 
   const burstStone = burst ? view.stones.find((s) => s.id === burst.stoneId) ?? null : null;
-  const burstTeam = burst ? view.teams.find((t) => t.id === burst.teamId) ?? null : null;
+  const teamName = (id: string) => view.teams.find((t) => t.id === id)?.name ?? '';
   const focus = pending ? 'picked' : burst ? 'result' : 'idle';
   const n = view.stones.length;
+  const arriving = new Set(burst ? burst.winners.map((w) => `${w}:${burst.stoneId}`) : []);
 
   return (
     <main className={`stage stage--stones is-${focus}`}>
@@ -49,10 +60,12 @@ export function StonesStage({ view }: { view: StonesView }) {
       <section className="stn-main">
         <header className="stn-head">
           <h1 className="stn-head__title">스톤</h1>
-          {view.state === 'RUNNING' && turn ? (
-            <p className="stn-head__turn" style={{ '--team': turn.color } as CSSProperties}>
-              <span className="stn-head__round">{view.round}라운드</span>
-              <strong>{turn.name}</strong> 차례
+          {view.state === 'RUNNING' && chooser ? (
+            <p className="stn-head__turn" style={{ '--team': chooser.color } as CSSProperties}>
+              <span className="stn-head__round">
+                {Math.min(view.played + 1, view.total)} / {view.total}
+              </span>
+              <strong>{chooser.name}</strong> 차례
             </p>
           ) : (
             <p className="stn-head__turn stn-head__turn--wait">곧 시작합니다</p>
@@ -64,12 +77,12 @@ export function StonesStage({ view }: { view: StonesView }) {
             {view.stones.map((s, i) => (
               <div
                 key={s.id}
-                className={`orbit__slot${pending?.id === s.id ? ' is-chosen' : ''}`}
+                className={`orbit__slot${pending?.stoneId === s.id ? ' is-chosen' : ''}${s.claimed ? ' is-claimed' : ''}`}
                 style={{ '--i': i, '--glow': s.color } as CSSProperties}
               >
                 <div className="orbit__upright">
                   <div className="orbit__bob" style={{ animationDelay: `${-i * 0.7}s` }}>
-                    <Gem color={s.color} size={120} className="orbit__gem" />
+                    <Gem color={s.color} size={120} dim={!!s.claimed} className="orbit__gem" />
                   </div>
                   <span className="orbit__name">{s.name}</span>
                 </div>
@@ -78,51 +91,70 @@ export function StonesStage({ view }: { view: StonesView }) {
           </div>
 
           <div className="orbit-center" ref={centerRef}>
-            {focus === 'idle' && view.state === 'RUNNING' && turn ? (
+            {focus === 'idle' && view.state === 'RUNNING' && chooser && view.played < view.total ? (
               <p className="orbit-center__prompt">
-                <strong style={{ '--team': turn.color } as CSSProperties}>{turn.name}</strong>
-                <span>도전할 스톤을 골라요</span>
+                <strong style={{ '--team': chooser.color } as CSSProperties}>{chooser.name}</strong>
+                <span>스톤을 하나 고르세요</span>
+              </p>
+            ) : null}
+            {focus === 'idle' && view.state === 'RUNNING' && view.played >= view.total ? (
+              <p className="orbit-center__prompt">
+                <strong>모든 스톤을 모았어요</strong>
               </p>
             ) : null}
           </div>
 
-          {pending && pendingTeam ? (
-            <div className="mission" key={pending.id} style={{ '--glow': pending.color } as CSSProperties}>
+          {pending && pendingStone ? (
+            <div className="mission" key={`${pending.stoneId}:${pending.number}`} style={{ '--glow': pendingStone.color } as CSSProperties}>
               <div className="mission__gem">
-                <Gem color={pending.color} size={240} />
+                <Gem color={pendingStone.color} size={240} />
+                <span className="mission__stone">{pendingStone.name}</span>
               </div>
               <div className="mission__card">
                 <p className="mission__who">
-                  <span style={{ background: pendingTeam.color }} className="mission__dot" />
-                  {pendingTeam.name} 도전
+                  {pendingTeam ? <span style={{ background: pendingTeam.color }} className="mission__dot" /> : null}
+                  {pending.chooserName} 선택 · 모든 팀이 도전해요
                 </p>
-                <h2 className="mission__name">{pending.name}</h2>
-                <p className="mission__text">{pending.mission || '미션을 준비 중이에요.'}</p>
+                <h2 className="mission__name">{pending.game.name}</h2>
+                {pending.game.players ? <p className="mission__players">{playersLabel(pending.game.players)}</p> : null}
+                <p className="mission__text">{pending.game.instructions}</p>
               </div>
             </div>
           ) : null}
 
-          {burst && burstStone && burstTeam ? (
+          {burst && burstStone ? (
             <div
               key={burst.seq}
-              className={`burst ${burst.success ? 'burst--win' : 'burst--lose'}`}
-              style={{ '--glow': burstStone.color, '--dx': `${burst.dx}px`, '--dy': `${burst.dy}px` } as CSSProperties}
+              className={`burst ${burst.winners.length > 0 ? 'burst--win' : 'burst--lose'}`}
+              style={{ '--glow': burstStone.color } as CSSProperties}
               onAnimationEnd={(e) => {
                 if (e.target === e.currentTarget) setBurst(null);
               }}
             >
-              <div className="burst__gem">
-                <Gem color={burstStone.color} size={220} />
+              <div className="burst__gems">
+                {burst.flights.length > 0 ? (
+                  burst.flights.map((f) => (
+                    <div
+                      key={f.teamId}
+                      className="burst__gem"
+                      style={{ '--dx': `${f.dx}px`, '--dy': `${f.dy}px` } as CSSProperties}
+                    >
+                      <Gem color={burstStone.color} size={220} halo />
+                    </div>
+                  ))
+                ) : (
+                  <div className="burst__gem">
+                    <Gem color={burstStone.color} size={220} />
+                  </div>
+                )}
               </div>
               <p className="burst__label">
-                {burst.success ? (
+                {burst.winners.length > 0 ? (
                   <>
-                    <strong>{burstTeam.name}</strong> {burstStone.name} 획득
+                    <strong>{burst.winners.map(teamName).join(' · ')}</strong> {burstStone.name} 획득
                   </>
                 ) : (
-                  <>
-                    <strong>{burstTeam.name}</strong> 아쉽게 실패
-                  </>
+                  <>아무 팀도 {burstStone.name}을 얻지 못했어요</>
                 )}
               </p>
             </div>
@@ -130,11 +162,7 @@ export function StonesStage({ view }: { view: StonesView }) {
         </div>
       </section>
 
-      <Rankings
-        view={view}
-        slotRefs={slotRefs.current}
-        arriving={burst?.success ? `${burst.teamId}:${burst.stoneId}` : null}
-      />
+      <Rankings view={view} slotRefs={slotRefs.current} arriving={arriving} />
     </main>
   );
 }
@@ -147,8 +175,8 @@ function Rankings({
 }: {
   view: StonesView;
   slotRefs: Map<string, HTMLElement>;
-  /** The slot a winning stone is flying into: stays dark until it lands. */
-  arriving: string | null;
+  /** Slots a stone is flying into: they stay dark until it lands. */
+  arriving: ReadonlySet<string>;
 }) {
   const listRef = useRef<HTMLOListElement>(null);
   const prev = useRef(new Map<string, number>());
@@ -156,18 +184,17 @@ function Rankings({
   useLayoutEffect(() => {
     const list = listRef.current;
     if (!list) return;
-    const rows = Array.from(list.children) as HTMLElement[];
     const next = new Map<string, number>();
-    for (const row of rows) {
+    for (const row of Array.from(list.children) as HTMLElement[]) {
       const id = row.dataset.id!;
       const top = row.getBoundingClientRect().top;
       next.set(id, top);
       const before = prev.current.get(id);
       if (before !== undefined && before !== top && typeof row.animate === 'function' && !reducedMotion()) {
-        row.animate(
-          [{ transform: `translateY(${before - top}px)` }, { transform: 'translateY(0)' }],
-          { duration: 600, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' },
-        );
+        row.animate([{ transform: `translateY(${before - top}px)` }, { transform: 'translateY(0)' }], {
+          duration: 600,
+          easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        });
       }
     }
     prev.current = next;
@@ -179,28 +206,28 @@ function Rankings({
       <h2 className="ranks__title">순위</h2>
       <ol className="ranks__list" ref={listRef}>
         {view.standings.map((s) => {
-          const team = byId.get(s.teamId);
           const isTurn = view.state === 'RUNNING' && s.teamId === view.turnTeamId;
+          const count = s.stoneIds.filter((id) => !arriving.has(`${s.teamId}:${id}`)).length;
           return (
             <li
               key={s.teamId}
               data-id={s.teamId}
-              className={`ranks__row${isTurn ? ' is-turn' : ''}${team?.playing ? '' : ' is-out'}`}
+              className={`ranks__row${isTurn ? ' is-turn' : ''}${byId.get(s.teamId)?.playing ? '' : ' is-out'}`}
               style={{ '--team': s.color } as CSSProperties}
             >
               <span className="ranks__place">{s.rank}</span>
               <span className="ranks__name">{s.teamName}</span>
-              <span className="ranks__count">{s.stoneIds.length}</span>
+              <span className="ranks__count">{count}</span>
               <span className="ranks__slots">
                 {view.stones.map((st) => {
-                  const has = s.stoneIds.includes(st.id) && arriving !== `${s.teamId}:${st.id}`;
+                  const key = `${s.teamId}:${st.id}`;
+                  const has = s.stoneIds.includes(st.id) && !arriving.has(key);
                   return (
                     <span
                       key={st.id}
                       className={`ranks__slot${has ? ' is-held' : ''}`}
                       style={{ '--glow': st.color } as CSSProperties}
                       ref={(el) => {
-                        const key = `${s.teamId}:${st.id}`;
                         if (el) slotRefs.set(key, el);
                         else slotRefs.delete(key);
                       }}

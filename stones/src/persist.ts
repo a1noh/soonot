@@ -28,6 +28,10 @@ export const snapshot: SnapshotStrategy<Room> = {
     const row = db.prepare(`SELECT room FROM stones_rooms WHERE event_id = ?`).get(eventId) as
       | { room: string }
       | undefined;
-    return row ? (JSON.parse(row.room) as Room) : null;
+    if (!row) return null;
+    const room = JSON.parse(row.room) as Partial<Room>;
+    // A row written by an older shape of this game starts fresh rather than
+    // crashing the projector on a missing field.
+    return Array.isArray(room.claims) && Array.isArray(room.games) ? (room as Room) : null;
   },
 };

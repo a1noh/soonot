@@ -36,7 +36,7 @@ function boot(dbPath: string): Host {
 }
 
 describe('스톤 recovery', () => {
-  it('comes back mid-game with wins, turn and who plays', async () => {
+  it('comes back mid-game with claims, turn, pick and who plays', async () => {
     dir = mkdtempSync(join(tmpdir(), 'soonot-'));
     const dbPath = join(dir, 'soonot.db');
     const a = boot(dbPath);
@@ -50,14 +50,18 @@ describe('스톤 recovery', () => {
           { name: '예배', playing: true },
           { name: '양육', playing: false },
         ],
-        stones: [{ name: '빨강', mission: '노래' }, { name: '파랑', mission: '퀴즈' }],
+        stones: [{ name: '스페이스 스톤' }, { name: '마인드 스톤' }],
+        games: [
+          { name: '코끼리 종이비행기', players: '2명', instructions: 'a' },
+          { name: '찬양 퀴즈', players: '모두', instructions: 'b' },
+        ],
       },
       viewer,
     );
     await a.dispatch('stones', { t: 'START' }, viewer);
-    await a.dispatch('stones', { t: 'PICK', stoneId: 's1' }, viewer);
-    await a.dispatch('stones', { t: 'RESOLVE', success: true }, viewer);
-    await a.dispatch('stones', { t: 'PICK', stoneId: 's2' }, viewer); // left pending on purpose
+    await a.dispatch('stones', { t: 'PICK', stoneId: 's2' }, viewer);
+    await a.dispatch('stones', { t: 'RESOLVE', winners: ['t1', 't3'] }, viewer);
+    await a.dispatch('stones', { t: 'PICK', stoneId: 's1' }, viewer); // left pending on purpose
     await a.close();
     hosts.length = 0;
 
@@ -67,9 +71,9 @@ describe('스톤 recovery', () => {
     expect(restored?.games.stones.enabled).toBe(true);
     const room = restored!.games.stones.state as StonesRoom;
     expect(room.state).toBe('RUNNING');
-    expect(room.wins).toEqual([expect.objectContaining({ teamId: 't1', stoneId: 's1' })]);
+    expect(room.claims).toEqual([expect.objectContaining({ stoneId: 's2', gameId: 'g1', winners: ['t1', 't3'] })]);
     expect(room.turnTeamId).toBe('t2');
-    expect(room.pending).toEqual({ teamId: 't2', stoneId: 's2' });
+    expect(room.pending).toEqual({ chooserId: 't2', stoneId: 's1', gameId: 'g2' });
     expect(room.teams.map((t) => t.playing)).toEqual([true, true, false]);
     stonesModule.invariants(room);
   }, 30000);

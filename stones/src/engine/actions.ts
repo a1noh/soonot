@@ -1,9 +1,14 @@
 export type Action =
-  | { t: 'SETUP'; teams: { name: string; playing: boolean }[]; stones: { name: string; mission: string }[] }
+  | {
+      t: 'SETUP';
+      teams: { name: string; playing: boolean }[];
+      stones: { name: string }[];
+      games: { name: string; players: string; instructions: string }[];
+    }
   | { t: 'START' }
   | { t: 'PICK'; stoneId: string }
   | { t: 'CANCEL_PICK' }
-  | { t: 'RESOLVE'; success: boolean }
+  | { t: 'RESOLVE'; winners: string[] }
   | { t: 'SKIP' }
   | { t: 'SET_PLAYING'; teamId: string; playing: boolean }
   | { t: 'UNDO' }
@@ -11,11 +16,11 @@ export type Action =
   | { t: 'RESUME_FROM_ENDED' }
   | { t: 'REVEAL'; step: number };
 
-/** Everything is public: the projector shows the whole game. */
+/** Everything is public on the projector except which game comes next. */
 export type Emit =
   | { e: 'stones:update' }
-  | { e: 'stone:picked'; teamId: string; stoneId: string }
-  | { e: 'stone:resolved'; teamId: string; stoneId: string; success: boolean }
+  | { e: 'stone:picked'; chooserId: string; stoneId: string; gameId: string }
+  | { e: 'stone:resolved'; stoneId: string; winners: string[] }
   | { e: 'turn:changed'; teamId: string; teamName: string; round: number }
   | { e: 'undo:applied' }
   | { e: 'game:ended'; endedAt: number }
@@ -38,9 +43,11 @@ export type EngineErrorCode =
   | 'DUPLICATE_TEAM_NAME'
   | 'NO_STONES'
   | 'TOO_MANY_STONES'
+  | 'NO_GAMES'
   | 'UNKNOWN_STONE'
   | 'UNKNOWN_TEAM'
-  | 'ALREADY_HELD'
+  | 'STONE_TAKEN'
+  | 'NO_GAME_LEFT'
   | 'PICK_PENDING'
   | 'NO_PICK'
   | 'LAST_TEAM'

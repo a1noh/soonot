@@ -597,3 +597,30 @@
 .stn-setup__chip input { accent-color: var(--game-stones); }
 .stn-setup__chip:has(input:not(:checked)) { color: var(--text-dim); border-style: dashed; }
 .stn-setup__problem { margin: 0; color: var(--warn); }
+.stn__secret {
+  margin: 0;
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px;
+  padding: 8px 12px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--bg-sunken);
+}
+.stn__secretlabel { width: 100%; font-size: 0.78rem; color: var(--text-dim); }
+.stn__players {
+  font-size: 0.8rem; font-weight: 600;
+  padding: 2px 8px; border-radius: 999px;
+  color: var(--game-stones);
+  border: 1px solid color-mix(in srgb, var(--game-stones) 60%, transparent);
+}
+.stn__winners { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.stn__winners legend { padding: 0 4px; font-size: 0.85rem; color: var(--text-dim); }
+.stn__winners .stn-setup__chip:has(input:checked) {
+  border-style: solid;
+  color: var(--text);
+  background: color-mix(in srgb, var(--team) 30%, transparent);
+  border-color: var(--team);
+}
+.stn__winners .stn-setup__chip:has(input:not(:checked)) { border-style: solid; }
+.stn__done { margin: 0; padding: 10px 12px; border-radius: var(--radius); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.stn-setup__hint { font-size: 0.8rem; color: var(--text-dim); }
+.stn-setup__games { font-size: 0.9rem; }

@@ -85,27 +85,37 @@ describe('스톤 end to end', () => {
           { name: '예배', playing: true },
           { name: '양육', playing: false },
         ],
-        stones: [{ name: '빨강', mission: '노래 한 소절' }, { name: '파랑', mission: '퀴즈' }],
+        stones: [{ name: '스페이스 스톤' }, { name: '마인드 스톤' }, { name: '타임 스톤' }],
+        games: [
+          { name: '코끼리 종이비행기', players: '2명', instructions: '멀리 날리기' },
+          { name: '찬양 퀴즈', players: '모두', instructions: '제목 맞히기' },
+          { name: '넌센스', players: '모두', instructions: '엉뚱하게' },
+        ],
       }),
     ).toMatchObject({ ok: true });
+    const running = nextView(p, (v) => v.state === 'RUNNING');
     expect(await send(m, 'master:start')).toMatchObject({ ok: true });
 
+    // Before any pick, the projector cannot know the game order.
+    const lobby = await running;
+    expect(JSON.stringify(lobby)).not.toContain('코끼리');
+
     const picked = nextView(p, (v) => v.pending !== null);
-    expect(await send(m, 'master:pick', { stone: 's1' })).toMatchObject({ ok: true });
-    expect((await picked).pending).toMatchObject({ teamName: '선교', stoneId: 's1' });
+    expect(await send(m, 'master:pick', { stone: 's3' })).toMatchObject({ ok: true });
+    const shown = (await picked).pending!;
+    expect(shown).toMatchObject({ chooserName: '선교', stoneId: 's3', number: 1, game: { name: '코끼리 종이비행기', players: '2명' } });
+    expect(JSON.stringify(await picked)).not.toContain('찬양'); // the next game stays secret
 
     const won = nextView(p, (v) => v.lastResult !== null);
-    await send(m, 'master:resolve', { success: true });
+    await send(m, 'master:resolve', { winners: ['t2', 't3'] });
     const after = await won;
     expect(after.turnTeamName).toBe('예배');
-    expect(after.standings[0]).toMatchObject({ teamName: '선교', stoneIds: ['s1'] });
+    expect(after.standings.slice(0, 2).map((s) => s.teamName)).toEqual(['예배', '양육']);
     expect(after.blocking).toBeUndefined(); // the projector never gets master affordances
 
-    // Illegal moves come back as errors, not silence.
-    await send(m, 'master:pick', { stone: 's1' });
-    await send(m, 'master:resolve', { success: false });
-    const again = await send(m, 'master:pick', { stone: 's1' }); // 선교 already holds s1
-    expect(again).toMatchObject({ ok: false, error: { code: 'ALREADY_HELD' } });
+    // A played stone cannot be picked again.
+    const again = await send(m, 'master:pick', { stone: 's3' });
+    expect(again).toMatchObject({ ok: false, error: { code: 'STONE_TAKEN' } });
 
     // A player phone cannot drive it.
     const phone = await connect(base, '/b');
@@ -116,6 +126,6 @@ describe('스톤 end to end', () => {
     const revealed = nextView(p, (v) => v.state === 'REVEAL' && v.revealStep === 1);
     await send(m, 'master:reveal', { step: 0 });
     await send(m, 'master:reveal', { step: 1 });
-    expect((await revealed).standings.map((s) => s.teamName)).toEqual(['선교', '예배']);
+    expect((await revealed).standings[0]!.stoneIds).toEqual(['s3']);
   }, 20000);
 });

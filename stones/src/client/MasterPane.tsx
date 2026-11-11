@@ -1,11 +1,13 @@
 /**
  * 스톤's console body — the contents GamePane slots in.
  *
- * Each turn the master picks a stone for the team whose turn it is, the
- * projector opens its mission, and the master calls 성공 or 실패.
+ * Teams take turns "choosing" a stone. Whatever they tap, the next game in the
+ * order set here opens — the room never sees that order. Every team plays it;
+ * the master ticks the winning team(s), and each gets that stone.
  */
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { DEFAULT_STONES, DEFAULT_TEAMS, MAX_STONES, MAX_TEAMS, MIN_TEAMS } from '../shared/constants';
+import { DEFAULT_GAMES, DEFAULT_STONES, DEFAULT_TEAMS, MAX_STONES, MAX_TEAMS, MIN_TEAMS } from '../shared/constants';
+import { playersLabel } from '../shared/labels';
 import type { StonesView } from '../project';
 import { Gem } from './Gem';
 
@@ -16,6 +18,11 @@ export interface StonesMasterPaneProps {
 
 export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
   const [editing, setEditing] = useState(false);
+  const [winners, setWinners] = useState<Set<string>>(new Set());
+
+  // A fresh pick starts with nobody ticked.
+  const pendingKey = view?.pending ? `${view.pending.stoneId}:${view.played}` : null;
+  useEffect(() => setWinners(new Set()), [pendingKey]);
 
   // After 순위 발표 the podium holds on 두구두구 (step 0); auto-advance to 3rd once.
   const drumRef = useRef(false);
@@ -44,17 +51,17 @@ export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
     );
   }
 
-  const turnTeam = view.teams.find((t) => t.id === view.turnTeamId) ?? null;
-  const held = new Set(turnTeam?.stoneIds ?? []);
-  const pendingStone = view.pending ? view.stones.find((s) => s.id === view.pending!.stoneId) ?? null : null;
+  const chooser = view.teams.find((t) => t.id === view.turnTeamId) ?? null;
+  const pending = view.pending;
   const playingCount = view.teams.filter((t) => t.playing).length;
+  const allPlayed = view.played >= view.total;
 
   return (
     <div className="stn">
       {view.state === 'LOBBY' ? (
         <div className="stn__lobby">
           <p className="stn__lede">
-            참가 팀 {playingCount}개 · 스톤 {view.stones.length}개. 시작하면 위 팀부터 차례로 진행해요.
+            참가 팀 {playingCount}개 · 스톤 {view.stones.length}개 · 게임 {view.games?.length ?? 0}개. 시작하면 맨 위 팀부터 스톤을 골라요.
           </p>
           <div className="stn__row">
             <button type="button" className="btn btn--primary" onClick={() => void send('master:start')}>
@@ -67,27 +74,66 @@ export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
         </div>
       ) : null}
 
-      {view.state === 'RUNNING' && turnTeam ? (
-        <div className="stn__turn" style={{ '--team': turnTeam.color } as CSSProperties}>
-          <span className="stn__round">{view.round}라운드</span>
-          <strong className="stn__teamname">{turnTeam.name}</strong>
-          <span className="stn__turnlabel">차례</span>
+      {view.state === 'RUNNING' && chooser ? (
+        <div className="stn__turn" style={{ '--team': chooser.color } as CSSProperties}>
+          <span className="stn__round">
+            스톤 {Math.min(view.played + 1, view.total)}/{view.total}
+          </span>
+          <strong className="stn__teamname">{chooser.name}</strong>
+          <span className="stn__turnlabel">{pending ? '이 고른 스톤' : '이 스톤을 골라요'}</span>
         </div>
       ) : null}
 
-      {view.state === 'RUNNING' && pendingStone ? (
-        <section className="stn__mission" aria-label="진행 중인 미션">
+      {view.state === 'RUNNING' && !pending && view.nextGame ? (
+        <p className="stn__secret">
+          <span className="stn__secretlabel">다음에 열릴 게임 · 화면엔 안 보여요</span>
+          <strong>
+            {view.played + 1}. {view.nextGame.name}
+          </strong>
+          <span className="stn__players">{playersLabel(view.nextGame.players)}</span>
+        </p>
+      ) : null}
+
+      {view.state === 'RUNNING' && pending ? (
+        <section className="stn__mission" aria-label="진행 중인 게임">
           <header className="stn__missionhead">
-            <Gem color={pendingStone.color} size={36} />
-            <h3>{pendingStone.name}</h3>
+            <Gem color={view.stones.find((s) => s.id === pending.stoneId)?.color ?? '#888888'} size={36} />
+            <h3>
+              {pending.number}. {pending.game.name}
+            </h3>
+            <span className="stn__players">{playersLabel(pending.game.players)}</span>
           </header>
-          <p className="stn__missiontext">{pendingStone.mission || '미션이 비어 있어요.'}</p>
+          <p className="stn__missiontext">{pending.game.instructions || '설명이 비어 있어요.'}</p>
+
+          <fieldset className="stn__winners">
+            <legend>이긴 팀 (여러 팀 가능)</legend>
+            {view.teams.map((t) => (
+              <label key={t.id} className="stn-setup__chip" style={{ '--team': t.color } as CSSProperties}>
+                <input
+                  type="checkbox"
+                  checked={winners.has(t.id)}
+                  onChange={(e) => {
+                    const next = new Set(winners);
+                    if (e.currentTarget.checked) next.add(t.id);
+                    else next.delete(t.id);
+                    setWinners(next);
+                  }}
+                />
+                <span>{t.name}</span>
+              </label>
+            ))}
+          </fieldset>
+
           <div className="stn__judge">
-            <button type="button" className="btn stn__ok" onClick={() => void send('master:resolve', { success: true })}>
-              성공
-            </button>
-            <button type="button" className="btn stn__fail" onClick={() => void send('master:resolve', { success: false })}>
-              실패
+            <button
+              type="button"
+              className={`btn ${winners.size > 0 ? 'stn__ok' : ''}`}
+              onClick={() => {
+                if (winners.size === 0 && !confirm('아무 팀도 이 스톤을 얻지 못한 걸로 할까요?')) return;
+                void send('master:resolve', { winners: view.teams.filter((t) => winners.has(t.id)).map((t) => t.id) });
+              }}
+            >
+              {winners.size > 0 ? `${winners.size}팀에게 스톤 주기` : '이긴 팀 없음'}
             </button>
             <button type="button" className="btn btn--ghost" onClick={() => void send('master:cancel')}>
               선택 취소
@@ -96,32 +142,36 @@ export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
         </section>
       ) : null}
 
-      {view.state === 'RUNNING' && !pendingStone ? (
-        <div className="stn__stones" role="group" aria-label={`${turnTeam?.name ?? ''} 팀이 도전할 스톤`}>
-          {view.stones.map((s) => {
-            const has = held.has(s.id);
-            return (
-              <button
-                key={s.id}
-                type="button"
-                className="stn__stone"
-                disabled={has}
-                onClick={() => void send('master:pick', { stone: s.id })}
-              >
-                <Gem color={s.color} size={30} dim={has} />
-                <span className="stn__stonename">{s.name}</span>
-                {has ? <span className="stn__stonetag">보유</span> : null}
-              </button>
-            );
-          })}
+      {view.state === 'RUNNING' && !pending && !allPlayed ? (
+        <div className="stn__stones" role="group" aria-label={`${chooser?.name ?? ''} 팀이 고를 스톤`}>
+          {view.stones.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              className="stn__stone"
+              disabled={s.claimed !== null}
+              onClick={() => void send('master:pick', { stone: s.id })}
+            >
+              <Gem color={s.color} size={30} dim={s.claimed !== null} />
+              <span className="stn__stonename">{s.name}</span>
+              {s.claimed ? <span className="stn__stonetag">완료</span> : null}
+            </button>
+          ))}
         </div>
       ) : null}
 
+      {view.state === 'RUNNING' && allPlayed ? (
+        <p className="stn__done">스톤을 모두 썼어요. 게임 종료를 누르고 순위를 발표하세요.</p>
+      ) : null}
+
       <section className="stn__teams" aria-label="참가 팀">
-        <h3 className="stn__h">참가 팀</h3>
+        <h3 className="stn__h">참가 팀 · 스톤을 고르는 차례에 들어가요</h3>
         <ul>
           {view.teams.map((t) => (
-            <li key={t.id} className={`stn__team${t.playing ? '' : ' is-out'}${t.id === view.turnTeamId && view.state === 'RUNNING' ? ' is-turn' : ''}`}>
+            <li
+              key={t.id}
+              className={`stn__team${t.playing ? '' : ' is-out'}${t.id === view.turnTeamId && view.state === 'RUNNING' ? ' is-turn' : ''}`}
+            >
               <label className="stn__teamtoggle">
                 <input
                   type="checkbox"
@@ -130,7 +180,7 @@ export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
                     view.state === 'ENDED' ||
                     view.state === 'REVEAL' ||
                     (t.playing && playingCount <= (view.state === 'LOBBY' ? MIN_TEAMS : 1)) ||
-                    view.pending?.teamId === t.id
+                    view.pending?.chooserId === t.id
                   }
                   onChange={(e) => void send('master:playing', { team: t.id, playing: e.currentTarget.checked })}
                 />
@@ -173,17 +223,17 @@ export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
       <div className="stn__controls">
         {view.state === 'RUNNING' ? (
           <>
-            <button type="button" className="btn" disabled={!!view.pending} onClick={() => void send('master:skip')}>
+            <button type="button" className="btn" disabled={!!pending || allPlayed} onClick={() => void send('master:skip')}>
               건너뛰기
             </button>
-            <button type="button" className="btn" disabled={!view.canUndo || !!view.pending} onClick={() => void send('master:undo')}>
+            <button type="button" className="btn" disabled={!view.canUndo || !!pending} onClick={() => void send('master:undo')}>
               되돌리기
             </button>
             <button
               type="button"
-              className="btn btn--danger"
+              className={`btn ${allPlayed ? 'btn--primary' : 'btn--danger'}`}
               onClick={() => {
-                if (confirm('스톤 게임을 끝내고 순위를 정할까요?')) void send('master:end');
+                if (allPlayed || confirm('스톤 게임을 끝내고 순위를 정할까요?')) void send('master:end');
               }}
             >
               게임 종료
@@ -212,8 +262,11 @@ export function StonesMasterPane({ view, send }: StonesMasterPaneProps) {
 
 type SetupPayload = {
   teams: { name: string; playing: boolean }[];
-  stones: { name: string; mission: string }[];
+  stones: { name: string }[];
+  games: { name: string; players: string; instructions: string }[];
 };
+
+const lines = (text: string) => text.split('\n').map((l) => l.trim()).filter(Boolean);
 
 function SetupForm({
   initial,
@@ -224,45 +277,45 @@ function SetupForm({
   onSubmit(p: SetupPayload): Promise<void>;
   onCancel?: () => void;
 }) {
-  const [teamText, setTeamText] = useState(
-    initial ? initial.teams.map((t) => t.name).join('\n') : DEFAULT_TEAMS.join('\n'),
-  );
+  const [teamText, setTeamText] = useState((initial ? initial.teams.map((t) => t.name) : DEFAULT_TEAMS).join('\n'));
   const [sitOut, setSitOut] = useState<Set<string>>(
     () => new Set(initial ? initial.teams.filter((t) => !t.playing).map((t) => t.name) : []),
   );
-  const [stoneText, setStoneText] = useState(
-    (initial ? initial.stones : DEFAULT_STONES).map((s) => `${s.name} | ${s.mission}`).join('\n'),
+  const [stoneText, setStoneText] = useState((initial ? initial.stones.map((s) => s.name) : DEFAULT_STONES).join('\n'));
+  const [gameText, setGameText] = useState(
+    (initial?.games ?? DEFAULT_GAMES).map((g) => `${g.name} | ${g.players} | ${g.instructions}`).join('\n'),
   );
   const [busy, setBusy] = useState(false);
 
-  const names = useMemo(
-    () => teamText.split('\n').map((l) => l.trim()).filter(Boolean),
-    [teamText],
-  );
-  const stones = useMemo(
+  const names = useMemo(() => lines(teamText), [teamText]);
+  const stones = useMemo(() => lines(stoneText), [stoneText]);
+  const games = useMemo(
     () =>
-      stoneText
-        .split('\n')
-        .map((l) => {
-          const [name = '', ...rest] = l.split('|');
-          return { name: name.trim(), mission: rest.join('|').trim() };
-        })
-        .filter((s) => s.name),
-    [stoneText],
+      lines(gameText).map((l) => {
+        const [name = '', players = '', ...rest] = l.split('|');
+        return { name: name.trim(), players: players.trim(), instructions: rest.join('|').trim() };
+      }),
+    [gameText],
   );
   const playing = names.filter((n) => !sitOut.has(n));
-  const dupes = names.length !== new Set(names).size;
-  const problem = dupes
-    ? '팀 이름이 겹쳐요.'
-    : names.length > MAX_TEAMS
-      ? `팀은 ${MAX_TEAMS}개까지예요.`
-      : playing.length < MIN_TEAMS
-        ? `참가 팀을 ${MIN_TEAMS}개 이상 골라주세요.`
-        : stones.length === 0
-          ? '스톤을 1개 이상 적어주세요.'
-          : stones.length > MAX_STONES
-            ? `스톤은 ${MAX_STONES}개까지예요.`
-            : null;
+  const problem =
+    names.length !== new Set(names).size
+      ? '팀 이름이 겹쳐요.'
+      : names.length > MAX_TEAMS
+        ? `팀은 ${MAX_TEAMS}개까지예요.`
+        : playing.length < MIN_TEAMS
+          ? `참가 팀을 ${MIN_TEAMS}개 이상 골라주세요.`
+          : stones.length === 0
+            ? '스톤을 1개 이상 적어주세요.'
+            : stones.length > MAX_STONES
+              ? `스톤은 ${MAX_STONES}개까지예요.`
+              : games.length === 0
+                ? '게임을 1개 이상 적어주세요.'
+                : null;
+  const mismatch =
+    !problem && games.length !== stones.length
+      ? `스톤 ${stones.length}개, 게임 ${games.length}개 — ${Math.min(games.length, stones.length)}판만 진행돼요.`
+      : null;
 
   return (
     <form
@@ -271,9 +324,11 @@ function SetupForm({
         e.preventDefault();
         if (problem || busy) return;
         setBusy(true);
-        void onSubmit({ teams: names.map((name) => ({ name, playing: !sitOut.has(name) })), stones }).finally(() =>
-          setBusy(false),
-        );
+        void onSubmit({
+          teams: names.map((name) => ({ name, playing: !sitOut.has(name) })),
+          stones: stones.map((name) => ({ name })),
+          games,
+        }).finally(() => setBusy(false));
       }}
     >
       <label className="field">
@@ -283,7 +338,7 @@ function SetupForm({
 
       {names.length > 0 ? (
         <fieldset className="stn-setup__who">
-          <legend>이번 게임에 참가할 팀</legend>
+          <legend>스톤을 고르는 차례에 넣을 팀</legend>
           {names.map((n) => (
             <label key={n} className="stn-setup__chip">
               <input
@@ -303,14 +358,23 @@ function SetupForm({
       ) : null}
 
       <label className="field">
-        <span className="field__label">스톤 | 미션 (한 줄에 하나)</span>
-        <textarea className="field__input" rows={Math.min(Math.max(stones.length + 1, 4), 10)} value={stoneText} onChange={(e) => setStoneText(e.currentTarget.value)} />
+        <span className="field__label">스톤 (한 줄에 하나)</span>
+        <textarea className="field__input" rows={Math.min(Math.max(stones.length + 1, 4), 9)} value={stoneText} onChange={(e) => setStoneText(e.currentTarget.value)} />
+      </label>
+
+      <label className="field">
+        <span className="field__label">게임 순서 · 이름 | 인원 | 설명 (한 줄에 하나)</span>
+        <textarea className="field__input stn-setup__games" rows={Math.min(Math.max(games.length + 1, 4), 10)} value={gameText} onChange={(e) => setGameText(e.currentTarget.value)} />
+        <span className="stn-setup__hint">
+          어떤 스톤을 고르든 이 순서대로 열려요. 팀들에겐 순서가 보이지 않아요. 인원은 “2명”, “모두”처럼 적어요.
+        </span>
       </label>
 
       {problem ? <p className="stn-setup__problem" role="alert">{problem}</p> : null}
+      {mismatch ? <p className="stn-setup__problem">{mismatch}</p> : null}
       <div className="stn__row">
         <button type="submit" className="btn btn--primary" disabled={!!problem || busy}>
-          {initial ? '설정 저장' : `참가 ${playing.length}팀 · 스톤 ${stones.length}개로 준비`}
+          {initial ? '설정 저장' : `${playing.length}팀 · 스톤 ${stones.length}개로 준비`}
         </button>
         {onCancel ? (
           <button type="button" className="btn btn--ghost" onClick={onCancel}>

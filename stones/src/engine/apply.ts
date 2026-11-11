@@ -19,10 +19,11 @@ export function newRoom(opts: { id: string; eventId: string; createdAt: number }
     state: 'SETUP',
     teams: [],
     stones: [],
+    games: [],
     turnTeamId: null,
     round: 0,
     pending: null,
-    wins: [],
+    claims: [],
     history: [],
     lastResult: null,
     seq: 0,
@@ -32,11 +33,22 @@ export function newRoom(opts: { id: string; eventId: string; createdAt: number }
   };
 }
 
+/** Stones a team has won, in the order it won them. */
 export function heldBy(room: Room, teamId: string): string[] {
-  return room.wins.filter((w) => w.teamId === teamId).map((w) => w.stoneId);
+  return room.claims.filter((c) => c.winners.includes(teamId)).map((c) => c.stoneId);
 }
 
-/** The next playing team after `fromId` in setup order, and whether we wrapped into a new round. */
+/** How many stones can still be played for: limited by stones and by games. */
+export function picksLeft(room: Room): number {
+  return Math.min(room.stones.length, room.games.length) - room.claims.length;
+}
+
+/** The game the next pick will open. Console-only: the room must not know. */
+export function nextGame(room: Room) {
+  return room.games[room.claims.length] ?? null;
+}
+
+/** The next playing team after `fromId` in setup order, and whether we wrapped. */
 function nextPlaying(room: Room, fromId: string | null): { id: string; wrapped: boolean } | null {
   const n = room.teams.length;
   const from = fromId === null ? -1 : room.teams.findIndex((t) => t.id === fromId);
@@ -75,9 +87,11 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       if (new Set(names).size !== names.length) throw new EngineError('DUPLICATE_TEAM_NAME');
       if (names.length > MAX_TEAMS) throw new EngineError('TOO_MANY_TEAMS');
       if (action.teams.filter((t) => t.playing).length < MIN_TEAMS) throw new EngineError('TOO_FEW_TEAMS');
-      const stones = action.stones.filter((s) => s.name.trim().length > 0);
+      const stones = action.stones.map((s) => s.name.trim()).filter(Boolean);
       if (stones.length === 0) throw new EngineError('NO_STONES');
       if (stones.length > MAX_STONES) throw new EngineError('TOO_MANY_STONES');
+      const games = action.games.filter((g) => g.name.trim().length > 0);
+      if (games.length === 0) throw new EngineError('NO_GAMES');
 
       r.teams = action.teams.map((t, i) => ({
         id: `t${i + 1}`,
@@ -85,11 +99,12 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
         color: TEAM_COLORS[i % TEAM_COLORS.length]!,
         playing: t.playing,
       }));
-      r.stones = stones.map((s, i) => ({
-        id: `s${i + 1}`,
-        name: s.name.trim(),
-        color: STONE_COLORS[i % STONE_COLORS.length]!,
-        mission: s.mission.trim(),
+      r.stones = stones.map((name, i) => ({ id: `s${i + 1}`, name, color: STONE_COLORS[i % STONE_COLORS.length]! }));
+      r.games = games.map((g, i) => ({
+        id: `g${i + 1}`,
+        name: g.name.trim(),
+        players: g.players.trim(),
+        instructions: g.instructions.trim(),
       }));
       r.state = 'LOBBY';
       events.push({ e: 'stones:update' });
@@ -109,11 +124,12 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       if (r.pending !== null) throw new EngineError('PICK_PENDING');
       const stone = r.stones.find((s) => s.id === action.stoneId);
       if (!stone) throw new EngineError('UNKNOWN_STONE');
-      const teamId = r.turnTeamId!;
-      if (heldBy(r, teamId).includes(stone.id)) throw new EngineError('ALREADY_HELD');
-      r.pending = { teamId, stoneId: stone.id };
+      if (r.claims.some((c) => c.stoneId === stone.id)) throw new EngineError('STONE_TAKEN');
+      const game = nextGame(r);
+      if (!game || picksLeft(r) <= 0) throw new EngineError('NO_GAME_LEFT');
+      r.pending = { chooserId: r.turnTeamId!, stoneId: stone.id, gameId: game.id };
       r.lastResult = null;
-      events.push({ e: 'stone:picked', teamId, stoneId: stone.id });
+      events.push({ e: 'stone:picked', chooserId: r.turnTeamId!, stoneId: stone.id, gameId: game.id });
       break;
     }
 
@@ -126,20 +142,23 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
 
     case 'RESOLVE': {
       if (r.pending === null) throw new EngineError('NO_PICK');
-      const { teamId, stoneId } = r.pending;
-      if (action.success) r.wins.push({ teamId, stoneId, at: now });
-      r.history.push({ kind: 'resolve', teamId, round: r.round, stoneId, success: action.success, at: now });
+      const ids = new Set(r.teams.map((t) => t.id));
+      const winners = [...new Set(action.winners)];
+      if (winners.some((w) => !ids.has(w))) throw new EngineError('UNKNOWN_TEAM');
+      const { chooserId, stoneId, gameId } = r.pending;
+      r.claims.push({ stoneId, gameId, chooserId, round: r.round, winners, at: now });
+      r.history.push({ kind: 'claim', chooserId, round: r.round });
       r.seq += 1;
-      r.lastResult = { seq: r.seq, teamId, stoneId, success: action.success };
+      r.lastResult = { seq: r.seq, stoneId, gameId, winners };
       r.pending = null;
-      events.push({ e: 'stone:resolved', teamId, stoneId, success: action.success });
+      events.push({ e: 'stone:resolved', stoneId, winners });
       events.push(advance(r));
       break;
     }
 
     case 'SKIP': {
       if (r.pending !== null) throw new EngineError('PICK_PENDING');
-      r.history.push({ kind: 'skip', teamId: r.turnTeamId!, round: r.round, stoneId: null, success: null, at: now });
+      r.history.push({ kind: 'skip', chooserId: r.turnTeamId!, round: r.round });
       r.lastResult = null;
       events.push(advance(r));
       break;
@@ -156,7 +175,7 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
         const left = r.teams.filter((t) => t.playing).length - 1;
         const floor = r.state === 'LOBBY' ? MIN_TEAMS : 1;
         if (left < floor) throw new EngineError('LAST_TEAM');
-        if (r.pending?.teamId === team.id) throw new EngineError('PICK_PENDING');
+        if (r.pending?.chooserId === team.id) throw new EngineError('PICK_PENDING');
       }
       // Leaving on your own turn passes it on before the flag drops, so the
       // pointer never lands on a team that is out.
@@ -174,19 +193,10 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       if (r.pending !== null) throw new EngineError('PICK_PENDING');
       const last = r.history.pop();
       if (!last) throw new EngineError('NOTHING_TO_UNDO');
-      if (last.kind === 'resolve' && last.success) {
-        for (let i = r.wins.length - 1; i >= 0; i--) {
-          const w = r.wins[i]!;
-          if (w.teamId === last.teamId && w.stoneId === last.stoneId) {
-            r.wins.splice(i, 1);
-            break;
-          }
-        }
-      }
-      r.turnTeamId = last.teamId;
+      if (last.kind === 'claim') r.claims.pop();
+      r.turnTeamId = last.chooserId;
       r.round = last.round;
-      const team = r.teams.find((t) => t.id === last.teamId)!;
-      team.playing = true;
+      r.teams.find((t) => t.id === last.chooserId)!.playing = true;
       r.lastResult = null;
       events.push({ e: 'undo:applied' }, turnEmit(r));
       break;

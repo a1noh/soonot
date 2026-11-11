@@ -101,14 +101,38 @@
   transform: translate(-50%, -50%) rotate(calc(var(--a) * -1));
   animation: orbit-counter 60s linear infinite;
 }
-.orbit__bob { animation: bob 5.6s ease-in-out infinite; perspective: 600px; }
+.orbit__bob {
+  position: relative;
+  display: grid;
+  place-items: center;
+  animation: bob 5.6s ease-in-out infinite;
+  perspective: 600px;
+}
+/* The light a stone throws around itself — CSS, so the gem can spin inside it. */
+.orbit__bob::before,
+.mission__gem::before {
+  content: '';
+  position: absolute;
+  inset: -45%;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 55%, transparent), transparent 75%);
+  animation: pulse-glow 3.2s ease-in-out infinite;
+  pointer-events: none;
+}
 .orbit__gem {
+  position: relative;
   width: var(--gem);
   height: var(--gem);
-  filter: drop-shadow(0 1.2vmin 2.4vmin color-mix(in srgb, var(--glow) 55%, transparent))
-    drop-shadow(0 0 1.2vmin color-mix(in srgb, var(--glow) 70%, transparent));
+  filter: drop-shadow(0 0 1vmin color-mix(in srgb, var(--glow) 80%, transparent));
   animation: turn 9s linear infinite;
 }
+@keyframes pulse-glow { 0%, 100% { opacity: 0.65; transform: scale(0.92); } 50% { opacity: 1; transform: scale(1.05); } }
+
+/* Played for already: small, grey, still. */
+.orbit__slot.is-claimed .orbit__bob { animation: none; }
+.orbit__slot.is-claimed .orbit__bob::before { display: none; }
+.orbit__slot.is-claimed .orbit__gem { animation: none; filter: none; opacity: 0.4; transform: scale(0.7); }
+.orbit__slot.is-claimed .orbit__name { color: var(--ink-dim); opacity: 0.6; }
 .orbit__slot:nth-child(2n) .orbit__gem { animation-duration: 11s; animation-direction: reverse; }
 .orbit__name {
   font-size: clamp(14px, 2vmin, 28px);
@@ -168,16 +192,25 @@
   padding: 0 2vmin;
 }
 .mission__gem {
+  position: relative;
   display: grid;
-  place-items: center;
+  justify-items: center;
+  gap: 2vmin;
   animation: come-forward 700ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .mission__gem svg {
-  width: min(36vh, 24vw);
-  height: min(36vh, 24vw);
-  filter: drop-shadow(0 0 4vmin color-mix(in srgb, var(--glow) 80%, transparent))
-    drop-shadow(0 2vmin 5vmin color-mix(in srgb, var(--glow) 45%, transparent));
+  position: relative;
+  width: min(34vh, 22vw);
+  height: min(34vh, 22vw);
+  filter: drop-shadow(0 0 2vmin color-mix(in srgb, var(--glow) 90%, transparent));
   animation: turn 7s linear infinite;
+}
+.mission__gem::before { inset: -10% -25% 10%; }
+.mission__stone {
+  position: relative;
+  font-size: clamp(16px, 2.6vmin, 38px);
+  font-weight: 800;
+  color: var(--glow);
 }
 .mission__card {
   padding: 3.4vmin 3.8vmin;
@@ -205,11 +238,21 @@
   color: var(--glow);
   text-wrap: balance;
 }
+.mission__players {
+  display: inline-block;
+  margin: 0 0 2vmin;
+  padding: 0.35em 0.9em;
+  border-radius: 999px;
+  font-size: clamp(18px, 3vmin, 44px);
+  font-weight: 800;
+  color: #080a1f;
+  background: var(--glow);
+}
 .mission__text {
   margin: 0;
-  max-width: 28ch;
-  font-size: clamp(22px, 4.2vmin, 62px);
-  font-weight: 700;
+  max-width: 34ch;
+  font-size: clamp(18px, 3.2vmin, 46px);
+  font-weight: 600;
   line-height: 1.35;
   text-wrap: pretty;
   white-space: pre-wrap;
@@ -234,7 +277,9 @@
   pointer-events: none;
   animation: hold 2600ms linear both;
 }
-.burst__gem svg { width: min(30vh, 20vw); height: min(30vh, 20vw); }
+.burst__gems { display: grid; }
+.burst__gems > .burst__gem { grid-area: 1 / 1; }
+.burst__gem svg { width: min(40vh, 27vw); height: min(40vh, 27vw); }
 .burst__label {
   margin: 0;
   font-size: clamp(26px, 5vmin, 76px);

@@ -67,39 +67,39 @@ await console_.evaluate(() => document.querySelector('.pane--stones')?.dispatchE
 await shot(console_, '1-console-setup');
 
 await s('master:setup', {
-  teams: ['선교', '예배', '양육', '사역', '섬김', '교육', '친교'].map((name) => ({ name, playing: name !== '친교' })),
-  stones: [
-    { name: '빨강 스톤', mission: '팀 전원이 30초 안에 인간 피라미드 만들기' },
-    { name: '주황 스톤', mission: '성경 인물 5명을 몸으로 표현하기' },
-    { name: '노랑 스톤', mission: '찬양 한 소절을 이어 부르기' },
-    { name: '초록 스톤', mission: '눈 감고 종이컵 10개 쌓기' },
-    { name: '파랑 스톤', mission: '퀴즈 3문제 연속 정답' },
-    { name: '보라 스톤', mission: '팀장 없이 줄 서기 (생일순)' },
+  teams: ['아이언맨', '헐크', '캡틴 아메리카', '토르', '블랙 위도우', '호크아이'].map((name) => ({ name, playing: true })),
+  stones: ['스페이스 스톤', '마인드 스톤', '리얼리티 스톤', '파워 스톤', '타임 스톤', '소울 스톤'].map((name) => ({ name })),
+  games: [
+    { name: '코끼리 종이비행기', players: '2명', instructions: '각 팀 2명이 코끼리 코 10바퀴 후 종이비행기를 날려요. 가장 멀리 날린 팀이 스톤을 얻어요.' },
+    { name: '찬양 퀴즈', players: '모두', instructions: '찬양 전주를 듣고 제목을 맞혀요. 가장 많이 맞힌 팀이 스톤을 얻어요.' },
+    { name: '사지선다', players: '모두', instructions: '보기 4개 중 정답을 동시에 손가락으로 들어요.' },
+    { name: '이미지 퀴즈', players: '모두', instructions: '조금씩 드러나는 그림을 맞혀요.' },
+    { name: '넌센스', players: '모두', instructions: '넌센스 문제, 먼저 손 든 팀이 답해요.' },
+    { name: '일심동체', players: '3명', instructions: '3명이 같은 답을 적으면 1점.' },
   ],
 });
 await s('master:start');
-// A few turns so the rankings have shape.
-const T0 = [['s1', true], ['s3', false], ['s2', true], ['s5', true], ['s4', false], ['s6', true], ['s2', true]];
-for (const [stone, success] of T0) {
-  await s('master:pick', { stone });
-  await s('master:resolve', { success });
-}
+// Two stones played so the rankings have shape.
+await s('master:pick', { stone: 's3' });
+await s('master:resolve', { winners: ['t1', 't4'] });
+await s('master:pick', { stone: 's1' });
+await s('master:resolve', { winners: ['t1'] });
 
 const p = await open('/p');
 await shot(p, '2-projector-idle', 1500);
 await shot(console_, '3-console-running', 300);
 
-await s('master:pick', { stone: 's4' });
+await s('master:pick', { stone: 's5' });
 await shot(p, '4-projector-mission', 1300);
 await shot(console_, '5-console-mission', 200);
 
-await s('master:resolve', { success: true });
+await s('master:resolve', { winners: ['t2', 't3'] });
 await shot(p, '6-projector-win-flare', 450);
 await shot(p, '7-projector-win-landed', 2600);
 
-await s('master:pick', { stone: 's1' });
-await s('master:resolve', { success: false });
-await shot(p, '8-projector-fail', 500);
+await s('master:pick', { stone: 's2' });
+await s('master:resolve', { winners: [] });
+await shot(p, '8-projector-none', 500);
 
 await s('master:end');
 await s('master:reveal', { step: 0 });

@@ -16,14 +16,17 @@ export function assertInvariants(room: Room): void {
   const stoneIds = new Set(room.stones.map((s) => s.id));
   if (new Set(room.teams.map((t) => t.name)).size !== room.teams.length) fail('duplicate team name');
 
-  const seen = new Set<string>();
-  for (const w of room.wins) {
-    if (!teamIds.has(w.teamId)) fail(`win for unknown team ${w.teamId}`);
-    if (!stoneIds.has(w.stoneId)) fail(`win for unknown stone ${w.stoneId}`);
-    const key = `${w.teamId}:${w.stoneId}`;
-    if (seen.has(key)) fail(`team ${w.teamId} holds ${w.stoneId} twice`);
-    seen.add(key);
-  }
+  const claimed = new Set<string>();
+  room.claims.forEach((c, i) => {
+    if (!stoneIds.has(c.stoneId)) fail(`claim for unknown stone ${c.stoneId}`);
+    if (claimed.has(c.stoneId)) fail(`stone ${c.stoneId} played for twice`);
+    claimed.add(c.stoneId);
+    // Pick N always opens game N: the order is fixed, whatever stone was tapped.
+    if (room.games[i]?.id !== c.gameId) fail(`claim ${i} opened ${c.gameId}, expected ${room.games[i]?.id}`);
+    for (const w of c.winners) if (!teamIds.has(w)) fail(`winner ${w} is not a team`);
+    if (new Set(c.winners).size !== c.winners.length) fail('a team won the same stone twice');
+  });
+  if (room.claims.length > Math.min(room.stones.length, room.games.length)) fail('more claims than stones or games');
 
   if (room.state === 'RUNNING') {
     const turn = room.teams.find((t) => t.id === room.turnTeamId);
@@ -33,9 +36,10 @@ export function assertInvariants(room: Room): void {
   }
   if (room.pending) {
     if (room.state !== 'RUNNING') fail('pick pending outside RUNNING');
-    if (room.pending.teamId !== room.turnTeamId) fail('pending pick is not the current team');
-    if (seen.has(`${room.pending.teamId}:${room.pending.stoneId}`)) fail('pending pick on a held stone');
+    if (room.pending.chooserId !== room.turnTeamId) fail('pending pick is not the current chooser');
+    if (claimed.has(room.pending.stoneId)) fail('pending pick on a played stone');
+    if (room.games[room.claims.length]?.id !== room.pending.gameId) fail('pending pick opened the wrong game');
   }
-  const successes = room.history.filter((h) => h.kind === 'resolve' && h.success).length;
-  if (successes !== room.wins.length) fail(`history has ${successes} successes but ${room.wins.length} wins`);
+  const claimsInHistory = room.history.filter((h) => h.kind === 'claim').length;
+  if (claimsInHistory !== room.claims.length) fail(`history has ${claimsInHistory} claims but ${room.claims.length} exist`);
 }

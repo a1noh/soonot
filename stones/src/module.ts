@@ -45,21 +45,22 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
   switch (ev) {
     case 'master:setup': {
       const p = rec(payload);
-      if (!Array.isArray(p?.teams) || !Array.isArray(p?.stones)) return null;
+      if (!Array.isArray(p?.teams) || !Array.isArray(p?.stones) || !Array.isArray(p?.games)) return null;
+      const text = (o: unknown, k: string) => (typeof rec(o)?.[k] === 'string' ? (rec(o)![k] as string).trim() : '');
       const teams = (p.teams as unknown[])
-        .map((t) => {
-          const name = typeof rec(t)?.name === 'string' ? (rec(t)!.name as string).trim() : '';
-          return name ? { name, playing: rec(t)?.playing !== false } : null;
-        })
+        .map((t) => (text(t, 'name') ? { name: text(t, 'name'), playing: rec(t)?.playing !== false } : null))
         .filter((t): t is { name: string; playing: boolean } => t !== null);
       const stones = (p.stones as unknown[])
-        .map((s) => {
-          const name = typeof rec(s)?.name === 'string' ? (rec(s)!.name as string).trim() : '';
-          const mission = typeof rec(s)?.mission === 'string' ? (rec(s)!.mission as string).trim() : '';
-          return name ? { name, mission } : null;
-        })
-        .filter((s): s is { name: string; mission: string } => s !== null);
-      return { t: 'SETUP', teams, stones };
+        .map((s) => (text(s, 'name') ? { name: text(s, 'name') } : null))
+        .filter((s): s is { name: string } => s !== null);
+      const games = (p.games as unknown[])
+        .map((g) =>
+          text(g, 'name')
+            ? { name: text(g, 'name'), players: text(g, 'players'), instructions: text(g, 'instructions') }
+            : null,
+        )
+        .filter((g): g is { name: string; players: string; instructions: string } => g !== null);
+      return { t: 'SETUP', teams, stones, games };
     }
     case 'master:start':
       return { t: 'START' };
@@ -70,8 +71,10 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
     case 'master:cancel':
       return { t: 'CANCEL_PICK' };
     case 'master:resolve': {
-      const success = bool(payload, 'success');
-      return success === null ? null : { t: 'RESOLVE', success };
+      const winners = rec(payload)?.winners;
+      return Array.isArray(winners) && winners.every((w) => typeof w === 'string')
+        ? { t: 'RESOLVE', winners: winners as string[] }
+        : null;
     }
     case 'master:skip':
       return { t: 'SKIP' };
