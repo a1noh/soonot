@@ -1,0 +1,44 @@
+/*
+ * 추수감사절 — the bingo world, shared by the phone card (/b) and the bingo
+ * screens on the projector (/p). A harvest table in a lit church hall: cream
+ * linen, brown ink, pumpkin, sage, cranberry and mustard, leaves for ornament.
+ *
+ * Only `--hv-*` names live here, so loading this file never re-skins the
+ * console or the other games; each surface maps them onto its own tokens.
+ * Fonts are self-hosted (unicode-range subsets, so a phone only downloads the
+ * Hangul blocks it actually renders).
+ */
+@import '@fontsource/gowun-batang/400.css';
+@import '@fontsource/gowun-batang/700.css';
+@import '@fontsource/gowun-dodum/400.css';
+
+:root {
+  --hv-linen: #fbf4e6;
+  --hv-paper: #fffaf0;
+  --hv-husk: #f1e3c7;
+  --hv-rule: #e2cca4;
+  --hv-rule-strong: #c7a574;
+
+  --hv-ink: #3a2616;       /* 13.6:1 on linen */
+  --hv-ink-soft: #74543a;  /* 6.1:1 on linen */
+
+  --hv-pumpkin: #c2541b;   /* white text 4.7:1 */
+  --hv-pumpkin-deep: #9c3f10;
+  --hv-mustard: #d99a26;
+  --hv-sage: #55703a;      /* white text 5.4:1 */
+  --hv-sage-deep: #3f5629;
+  --hv-cranberry: #962632; /* white text 7.6:1 */
+  --hv-wheat: #e8c98a;
+
+  /* Pale washes for empty card cells, one per column. */
+  --hv-wash-1: #fbe4d2;
+  --hv-wash-2: #f7ebc7;
+  --hv-wash-3: #e5ebd3;
+  --hv-wash-4: #f5dcd7;
+  --hv-wash-5: #f2e5cc;
+
+  --hv-display: 'Gowun Batang', 'Nanum Myeongjo', 'Apple SD Gothic Neo', serif;
+  --hv-body: 'Gowun Dodum', 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', system-ui, sans-serif;
+
+  --hv-shadow: 0 10px 28px -12px rgba(92, 52, 20, 0.35), 0 2px 6px -2px rgba(92, 52, 20, 0.18);
+}

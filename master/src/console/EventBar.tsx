@@ -59,19 +59,17 @@ export function EventBar({ event, connected, onSetProjector, onSignOut, onResetE
       </div>
 
       <div className="bar__right">
-        <span
-          className={`dot ${connected ? 'dot--ok' : 'dot--off'}`}
-          title={connected ? 'connected' : 'disconnected'}
-          role="status"
-          aria-label={connected ? '연결됨' : '연결 끊김'}
-        />
+        <span className={`conn ${connected ? 'conn--ok' : 'conn--off'}`} role="status">
+          <span className="dot" aria-hidden="true" />
+          {connected ? '연결됨' : '연결 끊김 · 다시 연결 중'}
+        </span>
 
         {event ? (
           // A plain group, not a <fieldset>: the legend box renders over the
           // border and there is nothing here to submit.
-          <div className="seg" role="group" aria-label={t('host.console.projector')}>
+          <div className="seg" role="group" aria-label="발표 화면에 띄울 게임">
             <span className="seg__legend" aria-hidden="true">
-              🖥 {t('host.console.projector')}
+              발표 화면
             </span>
             {CHANNELS.map((channel) => (
               <button
@@ -81,6 +79,7 @@ export function EventBar({ event, connected, onSetProjector, onSignOut, onResetE
                   (event.projectorLock ?? event.projector) === channel ? ' is-on' : ''
                 }`}
                 aria-pressed={(event.projectorLock ?? event.projector) === channel}
+                title={channel === 'auto' ? '방금 움직인 게임을 자동으로 보여줘요' : undefined}
                 onClick={() => onSetProjector(channel)}
               >
                 {channel === 'auto' ? t('host.console.projector.auto') : t(`host.game.${channel}`)}
@@ -91,41 +90,46 @@ export function EventBar({ event, connected, onSetProjector, onSignOut, onResetE
                 a 발표) — that releases the lock without a 다시 하기. */}
             {event.projectorLock ? (
               <span className="seg__locked">
-                순위 발표 중 · {t(`host.game.${event.projectorLock}`)} (전환하려면 다른 게임 선택)
+                순위 발표 중 · 다른 게임을 누르면 바뀌어요
               </span>
             ) : null}
           </div>
         ) : null}
 
-        <div className="bar__out">
-          {event ? (
-            <button
-              type="button"
-              className="btn btn--ghost"
-              title="발표 화면(/p)을 새 창으로 엽니다 — 그 화면의 ⛶ 버튼으로 전체화면"
-              onClick={() => window.open('/p', 'soonot-projector', 'noopener')}
-            >
-              🖥 발표 화면 열기
-            </button>
-          ) : null}
-          {event ? (
-            <button
-              type="button"
-              className="btn btn--ghost"
-              onClick={() => {
-                if (confirm('현재 행사를 초기화하고 새로 시작할까요? 두 게임 모두 지워집니다.')) onResetEvent();
-              }}
-            >
-              새 행사
-            </button>
-          ) : null}
-          <button type="button" className="btn" onClick={() => onSignOut(false)}>
-            {t('host.console.signout')}
+        {event ? (
+          <button
+            type="button"
+            className="btn btn--primary"
+            title="발표 화면(/p)을 새 창으로 엽니다 — 그 화면의 전체화면 버튼을 누르세요"
+            onClick={() => window.open('/p', 'soonot-projector', 'noopener')}
+          >
+            발표 화면 열기
           </button>
-          <button type="button" className="btn btn--ghost" onClick={() => onSignOut(true)}>
-            {t('host.console.signoutAll')}
-          </button>
-        </div>
+        ) : null}
+
+        <details className="more">
+          <summary className="btn btn--ghost more__btn">더보기</summary>
+          <div className="more__menu">
+            {event ? (
+              <button
+                type="button"
+                className="more__item more__item--danger"
+                onClick={() => {
+                  if (confirm('현재 행사를 초기화하고 새로 시작할까요? 모든 게임 기록이 지워집니다.')) onResetEvent();
+                }}
+              >
+                새 행사 시작
+                <small>모든 게임 기록을 지워요</small>
+              </button>
+            ) : null}
+            <button type="button" className="more__item" onClick={() => onSignOut(false)}>
+              {t('host.console.signout')}
+            </button>
+            <button type="button" className="more__item" onClick={() => onSignOut(true)}>
+              {t('host.console.signoutAll')}
+            </button>
+          </div>
+        </details>
       </div>
     </header>
   );

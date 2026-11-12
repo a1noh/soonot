@@ -23,6 +23,9 @@ export interface BingoPaneProps {
 
 const DEFAULT_TRAITS = DEFAULT_BINGO_TRAITS.join('\n');
 
+/** What the next reveal step puts on the projector. */
+const REVEAL_NEXT: Record<number, string> = { 1: '3등 공개', 2: '2등 공개', 3: '1등 공개', 4: '1·2·3등 함께 보기' };
+
 /** After 순위 발표 the podium holds on 두구두구 (step 0); auto-advance to 3rd (step 1)
  *  once, after a short drumroll, so the operator doesn't have to click again. */
 function useRevealDrumroll(
@@ -85,13 +88,20 @@ export function BingoMasterPane({ view, send, spotlight = null, prize = false }:
               칸 점수로는 계속 진행돼요.
             </p>
           ) : null}
-          <Leaders view={view} />
-          <Online view={view} />
-          <button className="btn btn--danger" onClick={() => void send('master:end')}>
+          <div className="bingo__live">
+            <Leaders view={view} />
+            <Online view={view} />
+          </div>
+          <button
+            className="btn btn--danger btn--big"
+            onClick={() => {
+              if (confirm('빙고를 끝낼까요? 끝나면 더 이상 칸을 채울 수 없어요.')) void send('master:end');
+            }}
+          >
             게임 종료
           </button>
           <p className="bingo__note">
-            종료해도 참가자는 남아 이모지로 윷놀이를 응원할 수 있어요. (내보내려면 “다시 하기”)
+            종료해도 참가자는 남아 이모지로 다른 게임을 응원할 수 있어요. 내보내려면 “다시 하기”.
           </p>
         </>
       ) : null}
@@ -99,9 +109,10 @@ export function BingoMasterPane({ view, send, spotlight = null, prize = false }:
       {view.state === 'ENDED' ? (
         <>
           <RankBox view={view} />
-          <button className="btn btn--primary" onClick={() => void send('master:reveal', { step: 0 })}>
-            순위 발표
+          <button className="btn btn--primary btn--big" onClick={() => void send('master:reveal', { step: 0 })}>
+            순위 발표 시작
           </button>
+          <p className="bingo__note">누르면 발표 화면이 “두구두구”로 바뀌고, 잠시 뒤 3등부터 나와요.</p>
           <WinnersPanel winners={view.winners} send={send} spotlight={spotlight} />
         </>
       ) : null}
@@ -111,10 +122,10 @@ export function BingoMasterPane({ view, send, spotlight = null, prize = false }:
           <RankBox view={view} />
           {view.revealStep < 4 ? (
             <button
-              className="btn btn--primary"
+              className="btn btn--primary btn--big"
               onClick={() => void send('master:reveal', { step: view.revealStep + 1 })}
             >
-              다음 ({view.revealStep + 1}/4)
+              다음: {REVEAL_NEXT[view.revealStep + 1]} ({view.revealStep + 1}/4)
             </button>
           ) : (
             <p className="bingo__prompt">발표 완료</p>
@@ -128,7 +139,7 @@ export function BingoMasterPane({ view, send, spotlight = null, prize = false }:
             </button>
           ) : null}
           <p className="bingo__note">
-            이대로 두면 참가자는 남아 윷놀이를 응원할 수 있어요. 새 판은 “다시 하기”.
+            이대로 두면 참가자는 남아 다른 게임을 응원할 수 있어요. 새 판은 “다시 하기”.
           </p>
           <WinnersPanel winners={view.winners} send={send} spotlight={spotlight} />
         </>
@@ -256,9 +267,16 @@ function WinnersPanel({
 
 function Leaders({ view }: { view: MasterView }) {
   if (view.leaders.length === 0) {
-    return <p className="bingo__prompt">아직 빙고가 없어요</p>;
+    return (
+      <div className="bingo__box">
+        <p className="bingo__boxhead">빙고 순위</p>
+        <p className="bingo__prompt">아직 빙고가 없어요</p>
+      </div>
+    );
   }
   return (
+    <div className="bingo__box">
+    <p className="bingo__boxhead">빙고 순위</p>
     <ol className="bingo__leaders">
       {view.leaders.map((l, i) => (
         <li key={l.n}>
@@ -268,6 +286,7 @@ function Leaders({ view }: { view: MasterView }) {
         </li>
       ))}
     </ol>
+    </div>
   );
 }
 

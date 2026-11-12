@@ -17,9 +17,11 @@
     "hash-passcode": "tsx scripts/hash-passcode.ts"
   },
   "dependencies": {
+    "@fontsource/gowun-batang": "^5.3.0",
+    "@fontsource/gowun-dodum": "^5.3.0",
     "@soonot/bingo": "*",
-    "@soonot/yutnori": "*",
     "@soonot/stones": "*",
+    "@soonot/yutnori": "*",
     "better-sqlite3": "^11.10.0",
     "cookie": "^0.7.2",
     "express": "^4.19.2",

@@ -1,5 +1,5 @@
 /**
- * SOONOT 사람 빙고 — the player's card, served at `/` (bingo spec §7, req §11).
+ * 추수감사절 사람 빙고 — the player's card, served at `/` (bingo spec §7, req §11).
  *
  * A phone opens this link, types a nickname, and gets a number and an 81-cell
  * card once the master starts. Filling a cell means naming a real person by
@@ -12,8 +12,25 @@ import { CELLS, GRID } from '@soonot/bingo/src/shared/constants.js';
 import { LINES } from '@soonot/bingo/src/shared/lines.js';
 import { search, type Person } from './search.js';
 import { usePlayer, type PlayerApi } from './usePlayer.js';
+import { Leaf, LEAF_COLORS } from '../shared/Leaf.js';
 import '../shared/tokens.css';
+import '../shared/harvest.css';
 import './player.css';
+
+/** The game's name on every phone screen. */
+const TITLE = '추수감사절 사람 빙고';
+const FALLBACK = '추수감사절';
+
+/** The leaf that crowns the join and waiting cards. */
+function Crest() {
+  return (
+    <span className="crest" aria-hidden="true">
+      <Leaf shape="oval" color="#d99a26" size={30} style={{ transform: 'rotate(-38deg)' }} />
+      <Leaf shape="maple" color="#c2541b" size={40} />
+      <Leaf shape="oval" color="#962632" size={30} style={{ transform: 'rotate(38deg)' }} />
+    </span>
+  );
+}
 
 /** Client-side elapsed clock — bingo sends no ticks (spec §7.5). */
 function Elapsed({ startedAt, offset }: { startedAt: number | null; offset: number }) {
@@ -50,8 +67,9 @@ function JoinForm({ api }: { api: PlayerApi }) {
           if (!res.ok) setErr(res.error ?? '입장하지 못했어요');
         }}
       >
-        <h1 className="join__title">SOONOT 사람 빙고</h1>
-        <p className="join__sub">{api.summary?.title ?? 'SOONOT'}</p>
+        <Crest />
+        <h1 className="join__title">{TITLE}</h1>
+        <p className="join__sub">{api.summary?.title ?? FALLBACK}</p>
         <label className="field">
           <span className="field__label">닉네임</span>
           <input
@@ -92,8 +110,9 @@ function CodeGate({ api }: { api: PlayerApi }) {
           if (!api.submitCode(c)) setErr('코드가 맞지 않아요');
         }}
       >
-        <h1 className="join__title">SOONOT 사람 빙고</h1>
-        <p className="join__sub">{api.summary?.title ?? 'SOONOT'}</p>
+        <Crest />
+        <h1 className="join__title">{TITLE}</h1>
+        <p className="join__sub">{api.summary?.title ?? FALLBACK}</p>
         <label className="field">
           <span className="field__label">참여 코드</span>
           <input
@@ -123,6 +142,7 @@ function Waiting({ title, line, sub }: { title: string; line: string; sub?: stri
   return (
     <main className="screen screen--center">
       <div className="wait">
+        <Crest />
         <h1 className="wait__title">{title}</h1>
         <p className="wait__line">{line}</p>
         {sub ? <p className="wait__sub">{sub}</p> : null}
@@ -306,7 +326,17 @@ function CardScreen({ api }: { api: PlayerApi }) {
               title={api.traits[traitId] ?? ''}
             >
               <span className="cell__text">{api.traits[traitId] ?? ''}</span>
-              {isFilled ? <span className="cell__mark" aria-hidden="true">{STAMPS[i % STAMPS.length]}</span> : null}
+              {isFilled ? (
+                <span className="cell__mark" aria-hidden="true">
+                  <Leaf
+                    shape={i % 3 === 1 ? 'oval' : 'maple'}
+                    color="#fffaf0"
+                    vein="rgba(63,86,41,0.45)"
+                    size="62%"
+                    style={{ transform: `rotate(${((i * 47) % 50) - 25}deg)` }}
+                  />
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -328,43 +358,44 @@ function CardScreen({ api }: { api: PlayerApi }) {
   );
 }
 
-/** Cute stamps dropped on a filled cell — varied by position so the card looks playful. */
-const STAMPS = ['💖', '⭐', '🌸', '✨', '🍀', '🧸'];
-const CONFETTI_COLORS = ['#ffc2dd', '#d9c4ff', '#b6f0d6', '#ffe6a3', '#bfe3ff', '#ffd2b8'];
-
-/** A full-screen confetti + bouncing headline when the player gets a bingo. */
+/** A full-screen fall of leaves + the headline when the player gets a bingo. */
 function Celebration({ text }: { text: string }) {
-  const pieces = useMemo(
+  const leaves = useMemo(
     () =>
-      Array.from({ length: 30 }, (_, i) => ({
+      Array.from({ length: 26 }, (_, i) => ({
         left: (i * 37) % 100,
         jitter: ((i * 53) % 10) - 5,
-        delay: ((i * 7) % 10) / 20,
-        dur: 2.2 + (((i * 13) % 16) / 10),
-        color: CONFETTI_COLORS[i % CONFETTI_COLORS.length],
+        delay: ((i * 7) % 10) / 12,
+        dur: 2.6 + ((i * 13) % 16) / 8,
+        size: 18 + ((i * 29) % 22),
+        spin: ((i * 61) % 2 ? 1 : -1) * (240 + ((i * 17) % 300)),
+        shape: (i % 3 === 0 ? 'oval' : 'maple') as 'oval' | 'maple',
+        color: LEAF_COLORS[i % LEAF_COLORS.length]!,
       })),
     [],
   );
   return (
     <div className="celebrate" role="status">
-      {pieces.map((p, i) => (
+      {leaves.map((l, i) => (
         <span
           key={i}
-          className="confetti"
+          className="fall"
           style={{
-            left: `${Math.max(0, Math.min(100, p.left + p.jitter))}%`,
-            background: p.color,
-            animationDuration: `${p.dur}s`,
-            animationDelay: `${p.delay}s`,
+            left: `${Math.max(0, Math.min(96, l.left + l.jitter))}%`,
+            animationDuration: `${l.dur}s`,
+            animationDelay: `${l.delay}s`,
+            ['--spin' as string]: `${l.spin}deg`,
           }}
-        />
+        >
+          <Leaf shape={l.shape} color={l.color} size={l.size} />
+        </span>
       ))}
       <div className="celebrate__text">{text}</div>
     </div>
   );
 }
 
-const REACTIONS = ['❤️', '👏', '🎉', '😂', '🔥', '👍', '😢'];
+const REACTIONS = ['🙏', '❤️', '👏', '🎉', '😂', '🍂', '👍'];
 
 /** Tap an emoji → it floats up on the projector (Kahoot-style). */
 function ReactionBar({ api }: { api: PlayerApi }) {
@@ -427,19 +458,19 @@ export function App() {
   const api = usePlayer();
   switch (api.phase) {
     case 'connecting':
-      return <Waiting title="SOONOT 사람 빙고" line="연결 중…" />;
+      return <Waiting title={TITLE} line="연결 중…" />;
     case 'no-event':
-      return <Waiting title="SOONOT 사람 빙고" line="아직 열린 행사가 없어요" sub="잠시 후 다시 시도해주세요" />;
+      return <Waiting title={TITLE} line="아직 열린 행사가 없어요" sub="잠시 후 다시 시도해주세요" />;
     case 'need-code':
       return <CodeGate api={api} />;
     case 'setup-wait':
-      return <Waiting title={api.summary?.title ?? 'SOONOT'} line="곧 시작해요" sub="준비 중입니다" />;
+      return <Waiting title={api.summary?.title ?? FALLBACK} line="곧 시작해요" sub="준비 중입니다" />;
     case 'need-join':
       return <JoinForm api={api} />;
     case 'lobby':
       return (
         <Waiting
-          title={api.summary?.title ?? 'SOONOT'}
+          title={api.summary?.title ?? FALLBACK}
           line={`입장 완료! 당신은 #${api.me?.number ?? '—'}`}
           sub={`${api.counts.playerCount}명 참가 중 · 시작을 기다려주세요`}
         />

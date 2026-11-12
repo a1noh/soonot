@@ -54,7 +54,7 @@ export function RulesDoc({ showQr = true }: { showQr?: boolean }) {
     <article className="rules">
       <header className="rules__head">
         <div>
-          <p className="rules__kicker">SOONOT 진행 안내</p>
+          <p className="rules__kicker">추수감사절 진행 안내</p>
           <h1 className="rules__title">윷놀이 — 규칙과 진행 방법</h1>
           <p className="rules__lede">1부는 게임 규칙, 2부는 진행자가 화면에서 누를 순서입니다.</p>
         </div>

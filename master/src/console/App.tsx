@@ -18,11 +18,6 @@ import { RulesDoc } from '../rules/RulesDoc.js';
 import '../shared/tokens.css';
 import './console.css';
 
-const TABS: readonly (readonly ['ops' | 'rules', string])[] = [
-  ['ops', '🎲 게임 운영'],
-  ['rules', '📖 윷놀이 규칙'],
-] as const;
-
 function SignIn({ onSubmit }: { onSubmit(passcode: string): Promise<{ ok: boolean; locked?: boolean }> }) {
   const [passcode, setPasscode] = useState('');
   const [failed, setFailed] = useState<null | 'bad' | 'locked'>(null);
@@ -86,7 +81,7 @@ function NewEvent({ onCreate }: { onCreate(title: string): Promise<void> }) {
             className="field__input"
             value={title}
             autoFocus
-            placeholder="예) SOONOT — 온누리 Win2 순장 OT"
+            placeholder="예) 2026 추수감사절 한마당"
             onChange={(e) => setTitle(e.currentTarget.value)}
           />
         </label>
@@ -98,25 +93,34 @@ function NewEvent({ onCreate }: { onCreate(title: string): Promise<void> }) {
   );
 }
 
+type Tab = GameId | 'rules';
+
+/** Which game to open on first load: the one that is live, else the first one in use. */
+function liveGame(event: { games: Record<GameId, { state: string; enabled: boolean }> }): GameId {
+  const order: GameId[] = ['RUNNING', 'REVEAL', 'ENDED', 'LOBBY'].flatMap((st) =>
+    GAME_IDS.filter((g) => event.games[g].state === st),
+  );
+  return order[0] ?? GAME_IDS.find((g) => event.games[g].enabled) ?? GAME_IDS[0]!;
+}
+
 export function App() {
   const api = useConsole();
-  // req §5.4 — one operator cannot watch two games closely at once, so the
-  // console names the one being driven and compacts the other.
-  const [focus, setFocus] = useState<GameId>('yutnori');
-  // The 규칙 tab is a reading surface for the operator (and the handoff doc for
-  // VBS 꿈당). Both panels stay MOUNTED and are toggled with `hidden` rather than
-  // conditionally rendered: switching to the rules mid-setup must not discard a
+  // req §5.4 — one operator cannot watch several games closely at once, so the
+  // console shows one game at a time. Every pane (and the rules) stays MOUNTED
+  // and is toggled with `hidden`: switching away mid-setup must not discard a
   // half-typed team list, and the board must not remount on the way back.
-  const [tab, setTab] = useState<'ops' | 'rules'>('ops');
+  const [picked, setPicked] = useState<Tab | null>(null);
 
   if (api.auth === 'checking') return <main className="signin" aria-busy="true" />;
   if (api.auth === 'signed-out') return <SignIn onSubmit={api.signIn} />;
   if (!api.event) return <NewEvent onCreate={api.createEvent} />;
 
   const { event } = api;
+  const tab: Tab = picked ?? liveGame(event);
+  const blockingOf = (g: GameId) => (api.views[g] as { blocking?: boolean } | undefined)?.blocking === true;
 
   return (
-    <div className={`console focus--${focus}`}>
+    <div className="console">
       <EventBar
         event={event}
         connected={api.connected}
@@ -125,48 +129,59 @@ export function App() {
         onResetEvent={() => void api.resetEvent()}
       />
 
-      <nav className="tabs" role="tablist" aria-label="진행자 화면">
-        {TABS.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            id={`tab-${id}`}
-            aria-selected={tab === id}
-            aria-controls={`tabpanel-${id}`}
-            className={`tabs__btn${tab === id ? ' is-on' : ''}`}
-            onClick={() => setTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-        <a className="tabs__link" href="/rules" target="_blank" rel="noopener">
-          규칙 새 창으로 열기 ↗
-        </a>
+      <nav className="gametabs" role="tablist" aria-label="게임 선택">
+        {GAME_IDS.map((g) => {
+          const st = event.games[g];
+          const on = tab === g;
+          const onAir = (event.projectorLock ?? event.projector) === g;
+          return (
+            <button
+              key={g}
+              type="button"
+              role="tab"
+              id={`gametab-${g}`}
+              aria-selected={on}
+              aria-controls={`pane-${g}`}
+              className={`gametab gametab--${g}${on ? ' is-on' : ''}${st.enabled ? '' : ' is-off'}`}
+              onClick={() => setPicked(g)}
+            >
+              <span className="gametab__dot" aria-hidden="true" />
+              <span className="gametab__name">{t(`host.game.${g}`)}</span>
+              <span className={`gametab__state chip chip--${st.state.toLowerCase()}`}>
+                {st.enabled ? t(`host.state.${st.state}`) : '안 씀'}
+              </span>
+              {onAir ? <span className="gametab__air">화면 표시 중</span> : null}
+              {blockingOf(g) && !on ? (
+                <span className="gametab__alert" role="status">
+                  확인 필요
+                </span>
+              ) : null}
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          role="tab"
+          id="gametab-rules"
+          aria-selected={tab === 'rules'}
+          aria-controls="tabpanel-rules"
+          className={`gametab gametab--rules${tab === 'rules' ? ' is-on' : ''}`}
+          onClick={() => setPicked('rules')}
+        >
+          윷놀이 규칙
+        </button>
       </nav>
 
-      <div
-        className="console__panes"
-        role="tabpanel"
-        id="tabpanel-ops"
-        aria-labelledby="tab-ops"
-        hidden={tab !== 'ops'}
-      >
+      <div className="console__panes">
         {GAME_IDS.map((gameId) => (
           <GamePane
             key={gameId}
             gameId={gameId}
             state={event.games[gameId].state}
             enabled={event.games[gameId].enabled}
-            focused={focus === gameId}
-            onFocus={() => setFocus(gameId)}
+            shown={tab === gameId}
             onToggleEnabled={(next) => void api.enableGame(gameId, next)}
             onReset={() => void api.resetGame(gameId)}
-            blocking={
-              gameId === 'bingo'
-                ? undefined
-                : (api.views[gameId] as { blocking?: boolean } | undefined)?.blocking
-            }
           >
             {gameId === 'stones' ? (
               <StonesMasterPane
@@ -188,16 +203,19 @@ export function App() {
             )}
           </GamePane>
         ))}
-      </div>
 
-      <div
-        className="console__rules"
-        role="tabpanel"
-        id="tabpanel-rules"
-        aria-labelledby="tab-rules"
-        hidden={tab !== 'rules'}
-      >
-        <RulesDoc />
+        <div
+          className="console__rules"
+          role="tabpanel"
+          id="tabpanel-rules"
+          aria-labelledby="gametab-rules"
+          hidden={tab !== 'rules'}
+        >
+          <a className="console__ruleslink" href="/rules" target="_blank" rel="noopener">
+            규칙 새 창으로 열기 ↗
+          </a>
+          <RulesDoc />
+        </div>
       </div>
 
       {api.error ? (

@@ -98,7 +98,7 @@ describe('bingo player card (through the UI)', () => {
       sock.fire('connect');
       sock.fire('event:summary', { code: 'ABCD', title: '한마당', projector: 'auto', projectorLock: null, games: { bingo: { enabled: true, state: 'LOBBY' }, yutnori: { enabled: true, state: 'SETUP' } } });
     });
-    expect(screen.getByText('SOONOT 사람 빙고')).toBeTruthy();
+    expect(screen.getByText('추수감사절 사람 빙고')).toBeTruthy();
 
     // Join with a nickname.
     await user.type(screen.getByRole('textbox'), '나');
@@ -185,7 +185,7 @@ describe('bingo player card (through the UI)', () => {
 
     // and the whole bar is now on cooldown — you can't hammer it
     expect((heart as HTMLButtonElement).disabled).toBe(true);
-    for (const emo of ['❤️', '👏', '🔥', '👍']) {
+    for (const emo of ['❤️', '👏', '🙏', '👍']) {
       expect((screen.getByRole('button', { name: `${emo} 보내기` }) as HTMLButtonElement).disabled).toBe(true);
     }
   });

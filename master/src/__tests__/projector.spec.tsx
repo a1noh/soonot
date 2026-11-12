@@ -80,7 +80,7 @@ describe('projector presentation mode', () => {
     const sock = sockets[0]!;
     act(() => sock.fire('connect'));
     // No event → standby, no crash.
-    expect(screen.getByText('SOONOT')).toBeTruthy();
+    expect(screen.getByText('추수감사절')).toBeTruthy();
 
     act(() => {
       sock.fire('event:summary', summary);

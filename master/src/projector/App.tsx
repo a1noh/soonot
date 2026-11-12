@@ -20,7 +20,10 @@ import { DUEL_GAMES } from '@soonot/yutnori/src/shared/constants.js';
 import { Qr, joinUrl } from '../shared/Qr.js';
 import type { StonesView } from '@soonot/stones/src/project.js';
 import { StonesStage, TiebreakStage } from './StonesStage.js';
+import { Leaf, LEAF_COLORS } from '../shared/Leaf.js';
+import '../shared/harvest.css';
 import './projector.css';
+import './harvest-stage.css';
 
 const HOLD_MS = 20_000;
 type BingoView = SpectatorView & { standings: RankEntry[] };
@@ -31,8 +34,46 @@ function Stage({ children, kind, theme }: { children: ReactNode; kind?: string; 
     <main className={`stage${kind ? ` stage--${kind}` : ''}${theme ? ` stage--theme-${theme}` : ''}`}>
       <div className="stage__glow" aria-hidden="true" />
       <div className="stage__grain" aria-hidden="true" />
+      {theme === 'bingo' ? <HarvestDecor /> : null}
       {children}
     </main>
+  );
+}
+
+/** The 추수감사절 backdrop for every bingo screen: a few leaves drifting down
+ *  slowly behind everything, and two resting at the bottom corners. */
+const DRIFT = Array.from({ length: 9 }, (_, i) => ({
+  left: 4 + ((i * 41) % 92),
+  size: 4 + ((i * 7) % 5),
+  dur: 17 + ((i * 11) % 12),
+  delay: -((i * 23) % 26),
+  spin: (i % 2 ? 1 : -1) * (160 + ((i * 37) % 200)),
+  shape: (i % 3 === 0 ? 'oval' : 'maple') as 'oval' | 'maple',
+  color: LEAF_COLORS[i % LEAF_COLORS.length]!,
+}));
+
+function HarvestDecor() {
+  return (
+    <div className="harvest" aria-hidden="true">
+      {DRIFT.map((d, i) => (
+        <span
+          key={i}
+          className="harvest__drift"
+          style={{
+            left: `${d.left}%`,
+            animationDuration: `${d.dur}s`,
+            animationDelay: `${d.delay}s`,
+            ['--spin' as string]: `${d.spin}deg`,
+          }}
+        >
+          <Leaf shape={d.shape} color={d.color} size={`${d.size}vmin`} />
+        </span>
+      ))}
+      <Leaf className="harvest__rest harvest__rest--l" shape="maple" color="#c2541b" size="22vmin" />
+      <Leaf className="harvest__rest harvest__rest--l2" shape="oval" color="#d99a26" size="15vmin" />
+      <Leaf className="harvest__rest harvest__rest--r" shape="maple" color="#962632" size="19vmin" />
+      <Leaf className="harvest__rest harvest__rest--r2" shape="oval" color="#55703a" size="14vmin" />
+    </div>
   );
 }
 
@@ -41,8 +82,8 @@ function Standby({ summary, joinable, theme }: { summary: EventSummary | null; j
   return (
     <Stage kind="standby" theme={theme}>
       <div className="standby">
-        <div className="standby__kicker">온누리 Win2</div>
-        <h1 className="standby__title">{summary?.title ?? 'SOONOT'}</h1>
+        <h1 className="standby__title">{summary?.title ?? '추수감사절'}</h1>
+        {theme === 'bingo' ? <p className="standby__game">사람 빙고</p> : null}
         {summary ? (
           <div className="join">
             <Qr text={joinUrl(summary.code)} />
@@ -268,23 +309,21 @@ function YutnoriBoard({ view }: { view: BoardView }) {
   );
 }
 
-function BingoScreen({ view, summary, flash }: { view: BingoView; summary: EventSummary | null; flash: string | null }) {
+function BingoScreen({ view, flash }: { view: BingoView; flash: string | null }) {
   return (
     <Stage kind="bingo" theme="bingo">
       <div className="bingo-stage">
-        <div className="bingo-stage__kicker">SOONOT 사람 빙고</div>
-        <h1 className="bingo-stage__title">{summary?.title ?? 'SOONOT'}</h1>
-        <div className="bstats">
-          <Big value={view.connectedCount} label="접속" />
-          <Big value={view.playerCount} label="참가" />
-          <Big value={view.bingoCount} label="빙고" hot={view.bingoCount > 0} />
-        </div>
-        <p className="bingo-stage__hint">
-          {view.state === 'LOBBY' ? '휴대폰으로 스캔해서 참여하세요' : '특징에 맞는 사람을 찾아 칸을 채우세요'}
-        </p>
-        <div className="bingo-info">
-          <span className="bingo-info__time">🕛 빙고 12:00–1:00 · 1:05 종료</span>
-          <span className="bingo-info__pts">칸 1개 = 1점 · 빙고 한 줄 = +5점</span>
+        <div className="bingo-stage__main">
+          <h1 className="bingo-stage__title">추수감사절 사람 빙고</h1>
+          <p className="bingo-stage__hint">
+            {view.state === 'LOBBY' ? '휴대폰으로 스캔해서 참여하세요' : '특징에 맞는 사람을 찾아 칸을 채우세요'}
+          </p>
+          <div className="bstats">
+            <Big value={view.connectedCount} label="접속" />
+            <Big value={view.playerCount} label="참가" />
+            <Big value={view.bingoCount} label="빙고" hot={view.bingoCount > 0} />
+          </div>
+          <p className="bingo-info__pts">칸 1개 = 1점 · 빙고 한 줄 = +5점</p>
         </div>
         <Leaderboard board={view.kind === 'spectator' ? view.board : []} />
       </div>
@@ -302,10 +341,10 @@ function Leaderboard({ board }: { board: { n: number; points: number; lines: num
   const rows = board.slice(0, 12);
   return (
     <div className="lboard">
-      <div className="lboard__cap">🏆 실시간 순위 · 번호로 표시 (이름은 발표 때!)</div>
+      <div className="lboard__cap">실시간 순위 <span>번호로만 보여요 · 이름은 발표 때!</span></div>
       <ol className="lboard__list">
         {rows.length === 0 ? (
-          <li className="lboard__empty">참가자를 기다리는 중… 🍀</li>
+          <li className="lboard__empty">참가자를 기다리는 중…</li>
         ) : (
           rows.map((e, i) => (
             <li key={e.n} className={`lboard__row${i < 3 ? ` lboard__row--m${i + 1}` : ''}`}>
@@ -523,7 +562,7 @@ export function App() {
       return <Podium ranked={bView.standings} step={bView.state === 'ENDED' ? 0 : bView.revealStep} title="빙고" theme="bingo" winners={bView.winners} prizeOpen={summary.bingoPrize} />;
     }
     if (bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY')) {
-      return <BingoScreen view={bView} summary={summary} flash={flash} />;
+      return <BingoScreen view={bView} flash={flash} />;
     }
     return <Standby summary={summary} joinable={true} theme="bingo" />;
   })();
@@ -545,7 +584,7 @@ export function App() {
     <>
       {screen}
       <Reactions items={reactions} onDone={removeReaction} />
-      {bView && bView.connectedCount > 0 ? <OnlineBox online={bView.connectedCount} /> : null}
+      {bView && bView.connectedCount > 0 ? <OnlineBox online={bView.connectedCount} harvest={active === 'bingo'} /> : null}
       {summary && joinChipCorner ? <JoinChip code={summary.code} corner={joinChipCorner} /> : null}
       {greenKey > 0 ? <div key={greenKey} className="greenflash" aria-hidden="true" /> : null}
       {active === 'yutnori' && fx ? <YutFx key={fx.id} fx={fx} onDone={() => setFx(null)} /> : null}
@@ -581,10 +620,13 @@ function JoinChip({ code, corner }: { code: string; corner: 'tl' | 'br' }) {
 
 /** A small bottom-left count of who's connected — number only, so it never covers
  *  the 윷놀이 map and keeps identities private (the ladder is number-only too). */
-function OnlineBox({ online }: { online: number }) {
+function OnlineBox({ online, harvest }: { online: number; harvest?: boolean }) {
   return (
-    <div className="onlinebox onlinebox--compact">
-      <div className="onlinebox__head">🟢 접속 {online}명</div>
+    <div className={`onlinebox onlinebox--compact${harvest ? ' onlinebox--harvest' : ''}`}>
+      <div className="onlinebox__head">
+        <span className="onlinebox__dot" aria-hidden="true" />
+        접속 {online}명
+      </div>
     </div>
   );
 }

@@ -1,0 +1,196 @@
+/*
+ * 추수감사절 bingo on the projector: standby, the live bingo screen, the podium
+ * and the winner's card. Linen in a lit hall, brown ink, harvest colours, and
+ * a few leaves drifting down behind everything. Loaded after projector.css;
+ * `.stage.stage--theme-bingo` out-specifies its base rules.
+ */
+
+.stage.stage--theme-bingo {
+  color-scheme: light;
+  --ink: var(--hv-ink);
+  --ink-dim: var(--hv-ink-soft);
+  --gold: var(--hv-pumpkin);
+  --gold-deep: var(--hv-pumpkin-deep);
+  --red: var(--hv-cranberry);
+  --green: var(--hv-sage);
+  --line: var(--hv-rule);
+  --display: var(--hv-display);
+  --sans: var(--hv-body);
+  font-family: var(--hv-body);
+  word-break: keep-all;
+  background:
+    radial-gradient(90vmax 60vmax at 50% -12%, #fffbf2 0%, rgba(255, 251, 242, 0) 70%),
+    radial-gradient(70vmax 40vmax at 50% 112%, rgba(217, 154, 38, 0.18) 0%, rgba(217, 154, 38, 0) 70%),
+    linear-gradient(180deg, var(--hv-linen) 0%, #f3e6cc 100%);
+}
+.stage.stage--theme-bingo ::selection { background: var(--hv-wheat); }
+.stage--theme-bingo .stage__glow { background: radial-gradient(closest-side, rgba(255, 244, 214, 0.7), transparent 70%); }
+.stage--theme-bingo .stage__grain { opacity: 0.06; mix-blend-mode: multiply; }
+
+/* ---- leaves ---------------------------------------------------------------- */
+.stage > .harvest { position: absolute; z-index: 0; inset: 0; pointer-events: none; overflow: hidden; }
+.harvest__drift {
+  position: absolute;
+  top: 0;
+  opacity: 0.5;
+  animation: hvDrift linear infinite;
+  will-change: transform;
+}
+@keyframes hvDrift {
+  0% { transform: translate3d(0, -12vh, 0) rotate(0); }
+  30% { transform: translate3d(4vw, 26vh, 0) rotate(calc(var(--spin) * 0.3)); }
+  65% { transform: translate3d(-4vw, 66vh, 0) rotate(calc(var(--spin) * 0.65)); }
+  100% { transform: translate3d(2vw, 112vh, 0) rotate(var(--spin)); }
+}
+.harvest__rest { position: absolute; filter: drop-shadow(0 0.6vmin 0.8vmin rgba(92, 52, 20, 0.22)); }
+.harvest__rest--l { left: -5vmin; bottom: -6vmin; transform: rotate(28deg); }
+.harvest__rest--l2 { left: 11vmin; bottom: -5vmin; transform: rotate(-24deg); }
+.harvest__rest--r { right: -4vmin; bottom: -5vmin; transform: rotate(-32deg); }
+.harvest__rest--r2 { right: 12vmin; bottom: -4vmin; transform: rotate(40deg); }
+
+/* ---- type ------------------------------------------------------------------ */
+.stage--theme-bingo .standby__title,
+.stage--theme-bingo .bingo-stage__title,
+.stage--theme-bingo .podium__title,
+.stage--theme-bingo .wcard__title {
+  font-family: var(--hv-display);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-shadow: none;
+  color: var(--hv-ink);
+  text-wrap: balance;
+}
+.stage--theme-bingo .standby__game {
+  margin: -1vmin 0 0;
+  font-family: var(--hv-display);
+  font-weight: 700;
+  font-size: clamp(22px, 4.4vmin, 64px);
+  color: var(--hv-pumpkin-deep);
+}
+.stage--theme-bingo .standby__code { background: var(--hv-paper); border-color: var(--hv-rule-strong); }
+.stage--theme-bingo .standby__pulse span { background: var(--hv-pumpkin); }
+.stage--theme-bingo .join .qr { box-shadow: var(--hv-shadow); }
+.stage--theme-bingo .join__code b { color: var(--hv-pumpkin-deep); }
+
+/* ---- live bingo screen: title + counts on the left, the ladder on the right */
+.stage--theme-bingo .bingo-stage {
+  width: min(1500px, 100%);
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6vmin;
+  text-align: left;
+}
+.bingo-stage__main { display: flex; flex-direction: column; align-items: flex-start; gap: 2.4vmin; flex: 1 1 0; min-width: 0; padding-top: 10vmin; }
+.stage--theme-bingo .bingo-stage__title { font-size: clamp(34px, 8.4vmin, 124px); line-height: 1.08; margin: 0; }
+.stage--theme-bingo .bingo-stage__hint { color: var(--hv-ink-soft); font-size: clamp(16px, 3vmin, 42px); }
+.stage--theme-bingo .bstats { gap: 6vmin; margin: 1.6vmin 0 0.6vmin; }
+.stage--theme-bingo .big { align-items: flex-start; }
+.stage--theme-bingo .big__val { font-family: var(--hv-display); font-weight: 700; color: var(--hv-ink); font-size: clamp(48px, 14vmin, 200px); }
+.stage--theme-bingo .big__label { color: var(--hv-ink-soft); letter-spacing: 0.1em; font-size: clamp(14px, 2.4vmin, 32px); }
+.stage--theme-bingo .big.is-hot .big__val { color: var(--hv-cranberry); text-shadow: none; }
+.stage--theme-bingo .bingo-info__pts {
+  margin: 0;
+  color: var(--hv-ink);
+  font-size: clamp(14px, 2.2vmin, 30px);
+  background: var(--hv-paper);
+  border: 1px solid var(--hv-rule);
+  border-radius: 999px;
+  padding: 0.6vmin 2vmin;
+}
+
+/* the ladder: a paper list card */
+.stage--theme-bingo .lboard {
+  flex: 0 0 auto;
+  width: min(620px, 42vw);
+  margin: 0;
+  padding: 2.2vmin 2.4vmin;
+  background: var(--hv-paper);
+  border: 1px solid var(--hv-rule);
+  border-radius: 2vmin;
+  box-shadow: var(--hv-shadow);
+}
+.stage--theme-bingo .lboard__cap {
+  font-family: var(--hv-display);
+  font-weight: 700;
+  color: var(--hv-ink);
+  font-size: clamp(18px, 3vmin, 40px);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 2vmin;
+  padding-bottom: 1vmin;
+  border-bottom: 1px solid var(--hv-rule);
+}
+.stage--theme-bingo .lboard__cap span { font-family: var(--hv-body); font-weight: 400; color: var(--hv-ink-soft); font-size: 0.5em; }
+.stage--theme-bingo .lboard__list { max-height: 64vh; gap: 0.4vmin; }
+.stage--theme-bingo .lboard__row {
+  background: transparent;
+  border: none;
+  border-radius: 1vmin;
+  padding: 0.7vmin 1.2vmin;
+}
+.stage--theme-bingo .lboard__row:nth-child(even) { background: rgba(241, 227, 199, 0.5); }
+.stage--theme-bingo .lboard__rank { color: var(--hv-ink-soft); font-family: var(--hv-display); font-weight: 700; }
+.stage--theme-bingo .lboard__who { color: var(--hv-ink); font-family: var(--hv-display); font-weight: 700; }
+.stage--theme-bingo .lboard__lines { color: var(--hv-cranberry); }
+.stage--theme-bingo .lboard__pts { color: var(--hv-ink); font-family: var(--hv-display); font-weight: 700; }
+.stage--theme-bingo .lboard__row--m1 { background: #f6dfb0; }
+.stage--theme-bingo .lboard__row--m2 { background: #efe3cc; }
+.stage--theme-bingo .lboard__row--m3 { background: #f3d9c6; }
+.stage--theme-bingo .lboard__row--m1 .lboard__rank,
+.stage--theme-bingo .lboard__row--m2 .lboard__rank,
+.stage--theme-bingo .lboard__row--m3 .lboard__rank { color: var(--hv-pumpkin-deep); }
+
+/* someone's bingo: a quick warm light instead of the green flash */
+.greenflash {
+  background: radial-gradient(120% 90% at 50% 50%, rgba(232, 201, 138, 0.6), rgba(217, 154, 38, 0.14) 55%, transparent 75%);
+}
+.stage--theme-bingo .stage__flash {
+  background: var(--hv-ink);
+  color: var(--hv-paper);
+  box-shadow: 0 1.4vmin 3vmin -1vmin rgba(58, 38, 22, 0.55);
+}
+
+/* ---- podium ---------------------------------------------------------------- */
+.stage--theme-bingo .podium__hold { color: var(--hv-pumpkin-deep); font-family: var(--hv-display); }
+.stage--theme-bingo .podium__row {
+  background: var(--hv-paper);
+  border-color: var(--hv-rule);
+  box-shadow: var(--hv-shadow);
+}
+.stage--theme-bingo .podium__row.medal--1 { background: #f6dfb0; border-color: var(--hv-mustard); }
+.stage--theme-bingo .podium__row.medal--2 { border-color: #b9ab95; }
+.stage--theme-bingo .podium__row.medal--3 { border-color: #c27a45; }
+.stage--theme-bingo .podium__label { font-family: var(--hv-display); font-weight: 700; }
+.stage--theme-bingo .wreveal__cap { color: var(--hv-pumpkin-deep); font-family: var(--hv-display); font-weight: 700; }
+.stage--theme-bingo .wreveal__chip { background: var(--hv-paper); border-color: var(--hv-rule); }
+.stage--theme-bingo .prizebox__prize { color: var(--hv-pumpkin-deep); font-family: var(--hv-display); font-weight: 700; }
+
+/* ---- the winner's card ------------------------------------------------------ */
+.stage--theme-bingo .wcard__name { color: var(--hv-pumpkin-deep); }
+.stage--theme-bingo .wcell { background: rgba(255, 250, 240, 0.7); border-color: var(--hv-rule); }
+.stage--theme-bingo .wcell--on { background: var(--hv-paper); border-color: var(--hv-sage); box-shadow: inset 0 0 0 1px var(--hv-sage); }
+.stage--theme-bingo .wcell__who b { color: var(--hv-sage-deep); }
+.stage--theme-bingo .wcell--line { background: #f6dfb0; border-color: var(--hv-cranberry); box-shadow: inset 0 0 0 2px var(--hv-cranberry); }
+
+/* ---- chrome outside the stage, while bingo has the screen ---------------- */
+.onlinebox--harvest { background: var(--hv-paper); border-color: var(--hv-rule); box-shadow: var(--hv-shadow); backdrop-filter: none; }
+.onlinebox--harvest .onlinebox__head { color: var(--hv-ink); font-family: var(--hv-body); }
+.onlinebox__dot {
+  display: inline-block; width: 1.1vmin; height: 1.1vmin; min-width: 9px; min-height: 9px;
+  border-radius: 999px; background: #3fb950; margin-right: 0.6vmin; vertical-align: 0.1em;
+}
+.onlinebox--harvest .onlinebox__dot { background: var(--hv-sage); }
+
+/* narrow screens: stack the ladder under the title */
+@media (max-aspect-ratio: 5/4) {
+  .stage--theme-bingo .bingo-stage { flex-direction: column; align-items: center; text-align: center; }
+  .bingo-stage__main { align-items: center; padding-top: 12vmin; }
+  .stage--theme-bingo .big { align-items: center; }
+  .stage--theme-bingo .lboard { width: min(760px, 90vw); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .harvest__drift { display: none; }
+}

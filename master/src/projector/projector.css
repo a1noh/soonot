@@ -34,37 +34,10 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
   position: absolute; inset: 0; pointer-events: none; opacity: 0.05; mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
 }
-.stage > *:not(.stage__glow):not(.stage__grain) { position: relative; z-index: 1; }
+.stage > *:not(.stage__glow):not(.stage__grain):not(.harvest) { position: relative; z-index: 1; }
 .stage--standby, .stage--podium, .stage--minigame, .stage--bingo, .stage--wcard { align-items: center; justify-content: center; text-align: center; }
 
-/* ---- kawaii-pastel theme for BINGO screens (matches the /b player card) --- */
-.stage--theme-bingo {
-  color-scheme: light;
-  --ink: #5c4658;
-  --ink-dim: #b08aa0;
-  --gold: #b98cff;        /* lavender — the bingo accent */
-  --gold-deep: #ff8fc2;   /* candy pink */
-  --red: #ff8a9a;
-  --green: #57cf9e;
-  --line: #ffd6ea;
-  --display: 'Gaegu', 'Apple SD Gothic Neo', 'Noto Sans KR', system-ui, sans-serif;
-  background:
-    radial-gradient(120% 90% at 12% 0%, #fff0f8 0%, rgba(255,240,248,0) 60%),
-    radial-gradient(120% 100% at 90% 8%, #eef1ff 0%, rgba(238,241,255,0) 55%),
-    linear-gradient(160deg, #fff6fb 0%, #fdf1ff 45%, #eefaff 100%);
-}
-.stage--theme-bingo .stage__glow {
-  background: radial-gradient(closest-side, rgba(185,140,255,0.22), transparent 70%);
-}
-.stage--theme-bingo .stage__grain { opacity: 0.02; }
-/* soft candy title shadow instead of the dark drop shadow */
-.stage--theme-bingo .standby__title,
-.stage--theme-bingo .bingo-stage__title {
-  text-shadow: 0 0.3vmin 0 #fff, 0 0.6vmin 2vmin rgba(185,140,255,0.35);
-}
-.stage--theme-bingo .standby__code { background: #fff; box-shadow: 0 1vmin 3vmin rgba(185,140,255,0.25); }
-.stage--theme-bingo .big.is-hot .big__val { text-shadow: 0 0 4vmin rgba(255,143,194,0.5); }
-.stage--theme-bingo .standby__pulse span { background: var(--gold-deep); }
+/* The 추수감사절 bingo theme lives in harvest-stage.css. */
 
 /* ---- standby ------------------------------------------------------------- */
 .standby { display: flex; flex-direction: column; align-items: center; gap: 2.5vmin; }
@@ -414,12 +387,6 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 /* compact (count-only) variant — used on the 윷놀이 board so it never covers the map */
 .onlinebox--compact { width: auto; }
 .onlinebox--compact .onlinebox__head { border-bottom: none; padding: 0.8vmin 1.4vmin; }
-
-/* pastel variant, so the box matches the kawaii bingo stage */
-.onlinebox--bingo { background: rgba(255,255,255,0.9); border-color: #ffd6ea; }
-.onlinebox--bingo .onlinebox__head { color: #5c4658; border-bottom-color: #ffd6ea; }
-.onlinebox--bingo .onlinebox__row { color: #5c4658; }
-.onlinebox--bingo .onlinebox__num { color: #b08aa0; }
 
 .board__station--diag { fill: #e8d9ba; stroke: #6b5233; stroke-width: 0.8; }
 
