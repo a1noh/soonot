@@ -4,7 +4,7 @@
  * deep rim — with an optional halo. Shared by the console (small, no halo)
  * and the projector (large, glowing).
  */
-import { useId } from 'react';
+import { memo, useId } from 'react';
 
 function shade(hex: string, amount: number): string {
   const n = parseInt(hex.slice(1), 16);
@@ -35,7 +35,9 @@ export interface GemProps {
   title?: string;
 }
 
-export function Gem({ color, size = 24, dim = false, halo = false, className, title }: GemProps) {
+/** Memoised: the projector redraws on every room update, and ~45 gems (36 in
+ *  the rankings) never change between most of them. */
+export const Gem = memo(function Gem({ color, size = 24, dim = false, halo = false, className, title }: GemProps) {
   const id = useId().replace(/:/g, '');
   const base = dim ? '#4a5060' : color;
   const n = RIM.length;
@@ -84,4 +86,4 @@ export function Gem({ color, size = 24, dim = false, halo = false, className, ti
       <ellipse cx="38" cy="24" rx="9" ry="4.5" transform="rotate(-28 38 24)" fill="#fff" opacity={dim ? 0.12 : 0.75} />
     </svg>
   );
-}
+});

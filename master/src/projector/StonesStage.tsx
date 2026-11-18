@@ -12,6 +12,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import type { StonesView } from '@soonot/stones/src/project.js';
 import { Gem } from '@soonot/stones/src/client/Gem.js';
 import { playersLabel } from '@soonot/stones/src/shared/labels.js';
+import { burstAt } from './sparks.js';
 import './stones.css';
 
 const reducedMotion = () =>
@@ -27,6 +28,9 @@ export function StonesStage({ view }: { view: StonesView }) {
   const pendingTeam = pending ? view.teams.find((t) => t.id === pending.chooserId) ?? null : null;
 
   const centerRef = useRef<HTMLDivElement>(null);
+  const sparksRef = useRef<HTMLCanvasElement>(null);
+  const timers = useRef<number[]>([]);
+  useEffect(() => () => timers.current.forEach((t) => window.clearTimeout(t)), []);
   const slotRefs = useRef(new Map<string, HTMLElement>());
   const [burst, setBurst] = useState<Burst | null>(null);
   // Only animate results that happen while we watch — never replay on (re)connect.
@@ -46,7 +50,16 @@ export function StonesStage({ view }: { view: StonesView }) {
       };
     });
     setBurst({ seq: r.seq, stoneId: r.stoneId, winners: r.winners, flights });
+    if (r.winners.length === 0 || reducedMotion()) return;
+    // The one big moment: the stone splits into stars (canvas-confetti, drawn
+    // off the main thread), then flies to each winner's row, where the slot
+    // rings as it lands (CSS). The timer lives in a ref, not this effect's
+    // cleanup: a room update mid-flight must not cancel it.
+    const color = view.stones.find((st) => st.id === r.stoneId)?.color ?? '#ffd76a';
+    timers.current.push(window.setTimeout(() => burstAt(sparksRef.current, from, color), 380));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stones only colour the sparks
   }, [view.lastResult]);
+
 
   const burstStone = burst ? view.stones.find((s) => s.id === burst.stoneId) ?? null : null;
   const teamName = (id: string) => view.teams.find((t) => t.id === id)?.name ?? '';
@@ -122,6 +135,8 @@ export function StonesStage({ view }: { view: StonesView }) {
               </div>
             </div>
           ) : null}
+
+          <canvas className="sparks" ref={sparksRef} aria-hidden="true" />
 
           {burst && burstStone ? (
             <div

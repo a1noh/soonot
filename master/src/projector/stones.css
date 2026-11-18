@@ -76,7 +76,7 @@
   width: calc(var(--orbit-r) * 2 + var(--gem) * 1.6);
   aspect-ratio: 1;
   animation: orbit 60s linear infinite;
-  transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1), filter 500ms cubic-bezier(0.16, 1, 0.3, 1), transform 500ms;
+  transition: opacity 500ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 .orbit__slot {
   --a: calc(360deg / var(--n) * var(--i));
@@ -112,15 +112,17 @@
   position: absolute;
   inset: -45%;
   border-radius: 50%;
-  background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 55%, transparent), transparent 75%);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--glow) 70%, transparent), color-mix(in srgb, var(--glow) 22%, transparent) 45%, transparent 75%);
   animation: pulse-glow 3.2s ease-in-out infinite;
+  will-change: transform, opacity;
   pointer-events: none;
 }
 .orbit__gem {
   position: relative;
   width: var(--gem);
   height: var(--gem);
-  filter: drop-shadow(0 0 1vmin color-mix(in srgb, var(--glow) 80%, transparent));
+  /* No filter here: a drop-shadow on a layer that turns in 3D is redrawn by
+     the GPU every frame. The halo behind (::before) carries the light. */
   animation: turn 9s linear infinite;
 }
 @keyframes pulse-glow { 0%, 100% { opacity: 0.65; transform: scale(0.92); } 50% { opacity: 1; transform: scale(1.05); } }
@@ -128,7 +130,7 @@
 /* Played for already: small, grey, still. */
 .orbit__slot.is-claimed .orbit__bob { animation: none; }
 .orbit__slot.is-claimed .orbit__bob::before { display: none; }
-.orbit__slot.is-claimed .orbit__gem { animation: none; filter: none; opacity: 0.4; transform: scale(0.7); }
+.orbit__slot.is-claimed .orbit__gem { animation: none; opacity: 0.4; transform: scale(0.7); }
 .orbit__slot.is-claimed .orbit__name { color: var(--ink-dim); opacity: 0.6; }
 .orbit__slot:nth-child(2n) .orbit__gem { animation-duration: 11s; animation-direction: reverse; }
 .orbit__name {
@@ -175,8 +177,14 @@
 }
 
 /* Picked or resolving: the ring steps back. */
+/* Opacity and scale only — a blur over a spinning ring is a full-size GPU pass
+   every frame — and everything in it pauses while the mission is up. */
 .stage--stones.is-picked .orbit,
-.stage--stones.is-result .orbit { opacity: 0.18; filter: blur(3px) saturate(0.6); transform: scale(0.92); }
+.stage--stones.is-result .orbit { opacity: 0.14; transform: scale(0.9); }
+.stage--stones.is-picked .orbit-wrap > .orbit,
+.stage--stones.is-picked .orbit *,
+.stage--stones.is-picked .orbit *::before,
+.stage--stones.is-picked .holo { animation-play-state: paused; }
 
 /* ---- the mission -------------------------------------------------------- */
 .mission {
@@ -199,7 +207,6 @@
   position: relative;
   width: min(34vh, 22vw);
   height: min(34vh, 22vw);
-  filter: drop-shadow(0 0 2vmin color-mix(in srgb, var(--glow) 90%, transparent));
   animation: turn 7s linear infinite;
 }
 .mission__gem::before { inset: -10% -25% 10%; }
@@ -255,8 +262,8 @@
   white-space: pre-wrap;
 }
 @keyframes come-forward {
-  from { opacity: 0; transform: scale(0.45) translateY(6vmin); filter: blur(6px); }
-  to { opacity: 1; transform: none; filter: none; }
+  from { opacity: 0; transform: scale(0.45) translateY(6vmin); }
+  to { opacity: 1; transform: none; }
 }
 @keyframes unveil {
   from { opacity: 0; clip-path: inset(0 0 100% 0 round 2vmin); transform: translateY(2vmin); }
@@ -289,8 +296,8 @@
 
 /* 성공: a flare, then the stone flies into the team's row. */
 .burst--win .burst__gem {
-  filter: drop-shadow(0 0 6vmin var(--glow));
   animation: win-fly 2400ms cubic-bezier(0.65, 0, 0.35, 1) both;
+  will-change: transform, opacity;
 }
 .burst--win .burst__label { color: var(--gold); animation: label-in 500ms cubic-bezier(0.16, 1, 0.3, 1) both; }
 @keyframes win-fly {
@@ -453,12 +460,11 @@
   height: calc(var(--orbit-r) * 2.7);
   transform: perspective(900px) rotateX(58deg);
   pointer-events: none;
-  opacity: 0.75;
-  filter: drop-shadow(0 0 0.8vmin rgba(95, 212, 255, 0.6));
+  opacity: 0.8;
 }
 .holo > * { transform-origin: 0 0; }
 .holo { animation: holo-spin 120s linear infinite reverse; }
-.holo__ring { fill: none; stroke: var(--holo); stroke-width: 0.5; opacity: 0.55; }
+.holo__ring { fill: none; stroke: var(--holo); stroke-width: 0.6; opacity: 0.65; }
 .holo__ring--dash { stroke-dasharray: 2 3; opacity: 0.45; }
 .holo__ring--faint { opacity: 0.25; }
 .holo__tick { stroke: var(--holo); stroke-width: 0.4; opacity: 0.6; }
@@ -541,4 +547,34 @@
   .orbit__upright { transform: translate(-50%, -50%) rotate(calc(var(--a) * -1)); }
   .mission__gem, .mission__card, .burst__label, .ranks__slot.is-held svg { animation-duration: 1ms; }
   .burst--win .burst__gem, .burst--lose .burst__gem { animation: none; }
+}
+
+/* canvas-confetti draws the win sparks here, off the main thread: over the
+   ring, under the result label so the winners' names stay readable. */
+.orbit-wrap > canvas.sparks {
+  position: absolute;
+  inset: -12%;
+  width: 124%;
+  height: 124%;
+  pointer-events: none;
+}
+
+/* Where a won stone lands: one ring opens out of the slot. */
+.ranks__slot { position: relative; }
+.ranks__slot.is-held::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--glow);
+  opacity: 0;
+  animation: ping 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+@keyframes ping {
+  0% { transform: scale(0.6); opacity: 1; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ranks__slot.is-held::after { animation: none; }
 }
