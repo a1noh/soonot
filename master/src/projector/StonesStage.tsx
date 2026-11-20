@@ -22,7 +22,11 @@ type Flight = { teamId: string; dx: number; dy: number };
 type Burst = { seq: number; stoneId: string; winners: string[]; flights: Flight[] };
 
 export function StonesStage({ view }: { view: StonesView }) {
-  const chooser = view.teams.find((t) => t.id === view.turnTeamId) ?? null;
+  const chooserTeam = view.teams.find((t) => t.id === view.turnTeamId) ?? null;
+  // A team, or a guest (the 빙고 1등) who has no team colour: they get gold.
+  const chooser = view.turnTeamName
+    ? { name: view.turnIsGuest ? `${view.turnTeamName} 님` : view.turnTeamName, color: chooserTeam?.color ?? '#ffd76a' }
+    : null;
   const pending = view.pending;
   const pendingStone = pending ? view.stones.find((s) => s.id === pending.stoneId) ?? null : null;
   const pendingTeam = pending ? view.teams.find((t) => t.id === pending.chooserId) ?? null : null;
@@ -72,8 +76,15 @@ export function StonesStage({ view }: { view: StonesView }) {
       <Deck />
       <section className="stn-main">
         <header className="stn-head">
-          <h1 className="stn-head__title">스톤</h1>
-          {view.state === 'RUNNING' && chooser ? (
+          <h1 className="stn-head__title">{view.title || '스톤'}</h1>
+          {view.state === 'RUNNING' && view.lastStone && !pending ? (
+            <p className="stn-head__turn">
+              <span className="stn-head__round">
+                STONE {view.total} / {view.total}
+              </span>
+              <strong className="stn-head__last">마지막 스톤</strong>
+            </p>
+          ) : view.state === 'RUNNING' && chooser ? (
             <p className="stn-head__turn" style={{ '--team': chooser.color } as CSSProperties}>
               <span className="stn-head__round">
                 STONE {Math.min(view.played + 1, view.total)} / {view.total}
@@ -105,7 +116,13 @@ export function StonesStage({ view }: { view: StonesView }) {
           </div>
 
           <div className="orbit-center" ref={centerRef}>
-            {focus === 'idle' && view.state === 'RUNNING' && chooser && view.played < view.total ? (
+            {focus === 'idle' && view.state === 'RUNNING' && view.lastStone ? (
+              <p className="orbit-center__prompt">
+                <strong>마지막 스톤</strong>
+                <span>남은 스톤 하나로 마지막 게임을 해요</span>
+              </p>
+            ) : null}
+            {focus === 'idle' && view.state === 'RUNNING' && chooser && !view.lastStone && view.played < view.total ? (
               <p className="orbit-center__prompt">
                 <strong style={{ '--team': chooser.color } as CSSProperties}>{chooser.name}</strong>
                 <span>스톤을 하나 고르세요</span>
@@ -299,7 +316,7 @@ function HoloTable() {
 
 /**
  * The 동점 결정전 on the projector: the tied teams face each other over the
- * game card (엔드게임 · 컵 멀리 놓기).
+ * game card (타노스의 핑거 스냅 · 인피니티 컵 컬링).
  */
 export function TiebreakStage({ view }: { view: StonesView }) {
   const tb = view.activeTiebreak!;

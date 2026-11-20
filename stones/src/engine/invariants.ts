@@ -29,9 +29,14 @@ export function assertInvariants(room: Room): void {
   if (room.claims.length > Math.min(room.stones.length, room.games.length)) fail('more claims than stones or games');
 
   if (room.state === 'RUNNING') {
-    const turn = room.teams.find((t) => t.id === room.turnTeamId);
-    if (!turn) fail('turn points at no team');
-    if (!turn!.playing) fail(`turn points at ${turn!.id}, which is not playing`);
+    // Exactly one chooser: a playing team, or a named guest (the 빙고 1등).
+    if ((room.turnTeamId === null) === (room.turnGuest === null)) fail('the turn needs exactly one chooser');
+    if (room.turnGuest !== null && room.turnGuest.trim() === '') fail('a guest chooser with no name');
+    if (room.turnTeamId !== null) {
+      const turn = room.teams.find((t) => t.id === room.turnTeamId);
+      if (!turn) fail('turn points at no team');
+      if (!turn!.playing) fail(`turn points at ${turn!.id}, which is not playing`);
+    }
     if (room.round < 1) fail('round < 1 while running');
   }
   if (room.pending) {

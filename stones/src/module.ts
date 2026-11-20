@@ -64,7 +64,10 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
       const tiebreak = tb && text(tb, 'name')
         ? { name: text(tb, 'name'), players: text(tb, 'players'), instructions: text(tb, 'instructions') }
         : undefined;
-      return { t: 'SETUP', teams, stones, games, tiebreak };
+      const title = typeof p.title === 'string' ? p.title.trim() : undefined;
+      const pz = rec(p.prizes);
+      const prizes = pz ? { first: text(pz, 'first'), second: text(pz, 'second'), everyone: text(pz, 'everyone') } : undefined;
+      return { t: 'SETUP', teams, stones, games, tiebreak, title, prizes };
     }
     case 'master:start':
       return { t: 'START' };
@@ -82,6 +85,13 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
     }
     case 'master:skip':
       return { t: 'SKIP' };
+    case 'master:chooser': {
+      const teamId = str(payload, 'team');
+      const guest = str(payload, 'guest');
+      if (teamId && !guest) return { t: 'SET_CHOOSER', teamId };
+      if (guest && !teamId) return { t: 'SET_CHOOSER', guest };
+      return null;
+    }
     case 'master:playing': {
       const teamId = str(payload, 'team');
       const playing = bool(payload, 'playing');

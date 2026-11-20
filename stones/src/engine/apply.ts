@@ -1,13 +1,13 @@
 import type { RoomState } from '@soonot/master';
-import { DEFAULT_TIEBREAK, MAX_STONES, MAX_TEAMS, MIN_TEAMS, STONE_COLORS, TEAM_COLORS } from '../shared/constants';
-import type { Room } from '../shared/types';
+import { DEFAULT_PRIZES, DEFAULT_TIEBREAK, DEFAULT_TITLE, MAX_STONES, MAX_TEAMS, MIN_TEAMS, STONE_COLORS, TEAM_COLORS } from '../shared/constants';
+import type { Chooser, Room } from '../shared/types';
 import { EngineError, type Action, type Emit } from './actions';
 import { tiedGroups } from './ranking';
 
 export const ALLOWED: Readonly<Record<RoomState, readonly Action['t'][]>> = {
   SETUP: ['SETUP'],
   LOBBY: ['SETUP', 'START', 'SET_PLAYING'],
-  RUNNING: ['PICK', 'CANCEL_PICK', 'RESOLVE', 'SKIP', 'SET_PLAYING', 'UNDO', 'END'],
+  RUNNING: ['PICK', 'CANCEL_PICK', 'RESOLVE', 'SKIP', 'SET_CHOOSER', 'SET_PLAYING', 'UNDO', 'END'],
   ENDED: ['RESUME_FROM_ENDED', 'REVEAL', 'UNDO', 'TIEBREAK_START', 'TIEBREAK_RESOLVE', 'TIEBREAK_CANCEL'],
   REVEAL: ['REVEAL'],
 };
@@ -21,7 +21,10 @@ export function newRoom(opts: { id: string; eventId: string; createdAt: number }
     teams: [],
     stones: [],
     games: [],
+    title: DEFAULT_TITLE,
+    prizes: { ...DEFAULT_PRIZES },
     turnTeamId: null,
+    turnGuest: null,
     round: 0,
     pending: null,
     claims: [],
@@ -64,15 +67,31 @@ function nextPlaying(room: Room, fromId: string | null): { id: string; wrapped: 
   return null;
 }
 
-function turnEmit(r: Room): Emit {
-  const team = r.teams.find((t) => t.id === r.turnTeamId)!;
-  return { e: 'turn:changed', teamId: team.id, teamName: team.name, round: r.round };
+/** Who chooses now: a team or a guest. */
+function chooserOf(r: Room): Chooser {
+  return { teamId: r.turnTeamId, guest: r.turnGuest };
 }
 
+/** How the chooser is shown: the team's name, or the guest as written. */
+export function chooserName(r: Room, c: Chooser = chooserOf(r)): string {
+  if (c.guest !== null) return c.guest;
+  return r.teams.find((t) => t.id === c.teamId)?.name ?? '';
+}
+
+function setChooser(r: Room, c: Chooser): void {
+  r.turnTeamId = c.teamId;
+  r.turnGuest = c.guest;
+}
+
+function turnEmit(r: Room): Emit {
+  return { e: 'turn:changed', teamId: r.turnTeamId, teamName: chooserName(r), round: r.round };
+}
+
+/** Pass the choice to the next playing team in setup order. */
 function advance(r: Room): Emit {
   const next = nextPlaying(r, r.turnTeamId)!;
   if (next.wrapped) r.round += 1;
-  r.turnTeamId = next.id;
+  setChooser(r, { teamId: next.id, guest: null });
   return turnEmit(r);
 }
 
@@ -112,6 +131,9 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       }));
       const tb = action.tiebreak && action.tiebreak.name.trim() ? action.tiebreak : DEFAULT_TIEBREAK;
       r.tiebreak = { id: 'tb', name: tb.name.trim(), players: tb.players.trim(), instructions: tb.instructions.trim() };
+      r.title = action.title?.trim() || DEFAULT_TITLE;
+      const p = action.prizes ?? DEFAULT_PRIZES;
+      r.prizes = { first: p.first.trim(), second: p.second.trim(), everyone: p.everyone.trim() };
       r.state = 'LOBBY';
       events.push({ e: 'stones:update' });
       break;
@@ -121,7 +143,7 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       r.state = 'RUNNING';
       r.startedAt = now;
       r.round = 1;
-      r.turnTeamId = nextPlaying(r, null)!.id;
+      setChooser(r, { teamId: nextPlaying(r, null)!.id, guest: null });
       events.push(turnEmit(r));
       break;
     }
@@ -133,9 +155,9 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       if (r.claims.some((c) => c.stoneId === stone.id)) throw new EngineError('STONE_TAKEN');
       const game = nextGame(r);
       if (!game || picksLeft(r) <= 0) throw new EngineError('NO_GAME_LEFT');
-      r.pending = { chooserId: r.turnTeamId!, stoneId: stone.id, gameId: game.id };
+      r.pending = { chooserId: r.turnTeamId, chooserName: chooserName(r), stoneId: stone.id, gameId: game.id };
       r.lastResult = null;
-      events.push({ e: 'stone:picked', chooserId: r.turnTeamId!, stoneId: stone.id, gameId: game.id });
+      events.push({ e: 'stone:picked', chooserId: r.turnTeamId, stoneId: stone.id, gameId: game.id });
       break;
     }
 
@@ -151,22 +173,53 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       const ids = new Set(r.teams.map((t) => t.id));
       const winners = [...new Set(action.winners)];
       if (winners.some((w) => !ids.has(w))) throw new EngineError('UNKNOWN_TEAM');
-      const { chooserId, stoneId, gameId } = r.pending;
-      r.claims.push({ stoneId, gameId, chooserId, round: r.round, winners, at: now });
-      r.history.push({ kind: 'claim', chooserId, round: r.round });
+      const { chooserId, chooserName: name, stoneId, gameId } = r.pending;
+      r.claims.push({ stoneId, gameId, chooserId, chooserName: name, round: r.round, winners, at: now });
+      r.history.push({ kind: 'claim', round: r.round, ...chooserOf(r) });
       r.seq += 1;
       r.lastResult = { seq: r.seq, stoneId, gameId, winners };
       r.pending = null;
       events.push({ e: 'stone:resolved', stoneId, winners });
-      events.push(advance(r));
+      // The script: the team that just won picks the next stone. With several
+      // winners (or none) the choice moves on in order; the master can override.
+      const sole = winners.length === 1 ? r.teams.find((t) => t.id === winners[0] && t.playing) : undefined;
+      if (sole) {
+        setChooser(r, { teamId: sole.id, guest: null });
+        events.push(turnEmit(r));
+      } else {
+        events.push(advance(r));
+      }
       break;
     }
 
     case 'SKIP': {
       if (r.pending !== null) throw new EngineError('PICK_PENDING');
-      r.history.push({ kind: 'skip', chooserId: r.turnTeamId!, round: r.round });
+      r.history.push({ kind: 'skip', round: r.round, ...chooserOf(r) });
       r.lastResult = null;
       events.push(advance(r));
+      break;
+    }
+
+    case 'SET_CHOOSER': {
+      if (r.pending !== null) throw new EngineError('PICK_PENDING');
+      const guest = action.guest?.trim() ?? '';
+      let next: Chooser;
+      if (action.teamId !== undefined && !action.guest) {
+        const team = r.teams.find((t) => t.id === action.teamId);
+        if (!team) throw new EngineError('UNKNOWN_TEAM');
+        if (!team.playing) throw new EngineError('BAD_CHOOSER', `${team.name} is not playing`);
+        next = { teamId: team.id, guest: null };
+      } else if (action.teamId === undefined && guest.length > 0 && guest.length <= 40) {
+        next = { teamId: null, guest };
+      } else {
+        throw new EngineError('BAD_CHOOSER');
+      }
+      if (next.teamId !== r.turnTeamId || next.guest !== r.turnGuest) {
+        r.history.push({ kind: 'chooser', round: r.round, ...chooserOf(r) });
+        setChooser(r, next);
+      }
+      r.lastResult = null;
+      events.push(turnEmit(r));
       break;
     }
 
@@ -208,9 +261,10 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       const last = r.history.pop();
       if (!last) throw new EngineError('NOTHING_TO_UNDO');
       if (last.kind === 'claim') r.claims.pop();
-      r.turnTeamId = last.chooserId;
+      setChooser(r, { teamId: last.teamId, guest: last.guest });
       r.round = last.round;
-      r.teams.find((t) => t.id === last.chooserId)!.playing = true;
+      const team = r.teams.find((t) => t.id === last.teamId);
+      if (team) team.playing = true;
       r.lastResult = null;
       events.push({ e: 'undo:applied' }, turnEmit(r));
       break;

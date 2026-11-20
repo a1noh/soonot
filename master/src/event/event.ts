@@ -39,11 +39,26 @@ export interface EventRecord {
    */
   bingoSpotlight: number | null;
   /** The 1등 mystery box on `/p` — false = closed 🎁, true = opened to reveal the prize
-   *  (목사님과 커피). Operator-toggled during the bingo reveal. */
+   *  (소정의 상품). Operator-toggled during the bingo reveal. */
   bingoPrize: boolean;
+  /**
+   * The 랜덤 5명 확인 on the spotlighted winner's card: the cell indexes the
+   * master drew (in call-out order), or null. Cleared when the spotlight moves.
+   */
+  bingoCheck: number[] | null;
+  /** A countdown over whatever the projector shows (any game), or null. */
+  projectorTimer: ProjectorTimer | null;
   readonly games: Record<GameId, GameHandle>;
   readonly createdAt: number;
   closedAt: number | null;
+}
+
+export interface ProjectorTimer {
+  /** What it counts down for, e.g. "종이비행기 접기". May be empty. */
+  label: string;
+  totalMs: number;
+  /** Server clock. Screens correct for their own clock with `serverNow`. */
+  endsAt: number;
 }
 
 export interface CreateEventInput {
@@ -78,6 +93,8 @@ export function createEvent(input: CreateEventInput): EventRecord {
     projectorLock: null,
     bingoSpotlight: null,
     bingoPrize: false,
+    bingoCheck: null,
+    projectorTimer: null,
     games,
     createdAt: now,
     closedAt: null,
@@ -105,6 +122,10 @@ export interface EventSummary {
   projectorLock: GameId | null;
   bingoSpotlight: number | null;
   bingoPrize: boolean;
+  bingoCheck: number[] | null;
+  projectorTimer: ProjectorTimer | null;
+  /** The server's clock when this summary was made, so a screen can line its countdown up. */
+  serverNow: number;
   games: Record<GameId, { enabled: boolean; state: RoomState }>;
 }
 
@@ -127,6 +148,9 @@ export function summarize(
     projectorLock: event.projectorLock,
     bingoSpotlight: event.bingoSpotlight,
     bingoPrize: event.bingoPrize,
+    bingoCheck: event.bingoCheck,
+    projectorTimer: event.projectorTimer,
+    serverNow: Date.now(),
     games,
   };
 }

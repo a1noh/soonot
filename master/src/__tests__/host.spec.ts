@@ -223,6 +223,51 @@ describe('two empty panes', () => {
   });
 });
 
+describe('projector overlays the master drives', () => {
+  it('starts and stops a countdown, with the server clock to line screens up', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    await emit(master, 'event:create', { title: 'x' });
+
+    const started = once<EventSummary>(master, 'event:summary');
+    const before = Date.now();
+    expect((await emit(master, 'projector:timer', { seconds: 20, label: ' 종이비행기 접기 ' })).ok).toBe(true);
+    const s = await started;
+    expect(s.projectorTimer).toMatchObject({ label: '종이비행기 접기', totalMs: 20_000 });
+    expect(s.projectorTimer!.endsAt).toBeGreaterThanOrEqual(before + 20_000);
+    expect(s.serverNow).toBeGreaterThanOrEqual(before);
+
+    const stopped = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:timer', { stop: true });
+    expect((await stopped).projectorTimer).toBeNull();
+
+    for (const bad of [{ seconds: 0 }, { seconds: 3601 }, { seconds: 1.5 }, { seconds: 'x' }, {}]) {
+      expect((await emit(master, 'projector:timer', bad)).ok).toBe(false);
+    }
+  });
+
+  it('stores the 랜덤 5명 확인 cells and clears them when the spotlight moves', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    await emit(master, 'event:create', { title: 'x' });
+    await emit(master, 'projector:spotlight', { n: 7 });
+
+    const checked = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:check', { cells: [4, 0, 12, 7, 20] });
+    expect((await checked).bingoCheck).toEqual([4, 0, 12, 7, 20]);
+
+    const moved = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:spotlight', { n: 9 });
+    expect((await moved).bingoCheck).toBeNull();
+
+    for (const bad of [{ cells: [1, 1] }, { cells: [25] }, { cells: [-1] }, { cells: [] }, { cells: 'x' }]) {
+      expect((await emit(master, 'projector:check', bad)).ok).toBe(false);
+    }
+  });
+});
+
 describe('the read-only surfaces', () => {
   it('lets the projector connect with no session at all', async () => {
     const { base } = await boot();

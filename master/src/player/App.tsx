@@ -1,5 +1,5 @@
 /**
- * 추수감사절 사람 빙고 — the player's card, served at `/` (bingo spec §7, req §11).
+ * 추수감사절 사람 찾기 빙고 — the player's card, served at `/` (bingo spec §7, req §11).
  *
  * A phone opens this link, types a nickname, and gets a number and an 81-cell
  * card once the master starts. Filling a cell means naming a real person by
@@ -18,7 +18,7 @@ import '../shared/harvest.css';
 import './player.css';
 
 /** The game's name on every phone screen. */
-const TITLE = '추수감사절 사람 빙고';
+const TITLE = '추수감사절 사람 찾기 빙고';
 const FALLBACK = '추수감사절';
 
 /** The leaf that crowns the join and waiting cards. */
@@ -71,13 +71,13 @@ function JoinForm({ api }: { api: PlayerApi }) {
         <h1 className="join__title">{TITLE}</h1>
         <p className="join__sub">{api.summary?.title ?? FALLBACK}</p>
         <label className="field">
-          <span className="field__label">닉네임</span>
+          <span className="field__label">이름</span>
           <input
             className="field__input"
             value={nickname}
             autoFocus
             maxLength={20}
-            placeholder="예) 민수"
+            placeholder="예) 김민수"
             onChange={(e) => {
               setErr(null);
               setNickname(e.currentTarget.value);
@@ -88,7 +88,7 @@ function JoinForm({ api }: { api: PlayerApi }) {
         <button className="btn btn--primary btn--big" type="submit" disabled={busy || !nickname.trim()}>
           입장하기
         </button>
-        <p className="join__hint">닉네임이 같아도 괜찮아요. 번호로 구분돼요.</p>
+        <p className="join__hint">같은 이름이어도 괜찮아요. 번호로 구분돼요.</p>
       </form>
     </main>
   );
@@ -472,7 +472,7 @@ export function App() {
         <Waiting
           title={api.summary?.title ?? FALLBACK}
           line={`입장 완료! 당신은 #${api.me?.number ?? '—'}`}
-          sub={`${api.counts.playerCount}명 참가 중 · 시작을 기다려주세요`}
+          sub={`목표는 빙고 3줄! · ${api.counts.playerCount}명 참가 중 · 시작을 기다려주세요`}
         />
       );
     default:

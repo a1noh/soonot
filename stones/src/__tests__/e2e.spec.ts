@@ -129,7 +129,7 @@ describe('스톤 end to end', () => {
     expect((await revealed).standings[0]!.stoneIds).toEqual(['s3']);
   }, 20000);
 
-  it('a tie at 1st goes to 엔드게임, and the podium shows the decided order', async () => {
+  it('a tie at 1st goes to the 결정전, and the podium shows the decided order', async () => {
     const base = await boot();
     const m = await masterSocket(base);
     await new Promise((r) => m.emit('event:create', { title: '한마당' }, r));
@@ -150,11 +150,11 @@ describe('스톤 end to end', () => {
     await send(m, 'master:end');
 
 
-    // 아이언맨 and 헐크 share 1st until 엔드게임 decides it.
+    // 아이언맨 and 헐크 share 1st until the 결정전 decides it.
     const open = nextView(p, (v) => v.activeTiebreak !== null);
     expect(await send(m, 'master:tiebreak:start', { teamIds: ['t1', 't2'] })).toMatchObject({ ok: true });
     const shown = await open;
-    expect(shown.activeTiebreak).toMatchObject({ teams: [{ name: '아이언맨' }, { name: '헐크' }], game: { name: '엔드게임' } });
+    expect(shown.activeTiebreak).toMatchObject({ teams: [{ name: '아이언맨' }, { name: '헐크' }], game: { name: '타노스의 핑거 스냅' } });
     expect(await send(m, 'master:reveal', { step: 0 })).toMatchObject({ ok: false, error: { code: 'TIEBREAK_PENDING' } });
 
     const decided = nextView(p, (v) => v.activeTiebreak === null && v.standings[0]?.teamName === '헐크');

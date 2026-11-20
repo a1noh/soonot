@@ -173,6 +173,26 @@
 .stage--theme-bingo .wcell--on { background: var(--hv-paper); border-color: var(--hv-sage); box-shadow: inset 0 0 0 1px var(--hv-sage); }
 .stage--theme-bingo .wcell__who b { color: var(--hv-sage-deep); }
 .stage--theme-bingo .wcell--line { background: #f6dfb0; border-color: var(--hv-cranberry); box-shadow: inset 0 0 0 2px var(--hv-cranberry); }
+/* 랜덤 5명 확인: the people the MC is about to call, numbered in call order. */
+.stage--theme-bingo .wcell { position: relative; }
+.stage--theme-bingo .wcell--check {
+  background: var(--hv-paper);
+  box-shadow: inset 0 0 0 0.5vmin var(--hv-pumpkin), 0 1vmin 2.4vmin -1vmin rgba(156, 63, 16, 0.6);
+  transform: scale(1.06);
+  z-index: 1;
+  animation: wcheckIn 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.stage--theme-bingo .wcard__grid:has(.wcell--check) .wcell:not(.wcell--check) { opacity: 0.45; }
+.wcell__checknum {
+  position: absolute; top: 0.6vmin; left: 0.6vmin;
+  width: 3.8vmin; height: 3.8vmin; min-width: 24px; min-height: 24px;
+  display: grid; place-items: center; border-radius: 50%;
+  background: var(--hv-pumpkin); color: #fffaf0;
+  font-family: var(--hv-display); font-weight: 700; font-size: clamp(14px, 2.4vmin, 32px);
+  box-shadow: 0 0.4vmin 1vmin rgba(92, 52, 20, 0.35);
+}
+@keyframes wcheckIn { from { transform: scale(0.9); opacity: 0.4; } to { transform: scale(1.06); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .stage--theme-bingo .wcell--check { animation: none; } }
 
 /* ---- chrome outside the stage, while bingo has the screen ---------------- */
 .onlinebox--harvest { background: var(--hv-paper); border-color: var(--hv-rule); box-shadow: var(--hv-shadow); backdrop-filter: none; }

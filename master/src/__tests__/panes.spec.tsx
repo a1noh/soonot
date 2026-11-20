@@ -5,11 +5,11 @@
  * assert that what the master sees and taps produces the right game action.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { YutnoriMasterPane } from '@soonot/yutnori/src/client/MasterPane';
 import type { BoardView } from '@soonot/yutnori/src/project';
-import { BingoMasterPane } from '../console/BingoPane';
+import { BingoMasterPane, drawCheck } from '../console/BingoPane';
 import type { MasterView } from '@soonot/bingo/src/project';
 import { CELLS } from '@soonot/bingo/src/shared/constants';
 
@@ -251,6 +251,33 @@ describe('BingoMasterPane (빙고 console)', () => {
     );
     await user.click(screen.getByRole('button', { name: /숨기기/ }));
     expect(send).toHaveBeenCalledWith('projector:spotlight', { n: null });
+  });
+
+  it('REVEAL: 랜덤 5명 확인 draws 5 distinct filled cells of the spotlighted card, then lists who to call', async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    const grid = Array.from({ length: CELLS }, (_, i) => ({ trait: `특징 ${i}`, name: i < 12 ? `사람${i}` : null, number: i, line: false }));
+    const winner = { rank: 1, n: 7, name: '민지', lines: 2, points: 12, matched: [{ trait: 't', name: '사람0', number: 0 }], grid };
+    const v = bingoView({ state: 'REVEAL', revealStep: 4, traitCount: CELLS, winners: [winner] });
+    const { rerender } = render(<BingoMasterPane spotlight={7} view={v} send={send} />);
+    await user.click(screen.getByRole('button', { name: /랜덤 5명 확인/ }));
+    const [ev, payload] = send.mock.calls.at(-1)!;
+    expect(ev).toBe('projector:check');
+    const cells = payload.cells as number[];
+    expect(cells).toHaveLength(5);
+    expect(new Set(cells).size).toBe(5);
+    expect(cells.every((c) => c < 12)).toBe(true); // only cells with a person on them
+
+    rerender(<BingoMasterPane spotlight={7} view={v} send={send} check={[3, 9]} />);
+    const calls = within(screen.getByRole('list', { name: '불러서 확인할 사람' }));
+    expect(calls.getAllByRole('listitem').map((li) => li.textContent)).toEqual(['사람3 #3 특징 3', '사람9 #9 특징 9']);
+    await user.click(screen.getByRole('button', { name: '확인 끝' }));
+    expect(send).toHaveBeenLastCalledWith('projector:check', { cells: null });
+  });
+
+  it('drawCheck takes at most five and never an empty cell', () => {
+    const grid = [{ name: 'a' }, { name: null }, { name: 'b' }];
+    expect(drawCheck(grid).sort()).toEqual([0, 2]);
   });
 
   it('RUNNING: the live dashboard renders bingo leaders', () => {

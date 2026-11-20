@@ -12,6 +12,8 @@ export interface RankEntry {
   label: string;
   /** '4:12 · 2줄' | '말 2개 집 · 12:03' */
   detail: string;
+  /** A prize to show beside this place on the podium (스톤: '100불 상금'). */
+  prize?: string;
   medal?: 1 | 2 | 3;
   /** Renders the "나의 순위" band (bingo §9). Set per viewer by `project`. */
   self?: boolean;

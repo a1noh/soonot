@@ -63,8 +63,8 @@ const shot = (page, name, ms = 900) => wait(ms).then(() => page.screenshot({ pat
 
 const console_ = await open('/master', { auth: true });
 await console_.setViewport({ width: 1440, height: 900 });
-// Focus the 스톤 pane so it leads the layout.
-await console_.evaluate(() => document.querySelector('.pane--stones')?.dispatchEvent(new MouseEvent('click', { bubbles: true })));
+// Open the 스톤 tab.
+await console_.evaluate(() => document.getElementById('gametab-stones')?.click());
 await shot(console_, '1-console-setup');
 
 await s('master:setup', {
@@ -73,6 +73,12 @@ await s('master:setup', {
   games: DEFAULT_GAMES,
 });
 await s('master:start');
+// The script: the 빙고 1등 chooses the first stone.
+await s('master:chooser', { guest: '빙고 1등 민지' });
+const p0 = await open('/p');
+await shot(p0, '2a-projector-guest-chooser', 1500);
+await p0.close();
+await shot(console_, '3a-console-chooser', 300);
 // Two stones played so the rankings have shape.
 await s('master:pick', { stone: 's3' });
 await s('master:resolve', { winners: ['t1', 't4'] });
@@ -85,6 +91,11 @@ await shot(console_, '3-console-running', 300);
 
 await s('master:pick', { stone: 's5' });
 await shot(p, '4-projector-mission', 1300);
+await send('projector:timer', { seconds: 20, label: '종이비행기 접기' });
+await shot(p, '4b-projector-timer', 1800);
+await send('projector:timer', { seconds: 3, label: '' });
+await shot(p, '4c-projector-timer-urgent', 600);
+await send('projector:timer', { stop: true });
 await shot(console_, '5-console-mission', 200);
 
 await s('master:resolve', { winners: ['t2', 't3'] });
@@ -98,6 +109,8 @@ await shot(p, '8-projector-none', 500);
 // Finish so 아이언맨 and 헐크 tie at 1st, then settle it with 엔드게임.
 await s('master:pick', { stone: 's4' });
 await s('master:resolve', { winners: ['t2'] });
+await shot(p, '8b-projector-last-stone', 900);
+await shot(console_, '8c-console-last-stone', 200);
 await s('master:pick', { stone: 's6' });
 await s('master:resolve', { winners: [] });
 await s('master:end');

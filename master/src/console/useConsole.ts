@@ -24,6 +24,8 @@ export interface ConsoleApi {
   signOut(everywhere: boolean): Promise<void>;
   createEvent(title: string): Promise<void>;
   setProjector(setting: GameId | 'auto'): Promise<void>;
+  /** Start a countdown on the projector (seconds), or stop it (null). */
+  setTimer(seconds: number | null, label?: string): Promise<void>;
   enableGame(gameId: GameId, enabled: boolean): Promise<void>;
   /** Reset one game back to SETUP, keeping the event and the other game. */
   resetGame(gameId: GameId): Promise<void>;
@@ -161,6 +163,9 @@ export function useConsole(): ConsoleApi {
       },
       setProjector: async (setting) => {
         await hostOp('projector:set', { setting });
+      },
+      setTimer: async (seconds, label) => {
+        await hostOp('projector:timer', seconds === null ? { stop: true } : { seconds, label: label ?? '' });
       },
       enableGame: async (gameId, enabled) => {
         await hostOp('game:enable', { gameId, enabled });

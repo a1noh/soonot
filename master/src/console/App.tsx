@@ -95,6 +95,12 @@ function NewEvent({ onCreate }: { onCreate(title: string): Promise<void> }) {
 
 type Tab = GameId | 'rules';
 
+/** The 빙고 1등's name once bingo has a result — they choose the first stone. */
+function bingoWinnerOf(view: unknown): string | null {
+  const winners = (view as { winners?: { rank: number; name: string }[] } | undefined)?.winners;
+  return winners?.find((w) => w.rank === 1)?.name ?? null;
+}
+
 /** Which game to open on first load: the one that is live, else the first one in use. */
 function liveGame(event: { games: Record<GameId, { state: string; enabled: boolean }> }): GameId {
   const order: GameId[] = ['RUNNING', 'REVEAL', 'ENDED', 'LOBBY'].flatMap((st) =>
@@ -125,6 +131,7 @@ export function App() {
         event={event}
         connected={api.connected}
         onSetProjector={(s) => void api.setProjector(s)}
+        onTimer={(seconds, label) => void api.setTimer(seconds, label)}
         onSignOut={(everywhere) => void api.signOut(everywhere)}
         onResetEvent={() => void api.resetEvent()}
       />
@@ -187,6 +194,7 @@ export function App() {
               <StonesMasterPane
                 view={(api.views.stones as never) ?? null}
                 send={(ev, payload) => api.send('stones', ev, payload)}
+                bingoWinner={bingoWinnerOf(api.views.bingo)}
               />
             ) : gameId === 'yutnori' ? (
               <YutnoriMasterPane
@@ -199,6 +207,7 @@ export function App() {
                 send={(ev, payload) => api.send('bingo', ev, payload)}
                 spotlight={event.bingoSpotlight}
                 prize={event.bingoPrize}
+                check={event.bingoCheck}
               />
             )}
           </GamePane>

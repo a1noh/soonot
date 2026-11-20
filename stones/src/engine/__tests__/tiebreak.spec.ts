@@ -23,12 +23,12 @@ function endedWithTies() {
   return act(r, { t: 'END' });
 }
 
-describe('동점 결정전 (엔드게임 · 컵 멀리 놓기)', () => {
-  it('defaults to 엔드게임 with the whole team', () => {
+describe('동점 결정전 (타노스의 핑거 스냅 · 인피니티 컵 컬링)', () => {
+  it('defaults to 타노스의 핑거 스냅 with the whole team', () => {
     const r = endedWithTies();
-    expect(r.tiebreak).toMatchObject({ name: '엔드게임', players: '모두' });
+    expect(r.tiebreak).toMatchObject({ name: '타노스의 핑거 스냅', players: '모두' });
     expect(r.tiebreak.instructions).toBe(DEFAULT_TIEBREAK.instructions);
-    expect(r.tiebreak.instructions.startsWith('컵 멀리 놓기!')).toBe(true);
+    expect(r.tiebreak.instructions.startsWith('인피니티 컵 컬링!')).toBe(true);
   });
 
   it('lists tied groups best place first; the master sees them, the projector does not', () => {
@@ -47,7 +47,7 @@ describe('동점 결정전 (엔드게임 · 컵 멀리 놓기)', () => {
     expect(r.activeTiebreak).toEqual(['t1', 't3']); // setup order
     expect(project(r, { kind: 'spectator' }).activeTiebreak).toMatchObject({
       teams: [{ name: '조1' }, { name: '조3' }],
-      game: { name: '엔드게임' },
+      game: { name: '타노스의 핑거 스냅' },
     });
     r = act(r, { t: 'TIEBREAK_RESOLVE', order: ['t3', 't1'] });
     expect(rank(r).map((s) => [s.teamId, s.rank])).toEqual([

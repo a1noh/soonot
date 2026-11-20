@@ -103,6 +103,9 @@ export function recoverEvent(
     projectorLock: null,
     bingoSpotlight: null,
     bingoPrize: false,
+    bingoCheck: null,
+    // A countdown does not survive a restart either.
+    projectorTimer: null,
     games,
     createdAt: row.created_at,
     closedAt: null,

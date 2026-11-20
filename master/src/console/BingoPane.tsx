@@ -19,6 +19,18 @@ export interface BingoPaneProps {
   spotlight?: number | null;
   /** Is the 1등 mystery box currently opened on /p? (event summary) */
   prize?: boolean;
+  /** The 랜덤 5명 확인 cells on the spotlighted card, in call-out order (event summary). */
+  check?: number[] | null;
+}
+
+/** Up to `n` random filled cells of a winner's card, in call-out order. */
+export function drawCheck(grid: readonly { name: string | null }[], n = 5, rand = Math.random): number[] {
+  const filled = grid.map((c, i) => (c.name ? i : -1)).filter((i) => i >= 0);
+  for (let i = filled.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [filled[i], filled[j]] = [filled[j]!, filled[i]!];
+  }
+  return filled.slice(0, n);
 }
 
 const DEFAULT_TRAITS = DEFAULT_BINGO_TRAITS.join('\n');
@@ -43,7 +55,7 @@ function useRevealDrumroll(
   }, [state, revealStep, send]);
 }
 
-export function BingoMasterPane({ view, send, spotlight = null, prize = false }: BingoPaneProps) {
+export function BingoMasterPane({ view, send, spotlight = null, prize = false, check = null }: BingoPaneProps) {
   useRevealDrumroll(view?.state, view?.revealStep, send);
   if (!view) return <p className="pane__hint">불러오는 중…</p>;
 
@@ -113,7 +125,7 @@ export function BingoMasterPane({ view, send, spotlight = null, prize = false }:
             순위 발표 시작
           </button>
           <p className="bingo__note">누르면 발표 화면이 “두구두구”로 바뀌고, 잠시 뒤 3등부터 나와요.</p>
-          <WinnersPanel winners={view.winners} send={send} spotlight={spotlight} />
+          <WinnersPanel winners={view.winners} send={send} spotlight={spotlight} check={check} />
         </>
       ) : null}
 
@@ -135,13 +147,13 @@ export function BingoMasterPane({ view, send, spotlight = null, prize = false }:
               className={`btn ${prize ? 'btn--ghost' : 'btn--primary'}`}
               onClick={() => void send('projector:prize', { open: !prize })}
             >
-              {prize ? '🙈 상자 닫기' : '🎁 1등 상품 공개 (목사님과 커피)'}
+              {prize ? '🙈 상자 닫기' : '🎁 1등 상품 공개'}
             </button>
           ) : null}
           <p className="bingo__note">
             이대로 두면 참가자는 남아 다른 게임을 응원할 수 있어요. 새 판은 “다시 하기”.
           </p>
-          <WinnersPanel winners={view.winners} send={send} spotlight={spotlight} />
+          <WinnersPanel winners={view.winners} send={send} spotlight={spotlight} check={check} />
         </>
       ) : null}
     </div>
@@ -215,10 +227,12 @@ function WinnersPanel({
   winners,
   send,
   spotlight,
+  check,
 }: {
   winners: MasterView['winners'];
   send: BingoPaneProps['send'];
   spotlight: number | null;
+  check: number[] | null;
 }) {
   if (winners.length === 0) return null;
   const show = (n: number | null) => void send('projector:spotlight', { n });
@@ -246,6 +260,37 @@ function WinnersPanel({
               {on ? '📺 화면 표시 중' : '📺 카드 띄우기'}
             </button>
           </div>
+          {on ? (
+            <div className="winners__check">
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={w.matched.length === 0}
+                onClick={() => void send('projector:check', { cells: drawCheck(w.grid) })}
+              >
+                {check ? '🎲 다시 뽑기' : '🎲 랜덤 5명 확인'}
+              </button>
+              {check ? (
+                <>
+                  <button type="button" className="btn btn--ghost" onClick={() => void send('projector:check', { cells: null })}>
+                    확인 끝
+                  </button>
+                  <ol className="winners__calls" aria-label="불러서 확인할 사람">
+                    {check.map((i) => {
+                      const c = w.grid[i];
+                      return c?.name ? (
+                        <li key={i}>
+                          <b>{c.name} #{c.number}</b> <span className="winners__trait">{c.trait}</span>
+                        </li>
+                      ) : null;
+                    })}
+                  </ol>
+                </>
+              ) : (
+                <span className="bingo__note">카드에 적힌 사람 중 5명을 뽑아 화면에 표시해요. 이름을 불러 자리에 있는지 확인하세요.</span>
+              )}
+            </div>
+          ) : null}
           <ul className="winners__list">
             {w.matched.length === 0 ? (
               <li className="winners__empty">채운 칸이 없어요</li>

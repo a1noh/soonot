@@ -362,7 +362,9 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       const raw = (payload as { n?: unknown } | null)?.n;
       const n = raw === null || raw === undefined ? null : Number(raw);
       if (n !== null && !Number.isInteger(n)) throw new HostError('BAD_PAYLOAD');
-      registry.require().bingoSpotlight = n;
+      const event = registry.require();
+      if (event.bingoSpotlight !== n) event.bingoCheck = null; // a new card, a new check
+      event.bingoSpotlight = n;
       broadcastSummary(deps);
       reply(ack, { ok: true });
     } catch (err) {
@@ -371,12 +373,62 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
     }
   });
 
-  /** Open/close the 1등 mystery box on `/p` (목사님과 커피). `projector:`-prefixed so
+  /** Open/close the 1등 mystery box on `/p` (소정의 상품). `projector:`-prefixed so
    *  `onAny` skips it, like the spotlight. */
   socket.on('projector:prize', (payload: unknown, ack: unknown) => {
     try {
       const open = (payload as { open?: unknown } | null)?.open === true;
       registry.require().bingoPrize = open;
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /**
+   * The 랜덤 5명 확인: highlight these cells of the spotlighted winner's card on
+   * `/p`, in call-out order. The console draws them; null clears. Up to 25
+   * distinct cell indexes.
+   */
+  socket.on('projector:check', (payload: unknown, ack: unknown) => {
+    try {
+      const raw = (payload as { cells?: unknown } | null)?.cells;
+      let cells: number[] | null = null;
+      if (raw !== null && raw !== undefined) {
+        if (!Array.isArray(raw) || raw.length === 0 || raw.length > 25) throw new HostError('BAD_PAYLOAD');
+        if (!raw.every((c) => Number.isInteger(c) && c >= 0 && c < 25) || new Set(raw).size !== raw.length) {
+          throw new HostError('BAD_PAYLOAD');
+        }
+        cells = raw as number[];
+      }
+      registry.require().bingoCheck = cells;
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /**
+   * A countdown over the projector, whatever game it shows (the script's 20초 /
+   * 10초 / 5분 timers). `{ seconds, label? }` starts one (1–3600 s), replacing
+   * any running; `{ stop: true }` clears it.
+   */
+  socket.on('projector:timer', (payload: unknown, ack: unknown) => {
+    try {
+      const p = (payload ?? {}) as { seconds?: unknown; label?: unknown; stop?: unknown };
+      const event = registry.require();
+      if (p.stop === true) {
+        event.projectorTimer = null;
+      } else {
+        const seconds = Number(p.seconds);
+        if (!Number.isInteger(seconds) || seconds < 1 || seconds > 3600) throw new HostError('BAD_PAYLOAD');
+        const label = typeof p.label === 'string' ? p.label.trim().slice(0, 40) : '';
+        event.projectorTimer = { label, totalMs: seconds * 1000, endsAt: Date.now() + seconds * 1000 };
+      }
       broadcastSummary(deps);
       reply(ack, { ok: true });
     } catch (err) {
@@ -410,7 +462,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       registry.commit(gameId, fresh);
       if (event.projectorLock === gameId) event.projectorLock = null;
       // A fresh bingo game has no winners — drop any lingering card spotlight.
-      if (gameId === 'bingo') { event.bingoSpotlight = null; event.bingoPrize = false; }
+      if (gameId === 'bingo') { event.bingoSpotlight = null; event.bingoPrize = false; event.bingoCheck = null; }
       deps.persistence?.enqueue({ gameId, state: fresh, action: { t: 'RESET' }, emits: [], at });
       broadcastSummary(deps);
       pushStateAll(deps.io, gameId, registry, 'everyone');

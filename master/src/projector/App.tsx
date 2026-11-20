@@ -21,6 +21,7 @@ import { Qr, joinUrl } from '../shared/Qr.js';
 import type { StonesView } from '@soonot/stones/src/project.js';
 import { StonesStage, TiebreakStage } from './StonesStage.js';
 import { Leaf, LEAF_COLORS } from '../shared/Leaf.js';
+import { formatLeft, useCountdown } from '../shared/countdown.js';
 import '../shared/harvest.css';
 import './projector.css';
 import './harvest-stage.css';
@@ -95,7 +96,7 @@ function Standby({ summary, joinable, theme }: { summary: EventSummary | null; j
             </div>
           </div>
         ) : null}
-        <p className="standby__hint">{joinable ? '닉네임을 입력하면 바로 참여!' : '곧 시작합니다…'}</p>
+        <p className="standby__hint">{joinable ? '이름을 입력하면 바로 참여!' : '곧 시작합니다…'}</p>
         <div className="standby__pulse" aria-hidden="true"><span /><span /><span /></div>
       </div>
     </Stage>
@@ -109,11 +110,14 @@ function Podium({
   theme,
   winners,
   prizeOpen,
+  footnote,
 }: {
   ranked: readonly RankEntry[];
   step: number;
   title: string;
   theme?: string;
+  /** A closing line once the whole podium is up (e.g. a gift for every team). */
+  footnote?: string;
   winners?: readonly WinnerCard[];
   /** bingo only — the 1등 mystery box: undefined = no box, false = closed 🎁, true = opened. */
   prizeOpen?: boolean;
@@ -133,6 +137,7 @@ function Podium({
                 {e.medal ? <span className="podium__medal">{['🥇', '🥈', '🥉'][e.medal - 1]}</span> : <span className="podium__medal" />}
                 <span className="podium__label">{e.label}</span>
                 <span className="podium__detail">{e.detail}</span>
+                {e.prize ? <span className="podium__prize">{e.prize}</span> : null}
               </li>
             ))}
           </ol>
@@ -150,12 +155,13 @@ function Podium({
             </div>
           </div>
         ) : null}
+        {footnote && step >= 4 ? <p className="podium__footnote">{footnote}</p> : null}
         {/* 1등 mystery box — appears once 1등 is on screen; operator opens it. */}
         {prizeOpen !== undefined && step >= 3 ? (
           <div className={`prizebox${prizeOpen ? ' is-open' : ''}`}>
             <div className="prizebox__lid" aria-hidden="true">🎁</div>
             {prizeOpen ? (
-              <div className="prizebox__prize">🥇 1등 상품 · <b>목사님과 커피</b> ☕</div>
+              <div className="prizebox__prize">🥇 1등 상품 · <b>소정의 상품</b></div>
             ) : (
               <div className="prizebox__hint">1등 미스터리 박스 🎁</div>
             )}
@@ -171,7 +177,8 @@ function Podium({
  * (pushed from the console at the reveal). Shows every cell's trait and, where
  * filled, the person they matched; cells in a completed line are highlighted.
  */
-function WinnerCardStage({ winner }: { winner: WinnerCard }) {
+function WinnerCardStage({ winner, check }: { winner: WinnerCard; check?: number[] | null }) {
+  const order = new Map((check ?? []).map((cell, i) => [cell, i + 1]));
   return (
     <Stage kind="wcard" theme="bingo">
       <div className="wcard">
@@ -185,8 +192,9 @@ function WinnerCardStage({ winner }: { winner: WinnerCard }) {
           {winner.grid.map((c, i) => (
             <div
               key={i}
-              className={`wcell${c.name ? ' wcell--on' : ''}${c.line ? ' wcell--line' : ''}`}
+              className={`wcell${c.name ? ' wcell--on' : ''}${c.line ? ' wcell--line' : ''}${order.has(i) ? ' wcell--check' : ''}`}
             >
+              {order.has(i) ? <span className="wcell__checknum">{order.get(i)}</span> : null}
               <span className="wcell__trait">{c.trait}</span>
               {c.name ? (
                 <span className="wcell__who">{c.name} <b>#{c.number}</b></span>
@@ -314,7 +322,7 @@ function BingoScreen({ view, flash }: { view: BingoView; flash: string | null })
     <Stage kind="bingo" theme="bingo">
       <div className="bingo-stage">
         <div className="bingo-stage__main">
-          <h1 className="bingo-stage__title">추수감사절 사람 빙고</h1>
+          <h1 className="bingo-stage__title">추수감사절 사람 찾기 빙고</h1>
           <p className="bingo-stage__hint">
             {view.state === 'LOBBY' ? '휴대폰으로 스캔해서 참여하세요' : '특징에 맞는 사람을 찾아 칸을 채우세요'}
           </p>
@@ -323,7 +331,7 @@ function BingoScreen({ view, flash }: { view: BingoView; flash: string | null })
             <Big value={view.playerCount} label="참가" />
             <Big value={view.bingoCount} label="빙고" hot={view.bingoCount > 0} />
           </div>
-          <p className="bingo-info__pts">칸 1개 = 1점 · 빙고 한 줄 = +5점</p>
+          <p className="bingo-info__pts">목표: 빙고 3줄 · 칸 1개 = 1점 · 한 줄 = +5점</p>
         </div>
         <Leaderboard board={view.kind === 'spectator' ? view.board : []} />
       </div>
@@ -390,12 +398,14 @@ function Reactions({ items, onDone }: { items: FloatingReaction[]; onDone(id: nu
   );
 }
 
-/** 스톤 standings → the shared podium's entries. */
+/** 스톤 standings → the shared podium's entries. 1등 and 2등 carry their prize. */
 function stonesRank(view: StonesView): RankEntry[] {
+  const prize = (rank: number) => (rank === 1 ? view.prizes?.first : rank === 2 ? view.prizes?.second : '') || '';
   return view.standings.map((s, i) => ({
     id: s.teamId,
     label: s.teamName,
     detail: `스톤 ${s.stoneIds.length}개`,
+    ...(prize(s.rank) ? { prize: prize(s.rank) } : {}),
     ...(i < 3 ? { medal: (i + 1) as 1 | 2 | 3 } : {}),
   }));
 }
@@ -518,8 +528,9 @@ export function App() {
           <Podium
             ranked={stonesRank(sView)}
             step={sView.state === 'ENDED' ? 0 : sView.revealStep}
-            title="스톤"
+            title={sView.title || '스톤'}
             theme="stones"
+            footnote={sView.prizes?.everyone ? `모든 팀에게 · ${sView.prizes.everyone}` : undefined}
           />
         );
       }
@@ -558,7 +569,7 @@ export function App() {
       // interview; otherwise the shared podium (which already reveals 1등's list).
       const spot = summary.bingoSpotlight;
       const winner = spot != null ? bView.winners.find((w) => w.n === spot) : undefined;
-      if (winner) return <WinnerCardStage winner={winner} />;
+      if (winner) return <WinnerCardStage winner={winner} check={summary.bingoCheck} />;
       return <Podium ranked={bView.standings} step={bView.state === 'ENDED' ? 0 : bView.revealStep} title="빙고" theme="bingo" winners={bView.winners} prizeOpen={summary.bingoPrize} />;
     }
     if (bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY')) {
@@ -588,8 +599,45 @@ export function App() {
       {summary && joinChipCorner ? <JoinChip code={summary.code} corner={joinChipCorner} /> : null}
       {greenKey > 0 ? <div key={greenKey} className="greenflash" aria-hidden="true" /> : null}
       {active === 'yutnori' && fx ? <YutFx key={fx.id} fx={fx} onDone={() => setFx(null)} /> : null}
+      {summary ? <TimerOverlay timer={summary.projectorTimer} serverNow={summary.serverNow} /> : null}
       <FullscreenButton />
     </>
+  );
+}
+
+/**
+ * The master's countdown, over whatever is on screen (the rules stay readable
+ * above it). The last 5 seconds pulse; at zero it says 시간 종료! for 3 seconds.
+ */
+function TimerOverlay({ timer, serverNow }: { timer: EventSummary['projectorTimer']; serverNow: number }) {
+  const left = useCountdown(timer, serverNow);
+  // "시간 종료!" holds for 3 s — only if this screen watched it run out (a
+  // projector reloaded after the end shows nothing).
+  const sawRunning = useRef(false);
+  const [endedAt, setEndedAt] = useState<number | null>(null);
+  const key = timer?.endsAt ?? null;
+  useEffect(() => {
+    sawRunning.current = false;
+    setEndedAt(null);
+  }, [key]);
+  if (left !== null && left > 0) sawRunning.current = true;
+  useEffect(() => {
+    if (left === 0 && sawRunning.current && endedAt === null) setEndedAt(Date.now());
+  }, [left, endedAt]);
+
+  if (!timer || left === null) return null;
+  const ended = left === 0;
+  if (ended && (!sawRunning.current || (endedAt !== null && Date.now() - endedAt > 3000))) return null;
+  const urgent = !ended && left <= 5000;
+  const frac = Math.min(1, Math.max(0, left / timer.totalMs));
+  return (
+    <div className={`ptimer${urgent ? ' is-urgent' : ''}${ended ? ' is-done' : ''}`} role="timer" aria-live="off">
+      {timer.label ? <span className="ptimer__label">{timer.label}</span> : null}
+      <span className="ptimer__time">{ended ? '시간 종료!' : formatLeft(left)}</span>
+      <span className="ptimer__bar" aria-hidden="true">
+        <span style={{ transform: `scaleX(${frac})` }} />
+      </span>
+    </div>
   );
 }
 

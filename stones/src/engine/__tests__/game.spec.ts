@@ -34,10 +34,10 @@ describe('setup', () => {
     const r = setUp({ teams: 4, sitOut: [2] });
     expect(r.state).toBe('LOBBY');
     expect(r.teams.map((t) => t.playing)).toEqual([true, false, true, true]);
-    expect(r.games.map((g) => g.name)).toEqual(['타노스 격추 작전', '그루트 노래방', '닥터 스트레인지의 선택', '앤트맨 돋보기', '스파이더맨 아재개그', '어벤져스 어셈블']);
-    expect(r.games.map((g) => g.instructions.split('!')[0])).toEqual(['코끼리 종이비행기', '찬양 퀴즈', '사지선다', '이미지 퀴즈', '넌센스 퀴즈', '일심동체']);
-    expect(r.stones.map((s) => s.name)).toEqual(['예배 스톤', '섬김 스톤', '선교 스톤', '양육 스톤', '사역 스톤', '교제 스톤']);
-    expect(r.games.map((g) => g.players)).toEqual(['2명', '모두', '모두', '모두', '모두', '3명']);
+    expect(r.games.map((g) => g.name)).toEqual(['아이언맨의 비행 테스트', '가디언즈 오브 찬양', '닥터 스트레인지의 1,400만 분의 1', '호크아이의 매의 눈', '토르의 번개 같은 센스', '어벤져스 어셈블']);
+    expect(r.games.map((g) => g.instructions.split('!')[0])).toEqual(['코끼리 종이비행기', '전주 3초 컷 퀴즈', '미스터리 사지선다', '눈·코·입 이미지 퀴즈', '타이밍 맞추기', '일심동체 텔레파시']);
+    expect(r.stones.map((s) => s.name)).toEqual(['예배 스톤', '섬김 스톤', '사역 스톤', '양육 스톤', '선교 스톤', '행정 스톤']);
+    expect(r.games.map((g) => g.players)).toEqual(['2명', '모두', '모두', '모두', '1명', '3명']);
   });
 });
 
@@ -68,13 +68,13 @@ describe('the fixed game order', () => {
   it('the projector never sees a game before it is opened', () => {
     const r = started();
     const board = project(r, { kind: 'spectator' });
-    expect(JSON.stringify(board)).not.toContain('타노스');
+    expect(JSON.stringify(board)).not.toContain('비행 테스트');
     expect(board.games).toBeUndefined();
     const master = project(r, { kind: 'master' });
-    expect(master.nextGame?.name).toBe('타노스 격추 작전');
+    expect(master.nextGame?.name).toBe('아이언맨의 비행 테스트');
     const picked = project(act(r, { t: 'PICK', stoneId: 's2' }), { kind: 'spectator' });
-    expect(picked.pending).toMatchObject({ number: 1, game: { name: '타노스 격추 작전', players: '2명' } });
-    expect(JSON.stringify(picked)).not.toContain('그루트');
+    expect(picked.pending).toMatchObject({ number: 1, game: { name: '아이언맨의 비행 테스트', players: '2명' } });
+    expect(JSON.stringify(picked)).not.toContain('가디언즈');
   });
 });
 

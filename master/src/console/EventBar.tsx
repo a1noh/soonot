@@ -6,23 +6,26 @@
  * of the event (req §5.2).
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { EventSummary } from '../event/event.js';
 import type { GameId } from '../shared/lifecycle.js';
 import { t } from '../shared/i18n.js';
 import { Qr, joinUrl } from '../shared/Qr.js';
+import { formatLeft, useCountdown } from '../shared/countdown.js';
 
 export interface EventBarProps {
   event: EventSummary | null;
   connected: boolean;
   onSetProjector(setting: GameId | 'auto'): void;
+  /** Start (seconds) or stop (null) the countdown on the projector. */
+  onTimer(seconds: number | null, label?: string): void;
   onSignOut(everywhere: boolean): void;
   onResetEvent(): void;
 }
 
 const CHANNELS: readonly (GameId | 'auto')[] = ['auto', 'bingo', 'yutnori', 'stones'];
 
-export function EventBar({ event, connected, onSetProjector, onSignOut, onResetEvent }: EventBarProps) {
+export function EventBar({ event, connected, onSetProjector, onTimer, onSignOut, onResetEvent }: EventBarProps) {
   const [copied, setCopied] = useState(false);
   const copyLink = () => {
     if (!event) return;
@@ -107,6 +110,8 @@ export function EventBar({ event, connected, onSetProjector, onSignOut, onResetE
           </button>
         ) : null}
 
+        {event ? <TimerMenu event={event} onTimer={onTimer} /> : null}
+
         <details className="more">
           <summary className="btn btn--ghost more__btn">더보기</summary>
           <div className="more__menu">
@@ -132,5 +137,71 @@ export function EventBar({ event, connected, onSetProjector, onSignOut, onResetE
         </details>
       </div>
     </header>
+  );
+}
+
+/** The script's countdowns (20초 비행기 접기, 10초 상의, 5분 마지막 기회): one tap shows them on the projector. */
+const PRESETS: readonly [number, string][] = [
+  [10, '10초'],
+  [20, '20초'],
+  [30, '30초'],
+  [60, '1분'],
+  [300, '5분'],
+];
+
+function TimerMenu({ event, onTimer }: { event: EventSummary; onTimer: EventBarProps['onTimer'] }) {
+  const left = useCountdown(event.projectorTimer, event.serverNow);
+  const running = left !== null && left > 0;
+  const [label, setLabel] = useState('');
+  const [custom, setCustom] = useState('');
+  const ref = useRef<HTMLDetailsElement>(null);
+  const start = (seconds: number) => {
+    onTimer(seconds, label);
+    if (ref.current) ref.current.open = false;
+  };
+  const customSeconds = Number(custom);
+  return (
+    <details className="more timer" ref={ref}>
+      <summary className={`btn ${running ? 'btn--primary timer__live' : 'btn--ghost'} more__btn`}>
+        {running ? `타이머 ${formatLeft(left!)}` : '타이머'}
+      </summary>
+      <div className="more__menu timer__menu">
+        <label className="timer__label">
+          <span>화면에 쓸 말 (선택)</span>
+          <input className="field__input" value={label} placeholder="예) 종이비행기 접기" maxLength={40} onChange={(e) => setLabel(e.currentTarget.value)} />
+        </label>
+        <div className="timer__presets">
+          {PRESETS.map(([s, name]) => (
+            <button key={s} type="button" className="btn" onClick={() => start(s)}>
+              {name}
+            </button>
+          ))}
+        </div>
+        <form
+          className="timer__custom"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (Number.isInteger(customSeconds) && customSeconds >= 1 && customSeconds <= 3600) start(customSeconds);
+          }}
+        >
+          <input
+            className="field__input"
+            inputMode="numeric"
+            placeholder="초"
+            aria-label="직접 입력 (초)"
+            value={custom}
+            onChange={(e) => setCustom(e.currentTarget.value.replace(/[^0-9]/g, ''))}
+          />
+          <button type="submit" className="btn" disabled={!(customSeconds >= 1 && customSeconds <= 3600)}>
+            시작
+          </button>
+        </form>
+        {event.projectorTimer ? (
+          <button type="button" className="more__item more__item--danger" onClick={() => onTimer(null)}>
+            타이머 멈추기
+          </button>
+        ) : null}
+      </div>
+    </details>
   );
 }

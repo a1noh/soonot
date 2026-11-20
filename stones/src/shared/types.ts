@@ -26,11 +26,33 @@ export interface Game {
   instructions: string;
 }
 
+/**
+ * Who taps the next stone. Usually a team; for the first stone the script has
+ * the 빙고 1등 choose, who is a person, not a team (a "guest").
+ */
+export interface Chooser {
+  /** The choosing team, or null when a guest chooses. */
+  teamId: string | null;
+  /** The guest's name (e.g. the 빙고 1등), or null when a team chooses. */
+  guest: string | null;
+}
+
+/** Prizes shown on the final podium. Empty strings are not shown. */
+export interface Prizes {
+  first: string;
+  second: string;
+  /** Something every team gets, shown as a closing line. */
+  everyone: string;
+}
+
 /** A stone that has been played for: which game came up and who won it. */
 export interface Claim {
   stoneId: string;
   gameId: string;
-  chooserId: string;
+  /** The choosing team, or null when a guest chose. */
+  chooserId: string | null;
+  /** Shown as written: a team name, or "빙고 1등 민지". */
+  chooserName: string;
   round: number;
   /** Zero, one or several teams. Each gets the stone. */
   winners: string[];
@@ -39,8 +61,10 @@ export interface Claim {
 
 /** One finished turn, for UNDO. */
 export type TurnRecord =
-  | { kind: 'claim'; chooserId: string; round: number }
-  | { kind: 'skip'; chooserId: string; round: number };
+  | ({ kind: 'claim'; round: number } & Chooser)
+  | ({ kind: 'skip'; round: number } & Chooser)
+  /** The master changed who chooses; undo puts the earlier chooser back. */
+  | ({ kind: 'chooser'; round: number } & Chooser);
 
 /** The last result, so the projector can animate it once. */
 export interface LastResult {
@@ -58,10 +82,15 @@ export interface Room {
   teams: Team[];
   stones: Stone[];
   games: Game[];
-  /** Whose turn it is to "choose" the next stone. */
+  /** Shown as the projector's heading. */
+  title: string;
+  prizes: Prizes;
+  /** Whose turn it is to "choose" the next stone: a team… */
   turnTeamId: string | null;
+  /** …or a guest such as the 빙고 1등. Exactly one is set while running. */
+  turnGuest: string | null;
   round: number;
-  pending: { chooserId: string; stoneId: string; gameId: string } | null;
+  pending: { chooserId: string | null; chooserName: string; stoneId: string; gameId: string } | null;
   claims: Claim[];
   history: TurnRecord[];
   /** The 동점 결정전 game (컵 멀리 놓기), played after 게임 종료. */

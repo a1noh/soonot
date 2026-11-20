@@ -67,6 +67,7 @@
   box-shadow: 0 0.4vmin 2vmin color-mix(in srgb, var(--team) 40%, transparent);
 }
 .stn-head__round { font-size: 0.62em; font-variant-numeric: tabular-nums; }
+.stn-head__turn .stn-head__last { --team: #b8860b; }
 .stn-head__turn--wait { font-size: clamp(18px, 2.6vmin, 38px); }
 
 .orbit-wrap { position: relative; flex: 1; display: grid; place-items: center; min-height: 0; }

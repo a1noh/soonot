@@ -668,6 +668,29 @@
 }
 .stn__orderbtn.is-set .stn__ordernum { background: var(--game-stones); color: #000; }
 
+/* Who picks the next stone: one chip per team, plus the 빙고 1등. */
+.stn__chooser { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.stn__chooser legend { padding: 0 4px; font-size: 0.85rem; color: var(--text-dim); }
+.stn__chooser .stn-setup__hint { flex-basis: 100%; }
+.stn__choosebtn {
+  --team: var(--game-stones);
+  display: inline-flex; align-items: center; gap: 6px;
+  min-height: 44px; padding: 0 14px;
+  font: inherit; font-weight: 600; color: var(--text-dim);
+  background: var(--bg-raised);
+  border: 1px solid var(--line-strong); border-radius: 999px; cursor: pointer;
+}
+.stn__choosebtn:hover { color: var(--text); }
+.stn__choosebtn.is-on { color: var(--text); background: color-mix(in srgb, var(--team) 32%, transparent); border-color: var(--team); }
+.stn__choosebtn--guest { border-style: dashed; }
+.stn__choosebtn--guest.is-on { border-style: solid; }
+.stn__choosebtn:focus-visible { outline: 2px solid var(--game-stones); outline-offset: 2px; }
+.stn__last { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+
+.stn-setup__prizes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; }
+.stn-setup__prizes legend { padding: 0 4px; font-size: 0.85rem; color: var(--text-dim); }
+@media (max-width: 560px) { .stn-setup__prizes { grid-template-columns: 1fr; } }
+
 /* ---- event bar: connection, 더보기 menu --------------------------------- */
 .conn { display: inline-flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--text-dim); }
 .conn--ok .dot { background: var(--ok); }
@@ -713,3 +736,16 @@
   .pane__head { padding: 12px; }
   .pane__body { padding: 12px; }
 }
+
+/* ---- projector countdown menu ------------------------------------------- */
+.timer__live { font-variant-numeric: tabular-nums; }
+.timer__menu { min-width: 260px; gap: 8px; padding: 10px; }
+.timer__label { display: grid; gap: 4px; font-size: 0.8rem; color: var(--text-dim); }
+.timer__presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.timer__custom { display: flex; gap: 6px; }
+.timer__custom .field__input { flex: 1; min-width: 0; }
+
+/* ---- bingo: 랜덤 5명 확인 ------------------------------------------------- */
+.winners__check { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
+.winners__calls { flex-basis: 100%; margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 15px; }
+.winners__calls b { font-size: 16px; }

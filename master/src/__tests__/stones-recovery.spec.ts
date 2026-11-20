@@ -73,7 +73,7 @@ describe('스톤 recovery', () => {
     expect(room.state).toBe('RUNNING');
     expect(room.claims).toEqual([expect.objectContaining({ stoneId: 's2', gameId: 'g1', winners: ['t1', 't3'] })]);
     expect(room.turnTeamId).toBe('t2');
-    expect(room.pending).toEqual({ chooserId: 't2', stoneId: 's1', gameId: 'g2' });
+    expect(room.pending).toEqual({ chooserId: 't2', chooserName: expect.any(String), stoneId: 's1', gameId: 'g2' });
     expect(room.teams.map((t) => t.playing)).toEqual([true, true, false]);
     stonesModule.invariants(room);
   }, 30000);

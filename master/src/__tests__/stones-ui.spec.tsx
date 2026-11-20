@@ -48,6 +48,7 @@ function view(o: Partial<StonesView> = {}): StonesView {
   return {
     kind: 'master',
     state: 'RUNNING',
+    title: '어벤추수 땡스게임',
     teams: [
       { id: 't1', name: '아이언맨', color: '#C0392B', playing: true, stoneIds: ['s2'] },
       { id: 't2', name: '헐크', color: '#1F6FB2', playing: true, stoneIds: [] },
@@ -60,6 +61,8 @@ function view(o: Partial<StonesView> = {}): StonesView {
     ],
     turnTeamId: 't2',
     turnTeamName: '헐크',
+    turnIsGuest: false,
+    lastStone: false,
     round: 1,
     played: 1,
     total: 3,
@@ -101,16 +104,16 @@ describe('StonesMasterPane', () => {
     expect(payload.teams.at(-1).playing).toBe(false);
     expect(payload.stones).toHaveLength(6);
     expect(payload.games.map((g: { name: string; players: string }) => `${g.name}/${g.players}`)).toEqual([
-      '타노스 격추 작전/2명',
-      '그루트 노래방/모두',
-      '닥터 스트레인지의 선택/모두',
-      '앤트맨 돋보기/모두',
-      '스파이더맨 아재개그/모두',
+      '아이언맨의 비행 테스트/2명',
+      '가디언즈 오브 찬양/모두',
+      '닥터 스트레인지의 1,400만 분의 1/모두',
+      '호크아이의 매의 눈/모두',
+      '토르의 번개 같은 센스/1명',
       '어벤져스 어셈블/3명',
     ]);
     expect(payload.games.every((g: { instructions: string }) => g.instructions.length > 20)).toBe(true);
-    expect(payload.tiebreak).toMatchObject({ name: '엔드게임', players: '모두' });
-    expect(payload.tiebreak.instructions).toContain('컵 멀리 놓기');
+    expect(payload.tiebreak).toMatchObject({ name: '타노스의 핑거 스냅', players: '모두' });
+    expect(payload.tiebreak.instructions).toContain('인피니티 컵 컬링');
   });
 
   it('RUNNING: shows the next game to the master only, and a played stone cannot be picked', async () => {
@@ -137,7 +140,46 @@ describe('StonesMasterPane', () => {
     await user.click(pick.getByRole('checkbox', { name: '토르' }));
     await user.click(screen.getByRole('button', { name: '2팀에게 스톤 주기' }));
     expect(send).toHaveBeenCalledWith('master:resolve', { winners: ['t1', 't3'] });
-    expect(screen.getByRole('button', { name: '건너뛰기' })).toHaveProperty('disabled', true);
+    // While a game is open nobody can be handed the next choice.
+    expect(screen.queryByRole('group', { name: /누가 고르나요/ })).toBeNull();
+  });
+
+  it('the master hands the next choice to a team or to the 빙고 1등', async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    render(<StonesMasterPane view={view()} send={send} bingoWinner="민지" />);
+    const row = within(screen.getByRole('group', { name: /누가 고르나요/ }));
+    // Teams sitting out are not offered.
+    expect(row.queryByRole('button', { name: '토르' })).toBeNull();
+    expect(row.getByRole('button', { name: '헐크' }).getAttribute('aria-pressed')).toBe('true');
+    await user.click(row.getByRole('button', { name: '아이언맨' }));
+    expect(send).toHaveBeenCalledWith('master:chooser', { team: 't1' });
+    await user.click(row.getByRole('button', { name: '빙고 1등 민지' }));
+    expect(send).toHaveBeenCalledWith('master:chooser', { guest: '빙고 1등 민지' });
+  });
+
+  it('a guest chooser shows as the selected chip and names the stone group', () => {
+    render(
+      <StonesMasterPane
+        view={view({ turnTeamId: null, turnTeamName: '빙고 1등 민지', turnIsGuest: true })}
+        send={vi.fn()}
+      />,
+    );
+    const row = within(screen.getByRole('group', { name: /누가 고르나요/ }));
+    const chips = row.getAllByRole('button', { name: /빙고 1등/ });
+    expect(chips).toHaveLength(1);
+    expect(chips[0]!.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByRole('group', { name: '빙고 1등 민지 님이 고를 스톤' })).toBeTruthy();
+  });
+
+  it('the last stone has nothing to choose: one button opens it', async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    const stones = view().stones.map((st) => (st.id === 's3' ? st : { ...st, claimed: { winners: [], gameName: 'x' } }));
+    render(<StonesMasterPane view={view({ stones, played: 2, lastStone: true })} send={send} />);
+    expect(screen.queryByRole('group', { name: /누가 고르나요/ })).toBeNull();
+    await user.click(screen.getByRole('button', { name: /마지막 스톤 열기/ }));
+    expect(send).toHaveBeenCalledWith('master:pick', { stone: 's3' });
   });
 
   it('toggling a team out of choosing sends master:playing', async () => {
@@ -251,11 +293,11 @@ describe('스톤 on the projector', () => {
     act(() => {
       sock.fire('room:state', { gameId: 'stones', view: board({ state: 'REVEAL', revealStep: 3 }) });
     });
-    expect(screen.getByText(/스톤 순위 발표/)).toBeTruthy();
+    expect(screen.getByText(/어벤추수 땡스게임 순위 발표/)).toBeTruthy();
     expect(screen.getByText('스톤 1개')).toBeTruthy();
   });
 
-  it('shows 엔드게임 while a 결정전 is open, then the podium', () => {
+  it('shows the 결정전 game while it is open, then the podium', () => {
     render(<App />);
     const sock = sockets[0]!;
     const active = {
@@ -275,7 +317,43 @@ describe('스톤 on the projector', () => {
     act(() => {
       sock.fire('room:state', { gameId: 'stones', view: board({ state: 'ENDED' }) });
     });
-    expect(screen.getByText(/스톤 순위 발표/)).toBeTruthy();
+    expect(screen.getByText(/어벤추수 땡스게임 순위 발표/)).toBeTruthy();
+  });
+
+  it('names a guest chooser (the 빙고 1등), and says when it is the last stone', () => {
+    render(<App />);
+    const sock = sockets[0]!;
+    act(() => {
+      sock.fire('event:summary', summary);
+      sock.fire('room:state', {
+        gameId: 'stones',
+        view: board({ turnTeamId: null, turnTeamName: '빙고 1등 민지', turnIsGuest: true }),
+      });
+    });
+    expect(screen.getByRole('heading', { name: '어벤추수 땡스게임' })).toBeTruthy();
+    expect(screen.getAllByText('빙고 1등 민지 님').length).toBeGreaterThan(0);
+    act(() => {
+      sock.fire('room:state', { gameId: 'stones', view: board({ lastStone: true }) });
+    });
+    expect(screen.getAllByText('마지막 스톤').length).toBeGreaterThan(0);
+    expect(screen.queryByText('스톤을 하나 고르세요')).toBeNull();
+  });
+
+  it('puts the prizes on the podium: 1등 and 2등 rows, then a line for every team', () => {
+    render(<App />);
+    const sock = sockets[0]!;
+    const prizes = { first: '100불 상금', second: '50불 상금', everyone: '70불 커피 기프트카드' };
+    act(() => {
+      sock.fire('event:summary', summary);
+      sock.fire('room:state', { gameId: 'stones', view: board({ state: 'REVEAL', revealStep: 3, prizes }) });
+    });
+    expect(screen.getByText('100불 상금')).toBeTruthy();
+    expect(screen.queryByText(/모든 팀에게/)).toBeNull(); // only once the whole podium is up
+    act(() => {
+      sock.fire('room:state', { gameId: 'stones', view: board({ state: 'REVEAL', revealStep: 4, prizes }) });
+    });
+    expect(screen.getByText('50불 상금')).toBeTruthy();
+    expect(screen.getByText('모든 팀에게 · 70불 커피 기프트카드')).toBeTruthy();
   });
 
   it('does not replay an old result when it reconnects', () => {
@@ -301,8 +379,9 @@ describe('스톤 rules', () => {
     const section = document.getElementById('stones')!;
     expect(section.textContent).toContain(`스톤 ${DEFAULT_STONES.length}개`);
     // The page is public: the secret game order must not be on it.
-    expect(section.textContent).not.toContain('타노스');
-    expect(section.textContent).toContain('컵 멀리 놓기');
+    expect(section.textContent).not.toContain('비행 테스트');
+    expect(section.textContent).toContain('인피니티 컵 컬링');
+    expect(section.textContent).toContain('빙고 1등');
     expect(section.textContent).not.toContain('코끼리');
   });
 });

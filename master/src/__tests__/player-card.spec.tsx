@@ -98,7 +98,7 @@ describe('bingo player card (through the UI)', () => {
       sock.fire('connect');
       sock.fire('event:summary', { code: 'ABCD', title: '한마당', projector: 'auto', projectorLock: null, games: { bingo: { enabled: true, state: 'LOBBY' }, yutnori: { enabled: true, state: 'SETUP' } } });
     });
-    expect(screen.getByText('추수감사절 사람 빙고')).toBeTruthy();
+    expect(screen.getByText('추수감사절 사람 찾기 빙고')).toBeTruthy();
 
     // Join with a nickname.
     await user.type(screen.getByRole('textbox'), '나');

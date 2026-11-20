@@ -5,12 +5,16 @@ export type Action =
       stones: { name: string }[];
       games: { name: string; players: string; instructions: string }[];
       tiebreak?: { name: string; players: string; instructions: string };
+      title?: string;
+      prizes?: { first: string; second: string; everyone: string };
     }
   | { t: 'START' }
   | { t: 'PICK'; stoneId: string }
   | { t: 'CANCEL_PICK' }
   | { t: 'RESOLVE'; winners: string[] }
   | { t: 'SKIP' }
+  /** The master decides who chooses next: a team, or a guest by name. */
+  | { t: 'SET_CHOOSER'; teamId?: string; guest?: string }
   | { t: 'SET_PLAYING'; teamId: string; playing: boolean }
   | { t: 'UNDO' }
   | { t: 'END' }
@@ -23,9 +27,9 @@ export type Action =
 /** Everything is public on the projector except which game comes next. */
 export type Emit =
   | { e: 'stones:update' }
-  | { e: 'stone:picked'; chooserId: string; stoneId: string; gameId: string }
+  | { e: 'stone:picked'; chooserId: string | null; stoneId: string; gameId: string }
   | { e: 'stone:resolved'; stoneId: string; winners: string[] }
-  | { e: 'turn:changed'; teamId: string; teamName: string; round: number }
+  | { e: 'turn:changed'; teamId: string | null; teamName: string; round: number }
   | { e: 'undo:applied' }
   | { e: 'game:ended'; endedAt: number }
   | { e: 'reveal:step'; step: number }
@@ -65,7 +69,8 @@ export type EngineErrorCode =
   | 'NOT_TIED'
   | 'TIEBREAK_PENDING'
   | 'NO_TIEBREAK'
-  | 'BAD_ORDER';
+  | 'BAD_ORDER'
+  | 'BAD_CHOOSER';
 
 export class EngineError extends Error {
   constructor(readonly code: EngineErrorCode, message?: string) {

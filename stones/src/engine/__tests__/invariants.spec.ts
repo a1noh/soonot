@@ -30,6 +30,8 @@ describe('random play never breaks the invariants', () => {
           { t: 'UNDO' },
           { t: 'UNDO' },
           { t: 'SET_PLAYING', teamId: one(r.teams).id, playing: rand() < 0.6 },
+          { t: 'SET_CHOOSER', teamId: one(r.teams).id },
+          { t: 'SET_CHOOSER', guest: one(['빙고 1등 민지', '빙고 1등 철수', '  ']) },
         ]);
         try {
           r = apply(r, action, T0 + i).state;

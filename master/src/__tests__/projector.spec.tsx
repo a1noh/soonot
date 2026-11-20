@@ -167,6 +167,69 @@ describe('projector presentation mode', () => {
     expect(screen.getByText(/지훈/)).toBeTruthy();
   });
 
+  it('numbers the 랜덤 5명 확인 cells on the spotlighted card', () => {
+    render(<App />);
+    const sock = sockets[0]!;
+    const grid = Array.from({ length: 25 }, (_, i) => ({ trait: `특징 ${i}`, name: i % 2 ? null : `사람${i}`, number: i, line: false }));
+    const bReveal = {
+      kind: 'spectator', state: 'REVEAL', revealStep: 4, connectedCount: 2, playerCount: 2, bingoCount: 1,
+      standings: [], board: [], roster: [], bingoBreakdown: [],
+      winners: [{ rank: 1, n: 7, name: '민지', lines: 1, points: 6, matched: [], grid }],
+    };
+    act(() => {
+      sock.fire('connect');
+      sock.fire('event:summary', { ...summary, projector: 'bingo', bingoSpotlight: 7, bingoCheck: [8, 0, 4] });
+      sock.fire('room:state', { gameId: 'bingo', view: bReveal });
+    });
+    const checked = [...document.querySelectorAll('.wcell--check')];
+    expect(checked).toHaveLength(3);
+    // Call-out order is the order the master drew, not card order.
+    expect(checked.map((c) => [c.querySelector('.wcell__checknum')!.textContent, c.querySelector('.wcell__who')!.textContent])).toEqual([
+      ['2', '사람0 #0'],
+      ['3', '사람4 #4'],
+      ['1', '사람8 #8'],
+    ]);
+  });
+
+  it('shows the master\'s countdown over the screen, on the server\'s clock', () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(1_000_000);
+      render(<App />);
+      const sock = sockets[0]!;
+      // The projector's clock is 5 s behind the server's; the timer ends 20 s after serverNow.
+      act(() => {
+        sock.fire('connect');
+        sock.fire('event:summary', {
+          ...summary,
+          serverNow: 1_005_000,
+          projectorTimer: { label: '종이비행기 접기', totalMs: 20_000, endsAt: 1_025_000 },
+        });
+      });
+      expect(screen.getByRole('timer').textContent).toContain('종이비행기 접기');
+      expect(screen.getByRole('timer').textContent).toContain('0:20');
+      act(() => vi.advanceTimersByTime(16_000));
+      expect(screen.getByRole('timer').textContent).toContain('0:04');
+      expect(document.querySelector('.ptimer.is-urgent')).toBeTruthy();
+      act(() => vi.advanceTimersByTime(4_200));
+      expect(screen.getByRole('timer').textContent).toContain('시간 종료!');
+      act(() => vi.advanceTimersByTime(3_500));
+      expect(screen.queryByRole('timer')).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('does not flash 시간 종료! for a countdown that ended before the screen opened', () => {
+    render(<App />);
+    const sock = sockets[0]!;
+    act(() => {
+      sock.fire('connect');
+      sock.fire('event:summary', { ...summary, serverNow: Date.now(), projectorTimer: { label: '', totalMs: 10_000, endsAt: Date.now() - 60_000 } });
+    });
+    expect(screen.queryByRole('timer')).toBeNull();
+  });
+
   it('plays the 미니게임! callout first, then reveals the roulette', () => {
     vi.useFakeTimers();
     try {

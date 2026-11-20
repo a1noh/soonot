@@ -219,8 +219,13 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 .podium__medal { font-size: 1.4em; width: 1.6em; text-align: center; }
 .podium__label { font-family: var(--display); font-weight: 800; }
 .podium__detail { margin-left: auto; color: var(--ink-dim); font-size: 0.66em; font-variant-numeric: tabular-nums; }
+.podium__prize { padding: 0.15em 0.7em; border-radius: 999px; background: var(--gold); color: #1a1206;
+  font-size: 0.72em; font-weight: 800; white-space: nowrap; }
 /* the champion's matched people, shown once the reveal is complete (interview) */
 .wreveal { width: min(1000px, 92vw); margin-top: 2vmin; text-align: center; }
+/* A thank-you for everyone, once the podium is complete. */
+.podium__footnote { margin: 1vmin 0 0; padding: 1vmin 3vmin; border-radius: 999px; border: 1px solid var(--line);
+  font-size: clamp(18px, 3vmin, 44px); font-weight: 700; color: var(--gold); animation: rise 0.6s 0.3s ease both; }
 .wreveal__cap { font-family: var(--display); font-weight: 800; color: var(--gold);
   font-size: clamp(18px, 3vmin, 42px); margin-bottom: 1.2vmin; }
 .wreveal__chips { display: flex; flex-wrap: wrap; gap: 1vmin; justify-content: center; max-height: 34vh; overflow: auto; }
@@ -428,3 +433,33 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
 .howto__legend { display: flex; flex-wrap: wrap; gap: 0.6vmin 1.4vmin; margin-top: 1.1vmin; font-size: clamp(12px, 1.5vmin, 20px); color: var(--ink-dim, #b6a68f); }
 .howto__ic { font-style: normal; font-weight: 800; }
 .howto__ic--star { color: #f4c95d; } .howto__ic--branch { color: #6ee7a8; } .howto__ic--home { color: #e6e9f0; }
+
+/* ---- the master's countdown, over any screen ------------------------------ */
+.ptimer {
+  position: fixed; left: 50%; bottom: 2vmin; z-index: 40; transform: translateX(-50%);
+  display: grid; justify-items: center; gap: 0.6vmin;
+  min-width: 26vmin; padding: 1.4vmin 4vmin 1.6vmin;
+  border-radius: 3vmin;
+  background: rgba(10, 12, 26, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 1.6vmin 4vmin -1vmin rgba(0, 0, 0, 0.55);
+  color: #fff; text-align: center;
+  font-family: var(--sans);
+  animation: ptimerIn 400ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.ptimer__label { font-size: clamp(14px, 2.4vmin, 34px); font-weight: 700; color: rgba(255, 255, 255, 0.78); }
+.ptimer__time {
+  font-size: clamp(36px, 9vmin, 140px); line-height: 1; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.ptimer__bar { display: block; width: 100%; height: 0.8vmin; min-height: 5px; border-radius: 999px; background: rgba(255, 255, 255, 0.16); overflow: hidden; }
+.ptimer__bar > span { display: block; height: 100%; background: #ffd76a; transform-origin: left center; transition: transform 200ms linear; }
+.ptimer.is-urgent .ptimer__time { color: #ff7a6b; animation: ptimerPulse 1s ease-in-out infinite; }
+.ptimer.is-urgent .ptimer__bar > span { background: #ff7a6b; }
+.ptimer.is-done .ptimer__time { font-size: clamp(32px, 8vmin, 120px); color: #ffd76a; }
+@keyframes ptimerIn { from { opacity: 0; transform: translate(-50%, 2vmin); } to { opacity: 1; transform: translateX(-50%); } }
+@keyframes ptimerPulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@media (prefers-reduced-motion: reduce) {
+  .ptimer, .ptimer.is-urgent .ptimer__time { animation: none; }
+  .ptimer__bar > span { transition: none; }
+}

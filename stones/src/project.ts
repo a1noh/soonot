@@ -6,25 +6,35 @@
  * opened. The full order and the next game go to the master alone.
  */
 import type { Viewer } from '@soonot/master';
-import { heldBy, nextGame, picksLeft } from './engine/apply';
+import { chooserName, heldBy, nextGame, picksLeft } from './engine/apply';
 import { rank, tiedGroups, type Standing } from './engine/ranking';
-import type { Game, LastResult, Room, Stone } from './shared/types';
+import type { Game, LastResult, Prizes, Room, Stone } from './shared/types';
 
 export interface StonesView {
   kind: 'board' | 'master';
   state: Room['state'];
+  /** The projector's heading (어벤추수 땡스게임). */
+  title: string;
   teams: { id: string; name: string; color: string; playing: boolean; stoneIds: string[] }[];
   stones: (Stone & {
     /** Played for already. `winners` may be empty (nobody won it). */
     claimed: { winners: string[]; gameName: string } | null;
   })[];
+  /** The choosing team, or null when a guest (the 빙고 1등) chooses. */
   turnTeamId: string | null;
+  /** Who chooses, as shown: a team name or the guest as written. */
   turnTeamName: string | null;
+  /** True when the chooser is a guest rather than a team. */
+  turnIsGuest: boolean;
   round: number;
+  /** Only one stone is left: there is nothing to choose between. */
+  lastStone: boolean;
   /** Stones played for so far, out of how many there will be. */
   played: number;
   total: number;
-  pending: { chooserId: string; chooserName: string; stoneId: string; game: Game; number: number } | null;
+  pending: { chooserId: string | null; chooserName: string; stoneId: string; game: Game; number: number } | null;
+  /** The final podium's prizes: to the room once the reveal starts, always to the master. */
+  prizes?: Prizes;
   lastResult: LastResult | null;
   revealStep: number;
   standings: Standing[];
@@ -42,28 +52,31 @@ export interface StonesView {
 }
 
 export function project(room: Room, viewer: Viewer): StonesView {
-  const turn = room.teams.find((t) => t.id === room.turnTeamId) ?? null;
+  const running = room.state === 'RUNNING';
   const gameById = new Map(room.games.map((g) => [g.id, g]));
   const pendingGame = room.pending ? gameById.get(room.pending.gameId) ?? null : null;
 
   const view: StonesView = {
     kind: viewer.kind === 'master' ? 'master' : 'board',
     state: room.state,
+    title: room.title,
     teams: room.teams.map((t) => ({ ...t, stoneIds: heldBy(room, t.id) })),
     stones: room.stones.map((s) => {
       const c = room.claims.find((x) => x.stoneId === s.id);
       return { ...s, claimed: c ? { winners: c.winners, gameName: gameById.get(c.gameId)?.name ?? '' } : null };
     }),
-    turnTeamId: turn?.id ?? null,
-    turnTeamName: turn?.name ?? null,
+    turnTeamId: running ? room.turnTeamId : null,
+    turnTeamName: running ? chooserName(room) || null : null,
+    turnIsGuest: running && room.turnGuest !== null,
     round: room.round,
+    lastStone: running && picksLeft(room) === 1,
     played: room.claims.length,
     total: Math.min(room.stones.length, room.games.length),
     pending:
       room.pending && pendingGame
         ? {
             chooserId: room.pending.chooserId,
-            chooserName: room.teams.find((t) => t.id === room.pending!.chooserId)?.name ?? '',
+            chooserName: room.pending.chooserName,
             stoneId: room.pending.stoneId,
             game: pendingGame,
             number: room.claims.length + 1,
@@ -82,6 +95,7 @@ export function project(room: Room, viewer: Viewer): StonesView {
         }
       : null,
   };
+  if (viewer.kind === 'master' || room.state === 'REVEAL') view.prizes = room.prizes;
   if (viewer.kind === 'master') {
     view.games = room.games;
     view.nextGame = room.state === 'RUNNING' && picksLeft(room) > 0 ? nextGame(room) : null;

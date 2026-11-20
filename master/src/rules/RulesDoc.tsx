@@ -22,7 +22,7 @@ import {
   ROLL_STEPS,
 } from '@soonot/yutnori/src/shared/constants.js';
 import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
-import { DEFAULT_GAMES, DEFAULT_STONES, DEFAULT_TIEBREAK } from '@soonot/stones/src/shared/constants.js';
+import { DEFAULT_GAMES, DEFAULT_STONES, DEFAULT_TIEBREAK, DEFAULT_TITLE } from '@soonot/stones/src/shared/constants.js';
 import { Qr } from '../shared/Qr.js';
 import './rules.css';
 
@@ -316,9 +316,9 @@ export function RulesDoc({ showQr = true }: { showQr?: boolean }) {
 
       {/* ---- 스톤: a separate team game ------------------------------------ */}
       <section className="rules__section" id="stones">
-        <h2 className="rules__h2">스톤 · 팀 미션 게임</h2>
+        <h2 className="rules__h2">스톤 · {DEFAULT_TITLE}</h2>
         <ul className="rules__list">
-          <li>팀이 <strong>돌아가며</strong> 스톤을 하나 고릅니다. 고른 스톤 뒤에 숨은 게임이 화면에 열립니다.</li>
+          <li>첫 스톤은 <strong>빙고 1등</strong>이, 그 뒤로는 보통 <strong>방금 이긴 팀</strong>이 고릅니다 (진행자가 바꿀 수 있어요). 고른 스톤 뒤에 숨은 게임이 화면에 열립니다.</li>
           <li>열린 게임은 <strong>모든 팀</strong>이 함께 합니다. 게임마다 나오는 인원이 다릅니다.</li>
           <li>이긴 팀은 그 스톤을 얻습니다. 여러 팀이 함께 이기면 모두 얻습니다.</li>
           <li>스톤은 한 번씩만 씁니다. 스톤 {DEFAULT_STONES.length}개 = 게임 {DEFAULT_GAMES.length}판.</li>
@@ -329,7 +329,7 @@ export function RulesDoc({ showQr = true }: { showQr?: boolean }) {
         <h3 className="rules__h3">순위</h3>
         <ol className="rules__ranked">
           <li><strong>스톤</strong>을 많이 모은 팀</li>
-          <li>같으면 <strong>동점 결정전</strong> — {DEFAULT_TIEBREAK.name} (컵 멀리 놓기), 팀 전원이 함께 해요</li>
+          <li>같으면 <strong>동점 결정전</strong> — {DEFAULT_TIEBREAK.name} (인피니티 컵 컬링), 팀 전원이 함께 해요</li>
         </ol>
       </section>
 

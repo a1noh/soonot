@@ -26,65 +26,76 @@ export const STONE_COLORS: readonly string[] = [
   '#E8F1FF', // white
 ];
 
+/** The six stones the MCs name on the main board, in the script's order. */
 export const DEFAULT_STONES: readonly string[] = [
   '예배 스톤',
   '섬김 스톤',
-  '선교 스톤',
-  '양육 스톤',
   '사역 스톤',
-  '교제 스톤',
+  '양육 스톤',
+  '선교 스톤',
+  '행정 스톤',
 ];
 
 export const DEFAULT_TEAMS: readonly string[] = ['아이언맨', '헐크', '캡틴 아메리카', '토르', '블랙 위도우', '호크아이'];
 
+/** The projector's heading for the whole team game. */
+export const DEFAULT_TITLE = '어벤추수 땡스게임';
+
+/** What the final podium shows (from the MC script). */
+export const DEFAULT_PRIZES: { first: string; second: string; everyone: string } = {
+  first: '100불 상금',
+  second: '50불 상금',
+  everyone: '70불 커피 기프트카드',
+};
+
 /**
- * The fixed play order. Pick 1 opens game 1, whatever stone was tapped.
- * Names are Avengers-flavoured; the first words of each instruction say which
- * real game it is, so the MC never has to guess.
+ * The fixed play order, from the MC script (어벤추수 땡스게임 1–6라운드). Pick 1
+ * opens game 1, whatever stone was tapped. Each instruction opens with the real
+ * game and "!", so the MC never has to guess.
  */
 export const DEFAULT_GAMES: readonly { name: string; players: string; instructions: string }[] = [
   {
-    name: '타노스 격추 작전',
+    name: '아이언맨의 비행 테스트',
     players: '2명',
     instructions:
-      '코끼리 종이비행기! 각 팀 2명이 나와요. 한 명씩 코끼리 코로 10바퀴 돈 뒤 종이비행기를 날려요. 두 비행기 중 더 멀리 간 기록으로 겨뤄, 가장 멀리 날린 팀이 스톤을 얻어요.',
+      '코끼리 종이비행기! 한 명은 20초 안에 종이비행기를 접고, 다른 한 명은 코끼리 코로 10바퀴 돈 뒤 출발선에서 날려요. 두 팀씩 세 경기, 가장 멀리 날린 팀이 스톤을 얻어요.',
   },
   {
-    name: '그루트 노래방',
+    name: '가디언즈 오브 찬양',
     players: '모두',
     instructions:
-      '찬양 퀴즈! 찬양 전주나 한 소절을 듣고 제목을 맞혀요. 아는 팀은 손을 들고, 먼저 든 팀이 답해요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
+      '전주 3초 컷 퀴즈! 찬양을 3~5초만 들려드려요. 10초 상의 후 “팀 이름!”을 외치면 가장 먼저 손든 팀이 정확한 제목을 맞혀요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
   },
   {
-    name: '닥터 스트레인지의 선택',
+    name: '닥터 스트레인지의 1,400만 분의 1',
     players: '모두',
     instructions:
-      '사지선다! 화면에 문제와 보기 4개가 나와요. 신호에 맞춰 모든 팀이 동시에 손가락으로 1~4를 들어요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
+      '미스터리 사지선다! 보기 내용은 비밀, 정답 번호만 맞혀요. “하나, 둘, 셋!”에 팀별로 정한 번호를 손가락으로 동시에 들어요. 100% 운, 가장 많이 맞힌 팀이 스톤을 얻어요.',
   },
   {
-    name: '앤트맨 돋보기',
+    name: '호크아이의 매의 눈',
     players: '모두',
     instructions:
-      '이미지 퀴즈! 아주 크게 확대한 그림이 조금씩 드러나요. 무엇인지 아는 팀은 손을 들고, 먼저 든 팀이 답해요. 틀리면 다른 팀에게 기회가 넘어가요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
+      '눈·코·입 이미지 퀴즈! 얼굴의 눈, 코, 입만 크게 확대한 사진이 나와요. 10초 상의 후 가장 먼저 손들고 정확한 이름을 외친 팀이 점수를 얻어요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
   },
   {
-    name: '스파이더맨 아재개그',
-    players: '모두',
+    name: '토르의 번개 같은 센스',
+    players: '1명',
     instructions:
-      '넌센스 퀴즈! 엉뚱한 아재개그 문제예요. 먼저 손을 든 팀이 답해요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
+      '타이밍 맞추기! 휘트니 휴스턴 “I Will Always Love You”의 드럼 박자에 맞춰 드럼을 쳐요. 박자가 가장 정확한 팀이 스톤을 얻어요.',
   },
   {
     name: '어벤져스 어셈블',
     players: '3명',
     instructions:
-      '일심동체! 각 팀 3명이 나와요. 같은 질문에 서로 보지 않고 동시에 답을 적어요. 세 명의 답이 모두 같으면 1점. 가장 많이 맞춘 팀이 스톤을 얻어요.',
+      '일심동체 텔레파시! 한 팀씩 나와 팀마다 다른 제시어 3개에 도전해요. “하나, 둘, 셋!”에 세 명이 똑같은 포즈를 취하면 성공. 가장 많이 성공한 팀이 스톤을 얻고, 1등이 동점이면 새 제시어로 단판 연장전!',
   },
 ];
 
 /** The 동점 결정전. Played only by teams level on stones, after 게임 종료. */
 export const DEFAULT_TIEBREAK: { name: string; players: string; instructions: string } = {
-  name: '엔드게임',
+  name: '타노스의 핑거 스냅',
   players: '모두',
   instructions:
-    '컵 멀리 놓기! 바닥에 선을 긋고, 팀 전원이 서로 붙잡고 도와서 컵을 선 너머로 최대한 멀리 내려놓아요. 컵을 던지면 안 되고, 선을 넘으면 실격이에요. 선에서 컵이 가장 먼 팀이 이겨요.',
+    '인피니티 컵 컬링! 팀장 한 명이 선에 서서 컵을 최대한 멀리 밀어 놓아요. 팀원들은 팀장의 허리와 옷을 꼭 붙잡고 몸이 선을 넘지 않게 지탱해요. 선을 넘으면 실격, 컵이 가장 멀리 안착한 팀이 이겨요.'
 };
