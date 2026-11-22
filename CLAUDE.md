@@ -68,7 +68,10 @@ Run the rehearsals against a **throwaway server** so the live event is untouched
 
 ## Hub toolbox (shared, use it yourself)
 `C:/Users/17654/Projects/toolbox/TOOLS.md`: `earshot make` / `earshot timeline` (sound effects and their sync),
-`hear` (listen), `transcribe`, `speak`, `ffmpeg`, `/watch`. Use them and decide; don't hand media work to other sessions.
+`hear` (listen), `video-sheet` (a video as timestamped frame sheets), `send-phone` (send a clip or screenshot to
+Austin's iPhone), `notify`, `transcribe`, `speak`, `ffmpeg`, `flyctl`, `/watch`. Use them and decide; don't hand media
+work to other sessions. One shared GPU: run `hear` / `transcribe` one at a time. A broken shelf tool ("uv trampoline
+failed"): `tools/toolbox-sync.ps1` in the hub, never `uv tool install --reinstall`.
 
 ## Other docs here
 `STATUS.md` (memory between sessions) · `RUNNING.md` (running an event) · `DEPLOY.md` (Fly.io; pushing `main` deploys)
