@@ -13,8 +13,15 @@ import { EventBar } from './EventBar.js';
 import { GamePane } from './GamePane.js';
 import { YutnoriMasterPane } from '@soonot/yutnori/src/client/MasterPane.js';
 import { StonesMasterPane } from '@soonot/stones/src/client/MasterPane.js';
+import { StonesRemote } from '@soonot/stones/src/client/RemotePane.js';
+import type { StonesView } from '@soonot/stones/src/project.js';
+import type { MasterView } from '@soonot/bingo/src/project.js';
+import type { Cue } from '../event/show.js';
 import { BingoMasterPane } from './BingoPane.js';
 import { RulesDoc } from '../rules/RulesDoc.js';
+import { ShowPane } from './ShowPane.js';
+import { BingoStatus, BotsBar, StonesStatus } from './RemoteStatus.js';
+import { DEFAULT_BINGO_TRAITS } from '@soonot/bingo/src/shared/traits.js';
 import '../shared/tokens.css';
 import './console.css';
 
@@ -93,20 +100,12 @@ function NewEvent({ onCreate }: { onCreate(title: string): Promise<void> }) {
   );
 }
 
-type Tab = GameId | 'rules';
+type Tab = GameId | 'rules' | 'show';
 
 /** The 빙고 1등's name once bingo has a result — they choose the first stone. */
 function bingoWinnerOf(view: unknown): string | null {
   const winners = (view as { winners?: { rank: number; name: string }[] } | undefined)?.winners;
   return winners?.find((w) => w.rank === 1)?.name ?? null;
-}
-
-/** Which game to open on first load: the one that is live, else the first one in use. */
-function liveGame(event: { games: Record<GameId, { state: string; enabled: boolean }> }): GameId {
-  const order: GameId[] = ['RUNNING', 'REVEAL', 'ENDED', 'LOBBY'].flatMap((st) =>
-    GAME_IDS.filter((g) => event.games[g].state === st),
-  );
-  return order[0] ?? GAME_IDS.find((g) => event.games[g].enabled) ?? GAME_IDS[0]!;
 }
 
 export function App() {
@@ -122,7 +121,66 @@ export function App() {
   if (!api.event) return <NewEvent onCreate={api.createEvent} />;
 
   const { event } = api;
-  const tab: Tab = picked ?? liveGame(event);
+  // The 진행 순서 remote is home base: it embeds whichever game the step needs.
+  const tab: Tab = picked ?? 'show';
+  const prepareBingo = () => api.send('bingo', 'master:setTraits', { texts: [...DEFAULT_BINGO_TRAITS] });
+  /** One game's console controls — used by its own tab and embedded in the 진행 순서 remote. */
+  const gamePane = (gameId: GameId) =>
+    gameId === 'stones' ? (
+      <StonesMasterPane
+        view={(api.views.stones as never) ?? null}
+        send={(ev, payload) => api.send('stones', ev, payload)}
+        bingoWinner={bingoWinnerOf(api.views.bingo)}
+      />
+    ) : gameId === 'yutnori' ? (
+      <YutnoriMasterPane view={(api.views.yutnori as never) ?? null} send={(ev, payload) => api.send('yutnori', ev, payload)} />
+    ) : (
+      <>
+      {['SETUP', 'LOBBY', 'RUNNING'].includes((api.views.bingo as MasterView | undefined)?.state ?? '') ? (
+        <BotsBar prepare={(api.views.bingo as MasterView | undefined)?.state === 'SETUP' ? prepareBingo : undefined} />
+      ) : null}
+      <BingoMasterPane
+        view={(api.views.bingo as never) ?? null}
+        send={(ev, payload) => api.send('bingo', ev, payload)}
+        spotlight={event.bingoSpotlight}
+        prize={event.bingoPrize}
+        check={event.bingoCheck}
+      />
+      </>
+    );
+  /**
+   * The remote's 스톤 controls: while rounds are being played, the round-shaped
+   * panel (secret next game → chooser → stone; then winners). Before the game
+   * starts and after the last stone, the full console (setup, 게임 종료, 결정전, 순위 발표).
+   */
+  const remoteGame = (gameId: GameId, cue: Cue) => {
+    const sv = api.views.stones as StonesView | undefined;
+    if (gameId === 'stones' && sv && sv.state === 'RUNNING' && (sv.pending || sv.played < sv.total)) {
+      return (
+        <StonesRemote
+          view={sv}
+          send={(ev, payload) => api.send('stones', ev, payload)}
+          bingoWinner={bingoWinnerOf(api.views.bingo)}
+          cueRound={null}
+        />
+      );
+    }
+    // Everywhere else the remote shows status only: 다음 ▶ is the one way forward.
+    if (gameId === 'bingo') {
+      return (
+        <BingoStatus
+          view={(api.views.bingo as MasterView | undefined) ?? null}
+          spotlight={event.bingoSpotlight}
+          check={event.bingoCheck}
+          prepare={prepareBingo}
+          send={(ev, payload) => api.send('bingo', ev, payload)}
+        />
+      );
+    }
+    if (gameId === 'stones') return <StonesStatus view={sv ?? null} send={(ev, payload) => api.send('stones', ev, payload)} />;
+    void cue;
+    return gamePane(gameId);
+  };
   const blockingOf = (g: GameId) => (api.views[g] as { blocking?: boolean } | undefined)?.blocking === true;
 
   return (
@@ -132,15 +190,33 @@ export function App() {
         connected={api.connected}
         onSetProjector={(s) => void api.setProjector(s)}
         onTimer={(seconds, label) => void api.setTimer(seconds, label)}
+        onMute={(muted) => void api.setMuted(muted)}
         onSignOut={(everywhere) => void api.signOut(everywhere)}
         onResetEvent={() => void api.resetEvent()}
       />
 
       <nav className="gametabs" role="tablist" aria-label="게임 선택">
+        <button
+          type="button"
+          role="tab"
+          id="gametab-show"
+          aria-selected={tab === 'show'}
+          aria-controls="tabpanel-show"
+          className={`gametab gametab--show${tab === 'show' ? ' is-on' : ''}`}
+          onClick={() => setPicked('show')}
+        >
+          <span className="gametab__name">🎬 진행 순서</span>
+          <span className="gametab__state chip">
+            {event.liveCue && event.cues
+              ? `${event.cues.findIndex((c) => c.id === event.liveCue) + 1}/${event.cues.length}`
+              : `${event.cues?.length ?? 0}장면`}
+          </span>
+          {event.slide ? <span className="gametab__air">슬라이드 표시 중</span> : null}
+        </button>
         {GAME_IDS.map((g) => {
           const st = event.games[g];
           const on = tab === g;
-          const onAir = (event.projectorLock ?? event.projector) === g;
+          const onAir = !event.slide && (event.projectorLock ?? event.projector) === g;
           return (
             <button
               key={g}
@@ -180,6 +256,26 @@ export function App() {
       </nav>
 
       <div className="console__panes">
+        <div className="console__show" role="tabpanel" id="tabpanel-show" aria-labelledby="gametab-show" hidden={tab !== 'show'}>
+          <ShowPane
+            event={event}
+            active={tab === 'show'}
+            setTimer={api.setTimer}
+            restartEvent={api.restartEvent}
+            setMusic={api.setMusic}
+            game={{ bingo: (api.views.bingo as MasterView | undefined) ?? null, send: api.send }}
+            renderGame={remoteGame}
+            stones={{
+              view: (api.views.stones as StonesView | undefined) ?? null,
+              rewind: (round) => api.send('stones', 'master:rewind', { round }),
+            }}
+            saveCues={api.saveCues}
+            goCue={api.goCue}
+            startCue={api.startCue}
+            clearSlide={api.clearSlide}
+            bgm={api.bgm}
+          />
+        </div>
         {GAME_IDS.map((gameId) => (
           <GamePane
             key={gameId}
@@ -190,26 +286,7 @@ export function App() {
             onToggleEnabled={(next) => void api.enableGame(gameId, next)}
             onReset={() => void api.resetGame(gameId)}
           >
-            {gameId === 'stones' ? (
-              <StonesMasterPane
-                view={(api.views.stones as never) ?? null}
-                send={(ev, payload) => api.send('stones', ev, payload)}
-                bingoWinner={bingoWinnerOf(api.views.bingo)}
-              />
-            ) : gameId === 'yutnori' ? (
-              <YutnoriMasterPane
-                view={(api.views.yutnori as never) ?? null}
-                send={(ev, payload) => api.send('yutnori', ev, payload)}
-              />
-            ) : (
-              <BingoMasterPane
-                view={(api.views.bingo as never) ?? null}
-                send={(ev, payload) => api.send('bingo', ev, payload)}
-                spotlight={event.bingoSpotlight}
-                prize={event.bingoPrize}
-                check={event.bingoCheck}
-              />
-            )}
+            {gamePane(gameId)}
           </GamePane>
         ))}
 

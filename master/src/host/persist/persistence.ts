@@ -20,6 +20,7 @@ export interface EventRow {
   bingo_enabled: number;
   yut_enabled: number;
   stones_enabled: number;
+  show_json: string | null;
   created_at: number;
   closed_at: number | null;
 }
@@ -86,6 +87,11 @@ export function createSqlitePersistence(deps: SqlitePersistenceDeps): Persistenc
     writes,
 
     closeEvent(event) {
+      if (disposed) return;
+      writeEventRow(db, event as EventRecord);
+    },
+
+    saveEvent(event) {
       if (disposed) return;
       writeEventRow(db, event as EventRecord);
     },

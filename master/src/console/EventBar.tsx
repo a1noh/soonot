@@ -21,11 +21,13 @@ export interface EventBarProps {
   onTimer(seconds: number | null, label?: string): void;
   onSignOut(everywhere: boolean): void;
   onResetEvent(): void;
+  /** 🔇 소리 끄기 / 🔊 소리 켜기 for the projector. */
+  onMute?(muted: boolean): void;
 }
 
 const CHANNELS: readonly (GameId | 'auto')[] = ['auto', 'bingo', 'yutnori', 'stones'];
 
-export function EventBar({ event, connected, onSetProjector, onTimer, onSignOut, onResetEvent }: EventBarProps) {
+export function EventBar({ event, connected, onSetProjector, onTimer, onSignOut, onResetEvent, onMute }: EventBarProps) {
   const [copied, setCopied] = useState(false);
   const copyLink = () => {
     if (!event) return;
@@ -111,6 +113,18 @@ export function EventBar({ event, connected, onSetProjector, onTimer, onSignOut,
         ) : null}
 
         {event ? <TimerMenu event={event} onTimer={onTimer} /> : null}
+
+        {event && onMute ? (
+          <button
+            type="button"
+            className={`btn ${event.muted ? 'btn--danger mute is-off' : 'btn--ghost mute'}`}
+            aria-pressed={event.muted}
+            title={event.muted ? '발표 화면 소리가 꺼져 있어요 · 눌러서 켜기' : '발표 화면의 음악·효과음·영상 소리를 모두 끄기'}
+            onClick={() => onMute(!event.muted)}
+          >
+            {event.muted ? '🔇 소리 꺼짐' : '🔊 소리 켜짐'}
+          </button>
+        ) : null}
 
         <details className="more">
           <summary className="btn btn--ghost more__btn">더보기</summary>

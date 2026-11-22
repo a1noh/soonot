@@ -319,7 +319,8 @@ function HoloTable() {
  * game card (타노스의 핑거 스냅 · 인피니티 컵 컬링).
  */
 export function TiebreakStage({ view }: { view: StonesView }) {
-  const tb = view.activeTiebreak!;
+  // The 결정전 being played, or — right after 게임 종료 — the 1위 tie waiting for it.
+  const tb = (view.activeTiebreak ?? view.firstTie)!;
   const place = view.standings.find((s) => s.teamId === tb.teams[0]?.id)?.rank ?? 0;
   return (
     <main className="stage stage--stones stage--theme-stones stage--tiebreak">
@@ -327,8 +328,17 @@ export function TiebreakStage({ view }: { view: StonesView }) {
       <section className="tb">
         <h1 className="tb__title">
           <span className="tb__game">{tb.game.name}</span>
-          <span className="tb__sub">동점 결정전 · 공동 {place}위</span>
+          <span className="tb__sub">{view.activeTiebreak ? `동점 결정전 · 공동 ${place}위` : '동점 발생! 1위 결정전'}</span>
         </h1>
+        {view.secretStone ? (
+          <div className="tb__prize">
+            <Gem color={view.secretStone.color} size={96} halo />
+            <span className="tb__prizetext">
+              숨겨진 7번째 스톤 · <b>{view.secretStone.name}</b>
+              <small>이긴 팀이 감사 스톤을 가져가요</small>
+            </span>
+          </div>
+        ) : null}
         <ul className="tb__teams">
           {tb.teams.map((t, i) => (
             <li key={t.id} className="tb__team" style={{ '--team': t.color, '--i': i } as CSSProperties}>
@@ -340,6 +350,55 @@ export function TiebreakStage({ view }: { view: StonesView }) {
           {tb.game.players ? <p className="mission__players">{playersLabel(tb.game.players)}</p> : null}
           <p className="tb__text">{tb.game.instructions}</p>
         </div>
+      </section>
+    </main>
+  );
+}
+
+/**
+ * 최종 집계 — after 게임 종료 (and any 결정전), before 순위 발표. A suspense screen:
+ * every stone lit, the teams in their usual order with NO ranks and NO counts,
+ * so the podium is still a surprise. The 감사 스톤 (if it was played for) sits in
+ * the middle, its owner unnamed.
+ */
+export function TallyStage({ view }: { view: StonesView }) {
+  const teams = view.teams.filter((t) => t.playing || t.stoneIds.length > 0);
+  const n = view.stones.length;
+  return (
+    <main className="stage stage--stones stage--theme-stones stage--tally">
+      <Deck />
+      <section className="tally">
+        <p className="tally__kicker">{view.title}</p>
+        <h1 className="tally__title">모든 스톤이 모였습니다</h1>
+        <div className="tally__ring" aria-hidden="true">
+          {view.stones.map((st, i) => {
+            const a = (i / n) * 2 * Math.PI - Math.PI / 2;
+            return (
+              <span
+                key={st.id}
+                className="tally__gem"
+                style={{ '--x': `${Math.cos(a) * 30}vmin`, '--y': `${Math.sin(a) * 17}vmin`, '--i': i, '--glow': st.color } as CSSProperties}
+              >
+                <Gem color={st.color} size={86} halo />
+                <small>{st.name.replace(/\s*스톤$/, '')}</small>
+              </span>
+            );
+          })}
+          {view.secretStone ? (
+            <span className="tally__secret" style={{ '--glow': view.secretStone.color } as CSSProperties}>
+              <Gem color={view.secretStone.color} size={120} halo />
+              <small>{view.secretStone.name}</small>
+            </span>
+          ) : null}
+        </div>
+        <ul className="tally__teams">
+          {teams.map((t, i) => (
+            <li key={t.id} className="tally__team" style={{ '--team': t.color, '--i': i } as CSSProperties}>
+              {t.name}
+            </li>
+          ))}
+        </ul>
+        <p className="tally__ask">누가 1등일까요? · 순위 발표를 기다려 주세요</p>
       </section>
     </main>
   );

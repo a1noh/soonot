@@ -45,15 +45,18 @@ function useRevealDrumroll(
   revealStep: number | undefined,
   send: (ev: string, payload?: Record<string, unknown>) => Promise<unknown>,
 ) {
-  const firedRef = useRef(false);
+  const sendRef = useRef(send);
+  sendRef.current = send;
   useEffect(() => {
-    if (state !== 'REVEAL') { firedRef.current = false; return undefined; }
-    if (revealStep !== 0 || firedRef.current) return undefined;
-    firedRef.current = true;
-    const t = setTimeout(() => void send('master:reveal', { step: 1 }), 2500);
-    return () => clearTimeout(t);
-  }, [state, revealStep, send]);
+    if (state !== 'REVEAL') { drumFired = false; return; }
+    // The pane is mounted twice (its tab and the 진행 순서 remote): fire once, shared.
+    if (revealStep !== 0 || drumFired) return;
+    drumFired = true;
+    setTimeout(() => void sendRef.current('master:reveal', { step: 1 }).catch(() => {}), 2500);
+  }, [state, revealStep]);
 }
+/** Shared by every mounted bingo pane, so the drumroll advances exactly once. */
+let drumFired = false;
 
 export function BingoMasterPane({ view, send, spotlight = null, prize = false, check = null }: BingoPaneProps) {
   useRevealDrumroll(view?.state, view?.revealStep, send);

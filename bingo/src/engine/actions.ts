@@ -14,6 +14,8 @@ export type Action =
   | { t: 'FILL_PICK'; playerId: string; cellIndex: number; targetId: string }
   | { t: 'CLEAR'; playerId: string; cellIndex: number }
   | { t: 'END' }
+  /** ◀ 이전: one step back — a reveal place, the reveal itself, or the end. */
+  | { t: 'BACK' }
   | { t: 'REVEAL'; step: number };
 
 export type ActionType = Action['t'];

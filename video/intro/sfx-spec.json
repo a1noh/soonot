@@ -1,0 +1,23 @@
+{
+  "set": "film",
+  "format": "wav",
+  "sounds": [
+    { "name": "open-shimmer", "want": "a soft cinematic shimmer swell for a title fading in over a starfield" },
+    { "name": "deep-swell", "want": "a low warm cinematic swell under a quiet subtitle" },
+    { "name": "flash-hit", "want": "a big cinematic impact hit with a white flash, deep boom and short tail" },
+    { "name": "gem-pop", "want": "a magical gem appearing, bright crystal sparkle chime, short" },
+    { "name": "gauntlet-rise", "want": "a heavy metallic whoosh rising up, a golden gauntlet appearing" },
+    { "name": "stone-zip", "want": "a fast energy zip of a glowing stone flying into a slot" },
+    { "name": "power-lock", "want": "a powerful energy charge locking in, cosmic power surge with a bright crack" },
+    { "name": "card-swoosh", "want": "a punchy whoosh with a soft hit as a glowing hero name card slams onto the screen" },
+    { "name": "assemble-boom", "want": "an epic trailer boom with a sub drop for a heroes assemble moment" },
+    { "name": "riser", "want": "a short tense cinematic riser leading into a reveal" },
+    { "name": "villain-reveal", "want": "a dark villain reveal, low purple energy hum swelling with a deep thud" },
+    { "name": "finger-snap", "want": "a crisp finger snap followed by a huge reverberant thunder crack" },
+    { "name": "blade-draw", "want": "a sword being drawn, metallic shing with a green energy hum" },
+    { "name": "punch-impact", "want": "a superhero punch impact, a fast whoosh into a heavy hit" },
+    { "name": "kick-whoosh", "want": "a fast flying kick whoosh" },
+    { "name": "name-hit", "want": "a bold cinematic hit for a name card appearing" },
+    { "name": "title-boom", "want": "a massive epic trailer title boom with a shimmering tail" }
+  ]
+}

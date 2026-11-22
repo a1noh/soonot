@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS events (
   bingo_enabled INTEGER NOT NULL DEFAULT 1,
   yut_enabled   INTEGER NOT NULL DEFAULT 1,
   stones_enabled INTEGER NOT NULL DEFAULT 1,
+  show_json     TEXT,
   created_at    INTEGER NOT NULL,
   closed_at     INTEGER
 );
@@ -36,6 +37,9 @@ function migrate(raw: Database.Database): void {
   const cols = new Set((raw.prepare(`PRAGMA table_info(events)`).all() as { name: string }[]).map((c) => c.name));
   if (!cols.has('stones_enabled')) {
     raw.exec(`ALTER TABLE events ADD COLUMN stones_enabled INTEGER NOT NULL DEFAULT 1`);
+  }
+  if (!cols.has('show_json')) {
+    raw.exec(`ALTER TABLE events ADD COLUMN show_json TEXT`);
   }
 }
 

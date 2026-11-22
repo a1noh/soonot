@@ -36,7 +36,7 @@ describe('setup', () => {
     expect(r.teams.map((t) => t.playing)).toEqual([true, false, true, true]);
     expect(r.games.map((g) => g.name)).toEqual(['아이언맨의 비행 테스트', '가디언즈 오브 찬양', '닥터 스트레인지의 1,400만 분의 1', '호크아이의 매의 눈', '토르의 번개 같은 센스', '어벤져스 어셈블']);
     expect(r.games.map((g) => g.instructions.split('!')[0])).toEqual(['코끼리 종이비행기', '전주 3초 컷 퀴즈', '미스터리 사지선다', '눈·코·입 이미지 퀴즈', '타이밍 맞추기', '일심동체 텔레파시']);
-    expect(r.stones.map((s) => s.name)).toEqual(['예배 스톤', '섬김 스톤', '사역 스톤', '양육 스톤', '선교 스톤', '행정 스톤']);
+    expect(r.stones.map((s) => s.name)).toEqual(['믿음 스톤', '소망 스톤', '사랑 스톤', '지혜 스톤', '온유 스톤', '은혜 스톤']);
     expect(r.games.map((g) => g.players)).toEqual(['2명', '모두', '모두', '모두', '1명', '3명']);
   });
 });
@@ -144,6 +144,7 @@ describe('end and reveal', () => {
     let r = act(act(started(), { t: 'PICK', stoneId: 's1' }), { t: 'END' }, T0 + 5);
     expect([r.state, r.pending]).toEqual(['ENDED', null]);
     r = act(r, { t: 'RESUME_FROM_ENDED' });
+    r = play(r, 's1', ['t1']); // a clear 1위, so the reveal needs no 결정전
     r = act(act(r, { t: 'END' }), { t: 'REVEAL', step: 0 });
     for (const s of [1, 2, 3, 4]) r = act(r, { t: 'REVEAL', step: s });
     expect([r.state, r.revealStep]).toEqual(['REVEAL', 4]);

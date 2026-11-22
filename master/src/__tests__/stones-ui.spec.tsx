@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StonesMasterPane } from '@soonot/stones/src/client/MasterPane';
+import { StonesRemote } from '@soonot/stones/src/client/RemotePane';
 import type { StonesView } from '@soonot/stones/src/project';
 
 const { sockets, FakeSocket } = vi.hoisted(() => {
@@ -70,6 +71,8 @@ function view(o: Partial<StonesView> = {}): StonesView {
     lastResult: null,
     revealStep: 0,
     activeTiebreak: null,
+    firstTie: null,
+    secretStone: null,
     standings: [
       { rank: 1, teamId: 't1', teamName: '아이언맨', color: '#C0392B', playing: true, stoneIds: ['s2'] },
       { rank: 2, teamId: 't2', teamName: '헐크', color: '#1F6FB2', playing: true, stoneIds: [] },
@@ -90,6 +93,56 @@ const board = (o: Partial<StonesView> = {}) => {
   delete v.canUndo;
   return v;
 };
+
+describe('StonesRemote (진행 순서)', () => {
+  it('before a pick: shows the secret game, any stone the room shouts opens it', async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    render(<StonesRemote view={view()} send={send} bingoWinner="김철수" cueRound={2} />);
+    expect(screen.getByText(/2라운드에 열릴 게임/)).toBeTruthy();
+    expect(screen.getByText('찬양 퀴즈')).toBeTruthy();
+    expect(screen.getByText(/어떤 스톤을 골라도/)).toBeTruthy();
+    // The played stone is greyed; any open one opens game 2.
+    expect((screen.getByRole('button', { name: /마인드/ }) as HTMLButtonElement).disabled).toBe(true);
+    await user.click(screen.getByRole('button', { name: /타임/ }));
+    expect(send).toHaveBeenCalledWith('master:pick', { stone: 's3' });
+    await user.click(screen.getByRole('button', { name: '빙고 1등 김철수' }));
+    expect(send).toHaveBeenCalledWith('master:chooser', { guest: '빙고 1등 김철수' });
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it('대본: hands the first stone to the 빙고 1등, once per game', () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const first = view({ played: 0, stones: view().stones.map((s) => ({ ...s, claimed: null })) });
+    const { unmount } = render(<StonesRemote view={first} send={send} bingoWinner="민지" />);
+    expect(send).toHaveBeenCalledWith('master:chooser', { guest: '빙고 1등 민지' });
+    unmount();
+    send.mockClear();
+    // The remote remounts on the next step; the master may have tapped a team meanwhile.
+    render(<StonesRemote view={first} send={send} bingoWinner="민지" />);
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('during a round: the game on, winner ticks, 스톤 주기', async () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const user = userEvent.setup();
+    const pending = { chooserId: 't2', chooserName: '헐크', stoneId: 's3', game: game2, number: 2 };
+    render(<StonesRemote view={view({ pending, nextGame: null })} send={send} cueRound={2} cueIsRoundSlide />);
+    expect(screen.getByText(/2라운드 진행 중/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: /헐크/ }));
+    await user.click(screen.getByRole('button', { name: '헐크에게 스톤 주기' }));
+    expect(send).toHaveBeenCalledWith('master:resolve', { winners: ['t2'] });
+  });
+
+  it('says the round is done on its own step, and warns when the script and the game drift', () => {
+    const send = vi.fn().mockResolvedValue({ ok: true });
+    const { unmount } = render(<StonesRemote view={view()} send={send} cueRound={1} />);
+    expect(screen.getByRole('status').textContent).toMatch(/1라운드 끝/);
+    unmount();
+    render(<StonesRemote view={view()} send={send} cueRound={4} cueIsRoundSlide />);
+    expect(screen.getByRole('status').textContent).toMatch(/지금 2라운드/);
+  });
+});
 
 describe('StonesMasterPane', () => {
   it('SETUP: Avengers teams, six stones and the six games in order', async () => {
@@ -211,9 +264,11 @@ describe('동점 결정전 on the console', () => {
     const send = vi.fn().mockResolvedValue({ ok: true });
     const user = userEvent.setup();
     render(<StonesMasterPane view={ended()} send={send} />);
-    expect(screen.getByText('공동 1위')).toBeTruthy();
+    expect(screen.getByText(/공동 1위 · 결정전이 필요해요/)).toBeTruthy();
     expect(screen.getAllByText('동점').length).toBe(2);
-    await user.click(screen.getByRole('button', { name: /동점 결정전 · 엔드게임/ }));
+    // 1위 is never revealed tied: 순위 발표 waits for the 결정전.
+    expect(screen.getByRole('button', { name: '순위 발표' })).toHaveProperty('disabled', true);
+    await user.click(screen.getByRole('button', { name: /동점 결정전 시작 · 엔드게임/ }));
     expect(send).toHaveBeenCalledWith('master:tiebreak:start', { teamIds: ['t1', 't2'] });
   });
 
@@ -314,8 +369,16 @@ describe('스톤 on the projector', () => {
     expect(screen.getByText('엔드게임')).toBeTruthy();
     expect(screen.getByText(/동점 결정전 · 공동/)).toBeTruthy();
     expect(screen.getByText('컵 멀리 놓기! 선을 넘지 마세요.')).toBeTruthy();
+    // Decided, but 순위 발표 not pressed yet: no podium on screen.
     act(() => {
       sock.fire('room:state', { gameId: 'stones', view: board({ state: 'ENDED' }) });
+    });
+    expect(screen.queryByText(/어벤추수 땡스게임 순위 발표/)).toBeNull();
+    // Instead: the 최종 집계 suspense screen, with no ranks.
+    expect(screen.getByText('모든 스톤이 모였습니다')).toBeTruthy();
+    expect(screen.queryByText(/스톤 \d+개/)).toBeNull();
+    act(() => {
+      sock.fire('room:state', { gameId: 'stones', view: board({ state: 'REVEAL', revealStep: 0 }) });
     });
     expect(screen.getByText(/어벤추수 땡스게임 순위 발표/)).toBeTruthy();
   });

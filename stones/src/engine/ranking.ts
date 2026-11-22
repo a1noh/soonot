@@ -58,12 +58,12 @@ export function rank(room: Room): Standing[] {
   });
 }
 
-/** Teams that share a place, grouped, best place first. Each needs a 결정전. */
+/**
+ * The ties that need a 결정전 — only a tie for 1위 (the MC script plays the
+ * 타이브레이커 for first place alone). Teams level anywhere else simply share
+ * the place. Returned as a list (empty, or the one 1위 group) so callers stay simple.
+ */
 export function tiedGroups(room: Room): string[][] {
-  const byPlace = new Map<number, string[]>();
-  for (const s of rank(room)) byPlace.set(s.rank, [...(byPlace.get(s.rank) ?? []), s.teamId]);
-  return [...byPlace.entries()]
-    .filter(([, ids]) => ids.length > 1)
-    .sort(([a], [b]) => a - b)
-    .map(([, ids]) => ids);
+  const first = rank(room).filter((s) => s.rank === 1);
+  return first.length > 1 ? [first.map((s) => s.teamId)] : [];
 }

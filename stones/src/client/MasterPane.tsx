@@ -11,6 +11,7 @@ import { DEFAULT_GAMES, DEFAULT_PRIZES, DEFAULT_STONES, DEFAULT_TEAMS, DEFAULT_T
 import { playersLabel } from '../shared/labels';
 import type { StonesView } from '../project';
 import { Gem } from './Gem';
+import { autoGuest } from './autoGuest';
 
 export interface StonesMasterPaneProps {
   view: StonesView | null;
@@ -18,6 +19,9 @@ export interface StonesMasterPaneProps {
   /** The 빙고 1등's name once bingo has a result: they choose the first stone. */
   bingoWinner?: string | null;
 }
+
+/** Shared by every mounted 스톤 pane, so the podium drumroll advances exactly once. */
+let drumFired = false;
 
 /** How a guest chooser is named on every screen. */
 export const bingoGuest = (name: string) => `빙고 1등 ${name}`;
@@ -31,17 +35,24 @@ export function StonesMasterPane({ view, send, bingoWinner = null }: StonesMaste
   useEffect(() => setWinners(new Set()), [pendingKey]);
 
   // After 순위 발표 the podium holds on 두구두구 (step 0); auto-advance to 3rd once.
-  const drumRef = useRef(false);
+  // The pane is mounted twice (its tab and the 진행 순서 remote): the drumroll
+  // advance is shared at module level so it fires exactly once.
+  // A game back in setup gets the 빙고 1등's first choice again (see autoGuest).
+  useEffect(() => {
+    if (view?.state === 'SETUP' || view?.state === 'LOBBY') autoGuest.reset();
+  }, [view?.state]);
+
+  const sendRef = useRef(send);
+  sendRef.current = send;
   useEffect(() => {
     if (view?.state !== 'REVEAL') {
-      drumRef.current = false;
-      return undefined;
+      drumFired = false;
+      return;
     }
-    if (view.revealStep !== 0 || drumRef.current) return undefined;
-    drumRef.current = true;
-    const t = setTimeout(() => void send('master:reveal', { step: 1 }), 2500);
-    return () => clearTimeout(t);
-  }, [view?.state, view?.revealStep, send]);
+    if (view.revealStep !== 0 || drumFired) return;
+    drumFired = true;
+    setTimeout(() => void sendRef.current('master:reveal', { step: 1 }).catch(() => {}), 2500);
+  }, [view?.state, view?.revealStep]);
 
   if (!view) return <p className="pane__hint">불러오는 중…</p>;
   if (view.state === 'SETUP' || (view.state === 'LOBBY' && editing)) {
@@ -277,14 +288,10 @@ export function StonesMasterPane({ view, send, bingoWinner = null }: StonesMaste
             const names = g.map((id) => view.teams.find((t) => t.id === id)?.name ?? id).join(' · ');
             return (
               <div key={g.join()} className="stn__tie">
-                <span className="stn__tieplace">공동 {place}위</span>
+                <span className="stn__tieplace">공동 {place}위 · 결정전이 필요해요</span>
                 <span className="stn__tienames">{names}</span>
-                <button
-                  type="button"
-                  className={`btn ${place <= 3 ? 'btn--primary' : ''}`}
-                  onClick={() => void send('master:tiebreak:start', { teamIds: g })}
-                >
-                  동점 결정전 · {view.tiebreak?.name ?? DEFAULT_TIEBREAK.name}
+                <button type="button" className="btn btn--primary" onClick={() => void send('master:tiebreak:start', { teamIds: g })}>
+                  동점 결정전 시작 · {view.tiebreak?.name ?? DEFAULT_TIEBREAK.name}
                 </button>
               </div>
             );
@@ -345,15 +352,15 @@ export function StonesMasterPane({ view, send, bingoWinner = null }: StonesMaste
             <button
               type="button"
               className="btn btn--primary"
-              disabled={!!view.activeTiebreak}
-              onClick={() => {
-                const topTie = (view.tiedGroups ?? []).some((g) => (view.standings.find((s) => s.teamId === g[0])?.rank ?? 99) <= 3);
-                if (topTie && !confirm('3위 안에 동점이 남아 있어요. 그대로 공동 순위로 발표할까요?')) return;
-                void send('master:reveal', { step: 0 });
-              }}
+              disabled={!!view.activeTiebreak || (view.tiedGroups?.length ?? 0) > 0}
+              title={(view.tiedGroups?.length ?? 0) > 0 ? '1위 동점 결정전을 먼저 해요' : undefined}
+              onClick={() => void send('master:reveal', { step: 0 })}
             >
               순위 발표
             </button>
+            {(view.tiedGroups?.length ?? 0) > 0 && !view.activeTiebreak ? (
+              <span className="stn-setup__hint">1위가 동점이라 결정전을 먼저 해요. 다른 동점은 공동 순위로 발표돼요.</span>
+            ) : null}
           </>
         ) : null}
         {view.state === 'REVEAL' && view.revealStep < 4 ? (
@@ -367,7 +374,7 @@ export function StonesMasterPane({ view, send, bingoWinner = null }: StonesMaste
 }
 
 /** The open 결정전: the game card, then tap the teams in finishing order. */
-function TiebreakPanel({ view, send }: StonesMasterPaneProps & { view: StonesView }) {
+export function TiebreakPanel({ view, send }: StonesMasterPaneProps & { view: StonesView }) {
   const tb = view.activeTiebreak!;
   const [order, setOrder] = useState<string[]>([]);
   const key = tb.teams.map((t) => t.id).join();

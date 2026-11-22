@@ -6,7 +6,7 @@
  */
 
 import { createServer, type Server as HttpServer } from 'node:http';
-import { existsSync } from 'node:fs';
+import { createWriteStream, existsSync, mkdirSync, readdirSync, renameSync, statSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express, { type Express, type Request, type Response } from 'express';
@@ -187,6 +187,68 @@ export function createHost(options: HostOptions): Host {
     }
     res.setHeader('Set-Cookie', clearedCookie(cookieOpts));
     res.json({ ok: true, everywhere });
+  });
+
+  // ---- 진행 순서 media (slides, videos, BGM) --------------------------------
+  // Files live in `config.mediaDir` and are served at /media/. The console
+  // uploads them here (master session required); the projector just loads the
+  // URL. Ranges work, so a long video or track can seek.
+  const MEDIA_OK = /\.(png|jpe?g|gif|webp|svg|mp4|webm|mov|m4v|mp3|m4a|wav|ogg|aac)$/i;
+  const MEDIA_MAX = 1024 * 1024 * 1024; // 1 GB per file
+  app.use('/media', express.static(config.mediaDir, { maxAge: '1h', fallthrough: false, dotfiles: 'deny' }));
+  const isMaster = (req: Request) => sessions.verify(cookieOf(req.headers as Record<string, unknown>), now()) !== null;
+
+  app.get('/master/media', (req: Request, res: Response) => {
+    if (!isMaster(req)) return void res.status(401).json({ ok: false });
+    let files: { name: string; url: string; size: number }[] = [];
+    if (existsSync(config.mediaDir)) {
+      files = readdirSync(config.mediaDir)
+        .filter((f) => MEDIA_OK.test(f))
+        .map((f) => ({ name: f, url: `/media/${encodeURIComponent(f)}`, size: statSync(join(config.mediaDir, f)).size }));
+    }
+    res.json({ ok: true, files });
+  });
+
+  app.post('/master/media', (req: Request, res: Response) => {
+    if (!isMaster(req)) return void res.status(401).json({ ok: false });
+    const raw = String(req.query['name'] ?? '');
+    // Keep letters (Korean too), digits, dot, dash, underscore; nothing that walks paths.
+    const name = raw.normalize('NFC').replace(/[^\p{L}\p{N}._ -]/gu, '').replace(/^\.+/, '').trim().slice(0, 120);
+    if (!name || !MEDIA_OK.test(name)) {
+      return void res.status(400).json({ ok: false, message: '이미지, 영상, 음악 파일만 올릴 수 있어요' });
+    }
+    // One optional subfolder, from a fixed list (the show's music lives in /media/bgm/).
+    const dir = String(req.query['dir'] ?? '');
+    if (dir && !['bgm'].includes(dir)) return void res.status(400).json({ ok: false, message: '폴더가 맞지 않아요' });
+    const folder = dir ? join(config.mediaDir, dir) : config.mediaDir;
+    mkdirSync(folder, { recursive: true });
+    const finalPath = join(folder, name);
+    const tmpPath = `${finalPath}.part`;
+    const out = createWriteStream(tmpPath);
+    let size = 0;
+    let failed = false;
+    const fail = (status: number, message: string) => {
+      if (failed) return;
+      failed = true;
+      out.destroy();
+      try { unlinkSync(tmpPath); } catch { /* already gone */ }
+      if (!res.headersSent) res.status(status).json({ ok: false, message });
+    };
+    req.on('data', (chunk: Buffer) => {
+      size += chunk.length;
+      if (size > MEDIA_MAX) {
+        fail(413, '파일이 너무 커요 (1GB까지)');
+        req.destroy();
+      }
+    });
+    req.on('aborted', () => fail(400, '업로드가 끊겼어요'));
+    out.on('error', () => fail(500, '저장하지 못했어요 (디스크 공간을 확인하세요)'));
+    out.on('finish', () => {
+      if (failed) return;
+      renameSync(tmpPath, finalPath);
+      res.json({ ok: true, url: `/media/${dir ? `${dir}/` : ''}${encodeURIComponent(name)}`, name, size });
+    });
+    req.pipe(out);
   });
 
   app.get('/healthz', (_req: Request, res: Response) => {

@@ -17,6 +17,7 @@ import type { GameId } from '../shared/lifecycle.js';
 import { GAME_IDS, isGameId } from '../shared/lifecycle.js';
 import type { Registry } from '../event/registry.js';
 import { summarize } from '../event/event.js';
+import { isVideo, parseCues, safeUrl } from '../event/show.js';
 import type { Dispatch } from './dispatch.js';
 import type { Emit } from './emit.js';
 import { STATE_EVENT } from './emit.js';
@@ -294,16 +295,16 @@ export function pushStateAll(
   }
 }
 
-function sendSummary(socket: Socket, registry: Registry): void {
+function sendSummary(socket: Socket, registry: Registry, forMaster = false): void {
   const event = registry.current();
-  socket.emit('event:summary', event ? summarize(event, registry.modules) : null);
+  socket.emit('event:summary', event ? summarize(event, registry.modules, forMaster) : null);
 }
 
 function attachMaster(socket: Socket, deps: NamespaceDeps): void {
   const { registry, dispatch, now } = deps;
   void socket.join(ROOM.master);
   for (const id of GAME_IDS) void socket.join(ROOM.game(id));
-  sendSummary(socket, registry);
+  sendSummary(socket, registry, true);
   // The console must have each game's view the instant it connects — otherwise
   // the yutnori pane (setup form, throw pad, move picker) and the bingo pane sit
   // blank until the master happens to act, which they cannot do without it. The
@@ -326,7 +327,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       // them to render each pane's setup form; without this it hangs on
       // "불러오는 중…" because a fresh master connected before the event existed.
       for (const id of GAME_IDS) pushStateAll(deps.io, id, registry, 'everyone');
-      reply(ack, { ok: true, event: summarize(event, registry.modules) });
+      reply(ack, { ok: true, event: summarize(event, registry.modules, true) });
     } catch (err) {
       reply(ack, { ok: false, error: toWireError(err) });
       socket.emit('error', toWireError(err));
@@ -437,12 +438,215 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
     }
   });
 
+  /**
+   * 진행 순서. `show:save` replaces the cue list (validated, persisted now);
+   * `show:go` puts one cue on the projector — a slide over everything, or a
+   * game screen — and starts its BGM; `show:clear` takes a slide down;
+   * `show:bgm` plays, pauses, restarts, stops or sets the volume.
+   */
+  socket.on('show:save', (payload: unknown, ack: unknown) => {
+    try {
+      let cues;
+      try {
+        cues = parseCues((payload as { cues?: unknown } | null)?.cues);
+      } catch (e) {
+        throw new HostError('BAD_PAYLOAD', e instanceof Error ? e.message : undefined);
+      }
+      const event = registry.require();
+      event.show.cues = cues;
+      deps.persistence?.saveEvent?.(event);
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  socket.on('show:go', (payload: unknown, ack: unknown) => {
+    try {
+      const id = (payload as { id?: unknown } | null)?.id;
+      const event = registry.require();
+      const cue = event.show.cues.find((c) => c.id === id);
+      if (!cue) throw new HostError('BAD_PAYLOAD', '없는 장면이에요');
+      const show = event.show;
+      // A step's timer is the step's: it starts as the step goes up, and ends
+      // when you leave (a 5분 countdown must not follow you into the rounds).
+      if (show.liveCue !== cue.id) {
+        event.projectorTimer =
+          cue.timer > 0
+            ? { label: cue.timerLabel || cue.title, totalMs: cue.timer * 1000, endsAt: Date.now() + cue.timer * 1000 }
+            : null;
+      }
+      show.liveCue = cue.id;
+      if (cue.kind === 'screen' && cue.screen) {
+        show.slide = null;
+        show.screenTransition = cue.transition;
+        event.projector = cue.screen;
+        event.projectorLock = null;
+      } else {
+        // Up and ready, not playing: a video holds its first frame until 시작.
+        show.slide = { cueId: cue.id, title: cue.title, body: cue.body, media: cue.media, transition: cue.transition, playing: false, startedAt: 0 };
+      }
+      // A cue with a BGM takes over the music, loaded but silent until the
+      // master presses 시작; one without leaves the music as it is. The same
+      // track already playing carries on rather than stopping.
+      if (cue.bgm || cue.bgmUrl) {
+        const same = !!(show.bgm && show.bgm.url && show.bgm.url === cue.bgmUrl && show.bgm.playing);
+        // Music fades in by itself — except on a video step, where ▶ 시작 starts
+        // the video and its music follows when the video ends.
+        const waitsForStart = cue.kind === 'slide' && isVideo(cue.media);
+        show.bgm = {
+          cueId: cue.id,
+          name: cue.bgm || '배경음악',
+          url: cue.bgmUrl,
+          playing: same || !waitsForStart,
+          volume: show.bgm?.volume ?? 0.5,
+          startedAt: same ? show.bgm!.startedAt : now(),
+        };
+      }
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /**
+   * 시작 — the master's one button for the cue on air: the video plays from the
+   * top, and the BGM plays (after the video, if there is one: the projector
+   * holds the music until the video ends).
+   */
+  socket.on('show:start', (_payload: unknown, ack: unknown) => {
+    try {
+      const show = registry.require().show;
+      if (show.slide) {
+        show.slide.playing = true;
+        show.slide.startedAt = now();
+      }
+      if (show.bgm) show.bgm.playing = true;
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /**
+   * The music for what is happening now inside a step (the 스톤 step plays each
+   * round's track). `{ name, url }`; an empty url stops the music (a song the MC
+   * plays by hand). The same track already playing carries on.
+   */
+  socket.on('show:music', (payload: unknown, ack: unknown) => {
+    try {
+      const p = (payload ?? {}) as { name?: unknown; url?: unknown };
+      const url = safeUrl(p.url);
+      const name = typeof p.name === 'string' ? p.name.trim().slice(0, 80) : '';
+      const show = registry.require().show;
+      if (!(show.bgm && show.bgm.url === url && (show.bgm.playing || !url))) {
+        show.bgm = { cueId: show.liveCue, name: name || '배경음악', url, playing: !!url, volume: show.bgm?.volume ?? 0.5, startedAt: now() };
+        broadcastSummary(deps);
+      }
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /** 🔇 소리 끄기 / 🔊 소리 켜기 — every sound on the projector, at once. */
+  socket.on('show:mute', (payload: unknown, ack: unknown) => {
+    try {
+      const muted = (payload as { muted?: unknown } | null)?.muted;
+      if (typeof muted !== 'boolean') throw new HostError('BAD_PAYLOAD');
+      registry.require().show.muted = muted;
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  socket.on('show:clear', (_payload: unknown, ack: unknown) => {
+    try {
+      registry.require().show.slide = null;
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  socket.on('show:bgm', (payload: unknown, ack: unknown) => {
+    try {
+      const p = (payload ?? {}) as { action?: unknown; volume?: unknown };
+      const show = registry.require().show;
+      const bgm = show.bgm;
+      if (p.action === 'stop') show.bgm = null;
+      else if (bgm) {
+        if (p.action === 'play') bgm.playing = true;
+        else if (p.action === 'pause') bgm.playing = false;
+        else if (p.action === 'restart') {
+          bgm.playing = true;
+          bgm.startedAt = now();
+        } else if (p.action !== undefined) throw new HostError('BAD_PAYLOAD');
+        if (p.volume !== undefined) {
+          const v = Number(p.volume);
+          if (!Number.isFinite(v)) throw new HostError('BAD_PAYLOAD');
+          bgm.volume = Math.min(1, Math.max(0, v));
+        }
+      }
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
   socket.on('game:enable', (payload: unknown, ack: unknown) => {
     try {
       const { gameId, enabled } = (payload ?? {}) as { gameId?: unknown; enabled?: unknown };
       if (!isGameId(gameId) || typeof enabled !== 'boolean') throw new HostError('BAD_PAYLOAD');
       registry.require().games[gameId].enabled = enabled;
       broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /**
+   * ↺ 전체 초기화 — the whole evening back to the start, for a fresh run: every
+   * game back to SETUP, the 진행 순서 back before step 1, nothing on air (slide,
+   * music, timer, spotlight), sound on. The event stays — same 참여 코드 and QR —
+   * and so do the cue list and the uploaded files. Phones go back to waiting.
+   */
+  socket.on('event:restart', (_payload: unknown, ack: unknown) => {
+    try {
+      const event = registry.require();
+      const at = now();
+      for (const gameId of GAME_IDS) {
+        const fresh = registry.modules[gameId].create(event.id, at);
+        registry.commit(gameId, fresh);
+        deps.persistence?.enqueue({ gameId, state: fresh, action: { t: 'RESET' }, emits: [], at });
+      }
+      event.projector = 'auto';
+      event.projectorLock = null;
+      event.bingoSpotlight = null;
+      event.bingoPrize = false;
+      event.bingoCheck = null;
+      event.projectorTimer = null;
+      Object.assign(event.show, { liveCue: null, slide: null, bgm: null, screenTransition: 'fade', muted: false });
+      deps.persistence?.saveEvent?.(event);
+      broadcastSummary(deps);
+      for (const gameId of GAME_IDS) pushStateAll(deps.io, gameId, registry, 'everyone');
+      deps.io.of('/b').emit('room:reset');
       reply(ack, { ok: true });
     } catch (err) {
       reply(ack, { ok: false, error: toWireError(err) });
@@ -506,7 +710,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
    * there — and neither game's own event names had to be renamed.
    */
   socket.onAny((ev: string, payload: unknown, ack: unknown) => {
-    if (ev.startsWith('event:') || ev.startsWith('projector:') || ev.startsWith('game:')) return;
+    if (ev.startsWith('event:') || ev.startsWith('projector:') || ev.startsWith('game:') || ev.startsWith('show:')) return;
 
     const viewer = (socket.data as SocketData).viewer;
     const gameId = (payload as { gameId?: unknown } | null)?.gameId;
@@ -562,7 +766,9 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
 function broadcastSummary(deps: NamespaceDeps): void {
   const event = deps.registry.current();
   const summary = event ? summarize(event, deps.registry.modules) : null;
-  for (const name of ['/master', '/b', '/y', '/p']) {
+  // Only the console gets the whole 진행 순서 (it names every round in order).
+  deps.io.of('/master').emit('event:summary', event ? summarize(event, deps.registry.modules, true) : null);
+  for (const name of ['/b', '/y', '/p']) {
     deps.io.of(name).emit('event:summary', summary);
   }
 }

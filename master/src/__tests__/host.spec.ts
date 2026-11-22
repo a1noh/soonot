@@ -6,6 +6,9 @@
  */
 
 import { afterEach, describe, expect, it } from 'vitest';
+import { mkdtempSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { io as ioClient, type Socket } from 'socket.io-client';
 import { createHost, type Host } from '../host/server.js';
 import { hashPasscode } from '../identity/passcode.js';
@@ -27,7 +30,7 @@ afterEach(async () => {
 
 async function boot() {
   host = createHost({
-    config: { ...loadConfig({}), production: false, tls: false, dbPath: ':memory:' },
+    config: { ...loadConfig({}), production: false, tls: false, dbPath: ':memory:', mediaDir: mkdtempSync(join(tmpdir(), 'soonot-media-')) },
     passcodeHash: hashPasscode(PASSCODE),
     modules: { bingo: createStubModule('bingo'), yutnori: createStubModule('yutnori'), stones: createStubModule('stones') },
   });
@@ -265,6 +268,184 @@ describe('projector overlays the master drives', () => {
     for (const bad of [{ cells: [1, 1] }, { cells: [25] }, { cells: [-1] }, { cells: [] }, { cells: 'x' }]) {
       expect((await emit(master, 'projector:check', bad)).ok).toBe(false);
     }
+  });
+});
+
+describe('진행 순서 (slides, screens, BGM)', () => {
+  it('starts from the script, keeps the cue list on the console only, and puts a slide on air', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    const projector = await connect(base, '/p');
+    await projector.firstSummary;
+    const created = once<EventSummary>(master, 'event:summary');
+    const projCreated = once<EventSummary>(projector, 'event:summary');
+    await emit(master, 'event:create', { title: 'x' });
+    const s0 = await created;
+    // One path: 빙고 → 영상 → 스톤 (one step for all rounds) → 시상 → 감사합니다.
+    expect(s0.cues!.length).toBe(10);
+    expect(s0.cues!.filter((c) => /라운드/.test(c.title))).toHaveLength(1);
+    expect(s0.cues!.some((c) => c.title.includes('MC 등장 영상'))).toBe(true);
+    // The projector never learns the run of show (it names every round in order).
+    expect((await projCreated).cues).toBeUndefined();
+
+    const slideCue = s0.cues!.find((c) => c.kind === 'slide')!;
+    const onAir = once<EventSummary>(projector, 'event:summary');
+    expect((await emit(master, 'show:go', { id: slideCue.id })).ok).toBe(true);
+    const p1 = await onAir;
+    expect(p1.slide).toMatchObject({ cueId: slideCue.id, title: slideCue.title, media: slideCue.media });
+    expect(p1.liveCue).toBe(slideCue.id);
+    // Up and ready, but nothing plays until the master presses 시작.
+    expect(p1.slide).toMatchObject({ playing: false });
+    expect(p1.bgm).toMatchObject({ name: slideCue.bgm, playing: false });
+    const started = once<EventSummary>(projector, 'event:summary');
+    expect((await emit(master, 'show:start', {})).ok).toBe(true);
+    const p2 = await started;
+    expect(p2.slide).toMatchObject({ playing: true });
+    expect(p2.slide!.startedAt).toBeGreaterThan(0);
+    expect(p2.bgm).toMatchObject({ playing: true });
+
+    const down = once<EventSummary>(projector, 'event:summary');
+    await emit(master, 'show:clear', {});
+    expect((await down).slide).toBeNull();
+  });
+
+  it('a screen cue switches the projector to that game and takes the slide down', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    const created = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'event:create', { title: 'x' });
+    const cues = (await created).cues!;
+    await emit(master, 'show:go', { id: cues.find((c) => c.kind === 'slide')!.id });
+
+    const screen = cues.find((c) => c.kind === 'screen' && c.screen === 'stones' && c.transition === 'zoom')!;
+    const moved = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'show:go', { id: screen.id });
+    const s = await moved;
+    expect(s.slide).toBeNull();
+    expect(s.projector).toBe('stones');
+    expect(s.screenTransition).toBe('zoom');
+    expect((await emit(master, 'show:go', { id: 'nope' })).ok).toBe(false);
+  });
+
+  it('saves an edited cue list, drops unsafe URLs, and drives the BGM', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    await emit(master, 'event:create', { title: 'x' });
+
+    const saved = once<EventSummary>(master, 'event:summary');
+    const ok = await emit(master, 'show:save', {
+      cues: [
+        { id: 'a', kind: 'slide', title: ' 오프닝 ', media: 'javascript:alert(1)', bgm: '테마', bgmUrl: '/media/theme.mp3', transition: 'zoom' },
+        { id: 'b', kind: 'screen', screen: 'bingo', title: '빙고', media: '/media/../secret' },
+      ],
+    });
+    expect(ok.ok).toBe(true);
+    const cues = (await saved).cues!;
+    expect(cues.map((c) => c.title)).toEqual(['오프닝', '빙고']);
+    expect(cues[0]!.media).toBe('');
+    expect(cues[0]!.bgmUrl).toBe('/media/theme.mp3');
+    expect(cues[1]!.media).toBe('');
+
+    await emit(master, 'show:go', { id: 'a' });
+    await emit(master, 'show:start', {});
+    const paused = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'show:bgm', { action: 'pause', volume: 0.3 });
+    expect((await paused).bgm).toMatchObject({ url: '/media/theme.mp3', playing: false, volume: 0.3 });
+
+    // A cue with no BGM leaves the music alone.
+    const kept = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'show:go', { id: 'b' });
+    expect((await kept).bgm).toMatchObject({ url: '/media/theme.mp3' });
+
+    const stopped = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'show:bgm', { action: 'stop' });
+    expect((await stopped).bgm).toBeNull();
+
+    expect((await emit(master, 'show:save', { cues: 'x' })).ok).toBe(false);
+  });
+
+  it('🔇 소리 끄기 reaches the projector; music starts soft and only from a file', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    const projector = await connect(base, '/p');
+    await projector.firstSummary;
+    const created = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'event:create', { title: 'x' });
+    const cues = (await created).cues!;
+
+    const off = once<EventSummary>(projector, 'event:summary');
+    expect((await emit(master, 'show:mute', { muted: true })).ok).toBe(true);
+    expect((await off).muted).toBe(true);
+    expect((await emit(master, 'show:mute', { muted: 'yes' })).ok).toBe(false);
+
+    // The 대본's first step has its track; a hand-played song's step stops the music.
+    const first = cues[0]!;
+    expect(first.bgmUrl).toMatch(/^\/media\/bgm\/.+\.mp3$/);
+    const up = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'show:go', { id: first.id });
+    // A normal step's music starts by itself (only a video step waits for ▶ 시작).
+    expect((await up).bgm).toMatchObject({ url: first.bgmUrl, volume: 0.5, playing: true });
+    // Inside the 스톤 step each round sets its music; a hand-played song stops it.
+    const round = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'show:music', { name: '경쾌한 질주', url: '/media/bgm/run-amok.mp3' });
+    expect((await round).bgm).toMatchObject({ url: '/media/bgm/run-amok.mp3', playing: true });
+    const stop = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'show:music', { name: '태양 「눈, 코, 입」 · 직접 틀기', url: '' });
+    expect((await stop).bgm).toMatchObject({ url: '', playing: false });
+    // A step with a timer starts it as it goes up; leaving the step ends it.
+    const timed = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'show:go', { id: cues[2]!.id });
+    expect((await timed).projectorTimer).toMatchObject({ label: '빙고 마지막 기회', totalMs: 300_000 });
+    const moved = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'show:go', { id: cues[3]!.id });
+    expect((await moved).projectorTimer).toBeNull();
+  });
+
+  it('↺ 전체 초기화: games, 진행 순서 and the screen back to the start — same event, same cues', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    const created = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'event:create', { title: 'x' });
+    const before = await created;
+    await emit(master, 'master:setup', { gameId: 'bingo', entrants: 9 });
+    await emit(master, 'show:go', { id: before.cues![1]!.id });
+    await emit(master, 'projector:timer', { seconds: 30 });
+    await emit(master, 'show:mute', { muted: true });
+    await emit(master, 'projector:set', { setting: 'stones' });
+
+    const reset = once<EventSummary>(master, 'event:summary');
+    expect((await emit(master, 'event:restart', {})).ok).toBe(true);
+    const after = await reset;
+    expect(after.code).toBe(before.code);
+    expect(after.cues).toEqual(before.cues);
+    expect([after.liveCue, after.slide, after.bgm, after.projectorTimer, after.muted, after.projector]).toEqual([null, null, null, null, false, 'auto']);
+    for (const g of ['bingo', 'yutnori', 'stones'] as const) expect(after.games[g].state).toBe('SETUP');
+  });
+
+  it('uploads media only for a signed-in master, and serves it at /media', async () => {
+    const { base } = await boot();
+    const body = new TextEncoder().encode('fake-png');
+    const anon = await fetch(`${base}/master/media?name=a.png`, { method: 'POST', body });
+    expect(anon.status).toBe(401);
+
+    const { token } = await signIn(base);
+    const cookie = { cookie: `${COOKIE_NAME}=${token}` };
+    const bad = await fetch(`${base}/master/media?name=run.sh`, { method: 'POST', body, headers: cookie });
+    expect(bad.status).toBe(400);
+
+    const up = await fetch(`${base}/master/media?name=${encodeURIComponent('../팀 자리.png')}`, { method: 'POST', body, headers: cookie });
+    const res = (await up.json()) as { ok: boolean; url: string };
+    expect(res.ok).toBe(true);
+    expect(res.url).toBe(`/media/${encodeURIComponent('팀 자리.png')}`);
+    expect(await (await fetch(`${base}${res.url}`)).text()).toBe('fake-png');
+
+    const list = (await (await fetch(`${base}/master/media`, { headers: cookie })).json()) as { files: { name: string }[] };
+    expect(list.files.map((f) => f.name)).toContain('팀 자리.png');
   });
 });
 

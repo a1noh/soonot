@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { assertInvariants, InvariantError } from '../invariants';
 import { ROLLS } from '../../shared/constants';
 import type { Room } from '../../shared/types';
-import { started, step, T0 } from './helpers';
+import { act, started, step, T0 } from './helpers';
 
 /** Deterministic LCG — a fuzz test that cannot reproduce is not a test. */
 function lcg(seed: number) {
@@ -82,5 +82,29 @@ describe('invariants (spec §4.5)', () => {
     const r = started();
     r.teams[1]!.name = r.teams[0]!.name;
     expect(() => assertInvariants(r)).toThrow(/duplicate/);
+  });
+
+  // Regression: 게임 종료 while a ★ 미니게임 or 잡기 대결 was still on screen used to
+  // leave `pendingMiniGame` set on an ENDED room, tripping the invariant and flattening
+  // 게임 종료 to an INTERNAL error — which then blocked 순위 발표 entirely. endGame now
+  // abandons the in-flight challenge. `act` asserts the invariants after apply, so this
+  // test fails if the crash ever returns.
+  it('게임 종료 abandons an in-flight ★ 미니게임 (no pendingMiniGame while ENDED)', () => {
+    const mid = started({ teams: 2, malPerTeam: 1, miniGames: true });
+    mid.pendingMiniGame = { teamId: 't1', malId: 't1m1', station: 6, gameId: null };
+    const ended = act(mid, { t: 'END', reason: 'master' });
+    expect(ended.state).toBe('ENDED');
+    expect(ended.pendingMiniGame).toBeNull();
+  });
+
+  it('게임 종료 abandons an in-flight 잡기 대결 (duel)', () => {
+    const mid = started({ teams: 2, malPerTeam: 1, captureDuel: true });
+    mid.pendingMiniGame = {
+      teamId: 't1', malId: 't1m1', station: 5, gameId: null,
+      duel: { vsTeam: 't2', vsTeamName: '조2', byTeamName: '조1' },
+    };
+    const ended = act(mid, { t: 'END', reason: 'master' });
+    expect(ended.state).toBe('ENDED');
+    expect(ended.pendingMiniGame).toBeNull();
   });
 });

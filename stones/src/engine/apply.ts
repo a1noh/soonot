@@ -7,9 +7,9 @@ import { tiedGroups } from './ranking';
 export const ALLOWED: Readonly<Record<RoomState, readonly Action['t'][]>> = {
   SETUP: ['SETUP'],
   LOBBY: ['SETUP', 'START', 'SET_PLAYING'],
-  RUNNING: ['PICK', 'CANCEL_PICK', 'RESOLVE', 'SKIP', 'SET_CHOOSER', 'SET_PLAYING', 'UNDO', 'END'],
-  ENDED: ['RESUME_FROM_ENDED', 'REVEAL', 'UNDO', 'TIEBREAK_START', 'TIEBREAK_RESOLVE', 'TIEBREAK_CANCEL'],
-  REVEAL: ['REVEAL'],
+  RUNNING: ['PICK', 'CANCEL_PICK', 'RESOLVE', 'SKIP', 'SET_CHOOSER', 'SET_PLAYING', 'UNDO', 'REWIND', 'END'],
+  ENDED: ['RESUME_FROM_ENDED', 'REVEAL', 'UNDO', 'REWIND', 'TIEBREAK_START', 'TIEBREAK_RESOLVE', 'TIEBREAK_CANCEL'],
+  REVEAL: ['REVEAL', 'BACK'],
 };
 
 const MAX_REVEAL_STEP = 4;
@@ -270,6 +270,48 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
       break;
     }
 
+    case 'REWIND': {
+      const target = action.round;
+      if (!Number.isInteger(target) || target < 1) throw new EngineError('ILLEGAL_ACTION');
+      if (r.state === 'ENDED') {
+        if (r.revealStep > 0) throw new EngineError('REVEAL_STARTED');
+        // Reopen, exactly like 다시 이어하기: any 결정전 result no longer applies.
+        r.state = 'RUNNING';
+        r.endedAt = null;
+        r.tiebreaks = [];
+        r.activeTiebreak = null;
+      }
+      const keep = target - 1; // results that stay: rounds 1 … N-1
+      // An open pick is always for round (results + 1): it stays when that is
+      // round N, and goes when it is a later round.
+      if (r.claims.length > keep) r.pending = null;
+      while (r.claims.length > keep) {
+        const last = r.history.pop();
+        if (!last) break;
+        if (last.kind === 'claim') r.claims.pop();
+        setChooser(r, { teamId: last.teamId, guest: last.guest });
+        r.round = last.round;
+        const team = r.teams.find((t) => t.id === last.teamId);
+        if (team) team.playing = true;
+      }
+      r.lastResult = null;
+      events.push({ e: 'undo:applied' }, turnEmit(r));
+      break;
+    }
+
+    case 'BACK': {
+      // ◀ 이전 on the 진행 순서 remote: one step back, the mirror of 다음.
+      // A reveal steps back a place (1st → 2nd …; from 3rd it leaves the reveal),
+      // and an ended game reopens.
+      if (r.revealStep >= 2) r.revealStep -= 1;
+      else {
+        r.state = 'ENDED';
+        r.revealStep = 0;
+      }
+      events.push({ e: 'reveal:step', step: r.revealStep });
+      break;
+    }
+
     case 'END': {
       r.pending = null;
       r.state = 'ENDED';
@@ -292,6 +334,8 @@ export function apply(state: Room, action: Action, now: number): { state: Room; 
     case 'REVEAL': {
       if (r.state === 'ENDED') {
         if (r.activeTiebreak !== null) throw new EngineError('TIEBREAK_PENDING');
+        // 1위 is never revealed as a tie: the 결정전 decides it first.
+        if (tiedGroups(r).length > 0) throw new EngineError('TIE_FOR_FIRST');
         if (action.step !== 0) throw new EngineError('BAD_REVEAL_STEP');
         r.state = 'REVEAL';
         r.revealStep = 0;

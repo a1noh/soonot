@@ -9,6 +9,7 @@ import type { Viewer } from '@soonot/master';
 import { chooserName, heldBy, nextGame, picksLeft } from './engine/apply';
 import { rank, tiedGroups, type Standing } from './engine/ranking';
 import type { Game, LastResult, Prizes, Room, Stone } from './shared/types';
+import { SECRET_STONE } from './shared/constants';
 
 export interface StonesView {
   kind: 'board' | 'master';
@@ -40,7 +41,17 @@ export interface StonesView {
   standings: Standing[];
   /** The 동점 결정전 being played right now (after 게임 종료). */
   activeTiebreak: { teams: { id: string; name: string; color: string }[]; game: Game } | null;
-  /** Master only: the 결정전 game, and every group still tied. */
+  /**
+   * After 게임 종료, a tie for 1위 not yet played off: the teams and the 결정전,
+   * so the projector shows the 타이브레이커 instead of the podium.
+   */
+  firstTie: { teams: { id: string; name: string; color: string }[]; game: Game } | null;
+  /**
+   * The secret 7th stone (감사 스톤), once a 1위 tie exists: the 결정전's prize.
+   * `teamId` is the team that won it, or null while it is still to play for.
+   */
+  secretStone: { name: string; color: string; teamId: string | null } | null;
+  /** Master only: the 결정전 game, and the 1위 tie still open (if any). */
   tiebreak?: Game;
   tiedGroups?: string[][];
   canUndoTiebreak?: boolean;
@@ -94,7 +105,24 @@ export function project(room: Room, viewer: Viewer): StonesView {
           game: room.tiebreak,
         }
       : null,
+    firstTie: null,
+    secretStone:
+      (room.state === 'ENDED' || room.state === 'REVEAL') && (room.activeTiebreak || room.tiebreaks.length || tiedGroups(room).length)
+        ? { ...SECRET_STONE, teamId: room.tiebreaks[0]?.[0] ?? null }
+        : null,
   };
+  if (room.state === 'ENDED' && room.activeTiebreak === null) {
+    const tie = tiedGroups(room)[0];
+    if (tie) {
+      view.firstTie = {
+        teams: tie.map((id) => {
+          const t = room.teams.find((x) => x.id === id)!;
+          return { id: t.id, name: t.name, color: t.color };
+        }),
+        game: room.tiebreak,
+      };
+    }
+  }
   if (viewer.kind === 'master' || room.state === 'REVEAL') view.prizes = room.prizes;
   if (viewer.kind === 'master') {
     view.games = room.games;

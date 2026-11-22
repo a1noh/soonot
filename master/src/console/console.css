@@ -749,3 +749,342 @@
 .winners__check { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
 .winners__calls { flex-basis: 100%; margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 15px; }
 .winners__calls b { font-size: 16px; }
+
+/* ---- 진행 순서 (run of show) --------------------------------------------- */
+.gametab--show { --tab-color: #ef6c5a; }
+.console__show { overflow-y: auto; padding: 16px; }
+.console__show[hidden] { display: none; }
+.show { display: grid; gap: 14px; max-width: 980px; margin: 0 auto; }
+.show__live {
+  position: sticky; top: 0; z-index: 2;
+  display: grid; gap: 10px; padding: 12px 14px;
+  background: var(--bg-raised); border: 1px solid var(--line); border-radius: var(--radius);
+  box-shadow: 0 8px 18px -12px rgba(0, 0, 0, 0.7);
+}
+.show__now { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.show__nowlabel { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; }
+.show__nowtitle { display: inline-flex; align-items: center; gap: 8px; font-size: 1.05rem; }
+.show__step { display: grid; grid-template-columns: auto 1fr; gap: 10px; }
+.show__next { display: grid; gap: 2px; text-align: left; justify-items: start; }
+.show__next small { font-size: 0.82rem; font-weight: 500; opacity: 0.85; }
+.show__chip--ph { color: var(--warn); border-color: var(--warn); }
+.show__chip--ok { color: var(--ok); border-color: var(--ok); }
+.show__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.show__add { display: flex; flex-wrap: wrap; gap: 8px; }
+.show__hint { margin: 0; color: var(--text-dim); font-size: 0.86rem; line-height: 1.5; }
+
+.cue { border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg-raised); }
+.cue.is-live { border-color: #ef6c5a; box-shadow: inset 4px 0 0 #ef6c5a; }
+.cue__row { display: grid; grid-template-columns: 28px 64px 1fr auto; gap: 12px; align-items: center; padding: 10px 12px; }
+.cue__n { font-weight: 700; color: var(--text-dim); text-align: right; }
+.cue__thumb {
+  width: 64px; height: 40px; border-radius: 6px; overflow: hidden;
+  display: grid; place-items: center; background: var(--bg-sunken); border: 1px solid var(--line);
+  font-size: 18px;
+}
+.cue__thumb img { width: 100%; height: 100%; object-fit: cover; }
+.cue__ph { font-size: 11px; color: var(--warn); font-weight: 700; }
+.cue__main { display: grid; gap: 4px; min-width: 0; }
+.cue__title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.cue__kind { font-size: 0.74rem; padding: 2px 6px; border-radius: 4px; background: var(--bg-sunken); color: var(--text-dim); }
+.cue__kind--screen { color: var(--game-stones); }
+.cue__air { font-size: 0.74rem; font-weight: 700; color: #ef6c5a; }
+.cue__bgm, .cue__note { font-size: 0.86rem; color: var(--text-dim); display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cue__actions { display: grid; gap: 6px; justify-items: end; }
+.cue__tools { display: flex; gap: 4px; }
+.cue__edit { display: grid; gap: 10px; padding: 12px 14px; }
+.cue__editrow { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.cue__url { display: flex; gap: 6px; align-items: center; }
+.cue__url .field__input { flex: 1; min-width: 0; }
+.cue__editactions { display: flex; gap: 8px; }
+
+.bgm {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: 8px; background: var(--bg-sunken); border: 1px solid var(--line);
+}
+.bgm--ph { border-color: var(--warn); }
+.bgm--off { color: var(--text-dim); }
+.bgm__name { font-weight: 600; }
+.bgm__hint { font-size: 0.84rem; }
+.bgm__vol { display: inline-flex; align-items: center; gap: 6px; }
+.bgm__vol input { width: 120px; }
+
+@media (max-width: 640px) {
+  .cue__row { grid-template-columns: 22px 1fr; }
+  .cue__thumb { display: none; }
+  .cue__actions { grid-column: 1 / -1; justify-items: stretch; }
+  .show__step { grid-template-columns: 1fr; }
+}
+
+.show__start {
+  display: grid; gap: 2px; justify-items: center; min-height: 64px; font-size: 1.3rem;
+  background: var(--ok); border-color: var(--ok); color: #04130a;
+  animation: startPulse 1.4s ease-in-out infinite;
+}
+.show__start small { font-size: 0.85rem; font-weight: 600; }
+@keyframes startPulse { 50% { box-shadow: 0 0 0 6px rgba(63, 185, 80, 0.3); } }
+.show__restart { justify-self: start; }
+
+/* ---- 진행 순서 remote ------------------------------------------------------ */
+.remote { display: grid; gap: 14px; max-width: 820px; margin: 0 auto; padding-bottom: 8px; }
+.remote__top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.remote__progress { display: flex; align-items: center; gap: 12px; flex: 1; }
+.remote__count { font-size: 1.4rem; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.remote__count small { font-size: 0.95rem; font-weight: 600; color: var(--text-dim); }
+.remote__bar { flex: 1; max-width: 360px; height: 6px; border-radius: 99px; background: var(--bg-sunken); overflow: hidden; }
+.remote__bar span { display: block; height: 100%; background: #ef6c5a; border-radius: inherit; transition: width 0.3s; }
+
+.remote__now {
+  display: grid; gap: 8px; padding: 18px 20px;
+  border-radius: 14px; border: 1px solid #ef6c5a55;
+  background: linear-gradient(180deg, #ef6c5a14, transparent 70%), var(--bg-raised);
+}
+.remote__now--idle { border-color: var(--line); background: var(--bg-raised); }
+.remote__kind { font-size: 0.82rem; font-weight: 700; color: #ef8a7b; letter-spacing: 0.02em; }
+.remote__title { margin: 0; font-size: clamp(1.4rem, 3.4vw, 2rem); line-height: 1.2; word-break: keep-all; }
+.remote__note { margin: 0; font-size: 1rem; line-height: 1.5; color: var(--text); opacity: 0.9; }
+.remote__screen { margin: 0; font-size: 0.84rem; color: var(--text-dim); }
+
+.remote__do { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.remote__do > .bgm { flex: 1 1 100%; }
+.remote__start {
+  flex: 1 1 100%; display: grid; gap: 2px; justify-items: center; min-height: 72px; font-size: 1.45rem;
+  background: var(--ok); border-color: var(--ok); color: #04130a; font-weight: 800;
+  animation: startPulse 1.4s ease-in-out infinite;
+}
+.remote__start small { font-size: 0.88rem; font-weight: 600; }
+.remote__chip { min-height: 48px; font-weight: 600; }
+.remote__timer { border-color: var(--warn); color: var(--warn); }
+.remote__timer.is-running { background: var(--warn); color: #1a1200; }
+.remote__timer b { font-variant-numeric: tabular-nums; margin-left: 6px; }
+.remote__ph { margin: 0; flex: 1 1 100%; font-size: 0.88rem; color: var(--warn); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.linkbtn { background: none; border: 0; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; min-height: auto; }
+
+.remote__game { border: 1px solid var(--line); border-radius: 14px; background: var(--bg); overflow: hidden; }
+.remote__game--bingo { --tab-color: var(--game-bingo); }
+.remote__game--stones { --tab-color: var(--game-stones); }
+.remote__game--yutnori { --tab-color: var(--game-yutnori); }
+.remote__gamehead {
+  margin: 0; padding: 10px 16px; display: flex; align-items: center; gap: 8px;
+  font-size: 0.92rem; background: var(--bg-raised); border-bottom: 1px solid var(--line);
+}
+.remote__gamedot { width: 10px; height: 10px; border-radius: 3px; background: var(--tab-color); }
+
+.remote__nav {
+  position: sticky; bottom: 0; z-index: 3;
+  display: grid; grid-template-columns: 1fr 2fr; gap: 10px;
+  padding: 10px 0 4px; background: linear-gradient(180deg, transparent, var(--bg) 30%);
+}
+.remote__prev, .remote__next {
+  display: grid; gap: 3px; justify-items: start; text-align: left;
+  min-height: 72px; padding: 10px 16px; font-size: 1.15rem; font-weight: 800;
+}
+.remote__next { font-size: 1.3rem; }
+.remote__prev small, .remote__next small {
+  font-size: 0.82rem; font-weight: 500; opacity: 0.85; max-width: 100%;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+.remote__all { border: 1px solid var(--line); border-radius: 12px; background: var(--bg-raised); }
+.remote__all summary { cursor: pointer; padding: 12px 16px; font-weight: 600; color: var(--text-dim); }
+.remote__all ol { list-style: none; margin: 0; padding: 0 8px 8px; display: grid; gap: 2px; }
+.remote__row {
+  width: 100%; display: grid; grid-template-columns: 26px 24px 1fr auto; gap: 8px; align-items: center;
+  padding: 8px 10px; border-radius: 8px; border: 0; background: none; color: var(--text);
+  text-align: left; font: inherit; cursor: pointer; min-height: 40px;
+}
+.remote__row:hover { background: var(--bg-sunken); }
+.remote__row.is-done { color: var(--text-dim); }
+.remote__row.is-live { background: #ef6c5a22; color: var(--text); font-weight: 700; }
+.remote__rown { color: var(--text-dim); text-align: right; font-variant-numeric: tabular-nums; }
+.remote__rowtitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.remote__rowtags { display: flex; gap: 4px; font-size: 0.9rem; }
+.remote__keys { margin: 0; text-align: center; font-size: 0.8rem; color: var(--text-dim); }
+
+.show__edithead { margin: 0; font-size: 1.2rem; }
+.cue__meta { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.84rem; color: var(--text-dim); }
+.cue__row .cue__tools { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.cue__row { grid-template-columns: 28px 64px 1fr auto; }
+
+@media (max-width: 640px) {
+  .remote__nav { grid-template-columns: 1fr 1.6fr; }
+  .remote__prev, .remote__next { min-height: 64px; padding: 8px 12px; }
+  .cue__row .cue__tools { grid-column: 1 / -1; justify-content: flex-start; }
+}
+
+/* ---- 스톤 in the remote (round-shaped) ------------------------------------- */
+.srm { display: grid; gap: 12px; }
+.srm__warn { margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--warn); color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, transparent); }
+.srm__card { display: grid; gap: 14px; padding: 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--bg-raised); }
+.srm__card--on { border-color: var(--game-stones); }
+.srm__label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--game-stones); }
+.srm__game { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; font-size: 1.35rem; }
+.srm__game small { font-size: 0.85rem; font-weight: 600; color: var(--text-dim); }
+.srm__hint { font-size: 0.82rem; color: var(--text-dim); }
+.srm__secret {
+  margin: 0; display: grid; gap: 4px; padding: 12px 14px; border-radius: 10px;
+  border: 1px dashed var(--game-stones); background: color-mix(in srgb, var(--game-stones) 8%, transparent);
+}
+.srm__head { display: flex; align-items: center; gap: 12px; }
+.srm__how summary { cursor: pointer; font-size: 0.86rem; color: var(--text-dim); }
+.srm__how p { margin: 6px 0 0; line-height: 1.55; font-size: 0.95rem; }
+.srm__step { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: start; }
+.srm__num {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  font-weight: 800; font-size: 0.9rem; background: var(--game-stones); color: #1a1200;
+}
+.srm__stepbody { display: grid; gap: 8px; }
+.srm__steplabel { font-size: 0.95rem; font-weight: 600; }
+.srm__steplabel b { color: var(--game-stones); }
+.srm__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.srm__chooser, .srm__team {
+  --team: var(--game-stones);
+  display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px;
+  border-radius: 999px; border: 1px solid var(--line-strong); background: var(--bg);
+  color: var(--text-dim); font: inherit; font-weight: 600; cursor: pointer;
+}
+.srm__chooser.is-on, .srm__team.is-on {
+  color: var(--text); border-color: var(--team);
+  background: color-mix(in srgb, var(--team) 32%, transparent);
+}
+.srm__chooser--guest { --team: var(--game-bingo); }
+.srm__team small { font-weight: 500; opacity: 0.7; }
+.srm__stones { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
+.srm__stone {
+  display: grid; justify-items: center; gap: 4px; padding: 10px 6px; min-height: 84px;
+  border-radius: 12px; border: 1px solid var(--line-strong); background: var(--bg);
+  color: var(--text); font: inherit; font-weight: 700; cursor: pointer;
+}
+.srm__stone:hover:not(:disabled) { border-color: var(--game-stones); transform: translateY(-1px); }
+.srm__stone:disabled { cursor: default; color: var(--text-dim); opacity: 0.6; }
+.srm__stone small { font-size: 0.72rem; font-weight: 600; }
+.srm__winners { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
+.srm__winners legend { padding: 0 4px; font-size: 0.85rem; color: var(--text-dim); }
+.srm__row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.srm__give { flex: 1; min-height: 60px; font-size: 1.1rem; font-weight: 800; }
+.srm__give.is-ready { background: var(--ok); border-color: var(--ok); color: #04130a; }
+.srm__last { min-height: 64px; display: inline-flex; gap: 10px; align-items: center; justify-content: center; background: var(--game-stones); border-color: var(--game-stones); color: #1a1200; font-weight: 800; }
+.srm__done { margin: 0; }
+.srm__score { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 0.86rem; color: var(--text-dim); }
+.srm__scoreitem { display: inline-flex; gap: 4px; align-items: center; }
+.srm__scoreitem::before { content: ''; width: 8px; height: 8px; border-radius: 2px; background: var(--team); }
+.srm__scoreitem b { color: var(--text); }
+.srm__undo { margin-left: auto; }
+.srm__ok { margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--ok); color: var(--ok); background: color-mix(in srgb, var(--ok) 10%, transparent); font-weight: 600; }
+
+.remote__auto {
+  display: grid; gap: 4px; align-content: center; justify-items: start;
+  min-height: 72px; padding: 10px 16px; border-radius: var(--radius);
+  border: 1px dashed var(--game-stones); color: var(--game-stones); font-weight: 700;
+  background: color-mix(in srgb, var(--game-stones) 8%, transparent);
+}
+.remote__auto .linkbtn { font-size: 0.85rem; font-weight: 600; color: var(--text-dim); }
+.remote__back {
+  display: grid; gap: 10px; padding: 14px 16px; border-radius: 12px;
+  border: 1px solid var(--warn); background: color-mix(in srgb, var(--warn) 8%, var(--bg-raised));
+}
+.remote__backq { margin: 0; font-size: 1rem; }
+.remote__backloss { margin: 0; padding-left: 4px; list-style: none; display: grid; gap: 2px; color: var(--warn); font-size: 0.9rem; }
+.remote__backrow { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* 스톤 round: the game is the remote; the step card is a slim header, the bar is ◀ 이전 only. */
+.remote__now--round { padding: 12px 16px; gap: 4px; border-color: color-mix(in srgb, var(--game-stones) 45%, transparent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--game-stones) 10%, transparent), transparent 80%), var(--bg-raised); }
+.remote__now--round .remote__kind { color: var(--game-stones); }
+.remote__now--round .remote__title { font-size: clamp(1.15rem, 2.6vw, 1.45rem); }
+.remote__now--round .remote__note { font-size: 0.9rem; color: var(--text-dim); }
+.remote__now--round .remote__screen { display: none; }
+.remote__autoline { margin: 2px 0 0; font-size: 0.86rem; font-weight: 700; color: var(--game-stones); }
+.remote__nav--solo { grid-template-columns: minmax(0, 320px); }
+.remote__nav--solo .remote__prev { min-height: 60px; }
+
+/* The remote's ◀ 이전 / 다음 ▶ never moves: pinned to the bottom of the window. */
+.remote { padding-bottom: 112px; }
+.remote__nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 20;
+  width: min(820px, calc(100% - 32px));
+  padding: 12px 0 14px;
+  background: linear-gradient(180deg, transparent, var(--bg) 22%);
+}
+.remote__nav--solo { justify-content: start; }
+
+/* "새 버전" notice when this console is running code older than the server's. */
+.stalebar {
+  position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 60;
+  display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 12px;
+  background: var(--accent); color: #fff; font-weight: 700; box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+}
+.stalebar button { min-height: 36px; padding: 0 12px; border-radius: 8px; border: 0; background: #fff; color: #0b3a7a; font: inherit; cursor: pointer; }
+
+.remote__tools { display: flex; gap: 8px; }
+.remote__restart { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 50%, transparent); }
+
+/* 다음 ▶ doing an in-step action: the label is the action. */
+.remote__next--act { background: var(--ok); border-color: var(--ok); color: #04130a; }
+.remote__next--act.is-waiting { background: var(--bg-raised); border-color: var(--line-strong); color: var(--text-dim); }
+.remote__plan { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.remote__plan li {
+  font-size: 0.8rem; padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--line); color: var(--text-dim);
+}
+.remote__plan li.is-done { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, transparent); }
+.remote__plan li.is-now { color: #04130a; background: var(--ok); border-color: var(--ok); font-weight: 700; }
+
+.remote__roundnow { margin: 2px 0 0; font-size: 1.05rem; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.remote__roundnow b { color: var(--game-stones); }
+.remote__handsong { font-size: 0.82rem; color: var(--warn); }
+
+/* ---- remote: status panels (no second set of action buttons) -------------- */
+.rs { display: grid; gap: 12px; padding: 4px 0; }
+.rs__hint { margin: 0; color: var(--text-dim); font-size: 0.95rem; line-height: 1.5; }
+.rs__stats { display: flex; flex-wrap: wrap; gap: 8px; }
+.rs__stat {
+  padding: 8px 14px; border-radius: 10px; background: var(--bg-raised); border: 1px solid var(--line);
+  font-size: 0.9rem; color: var(--text-dim);
+}
+.rs__stat b { font-size: 1.25rem; color: var(--text); margin: 0 2px; font-variant-numeric: tabular-nums; }
+.rs__stat.is-hot { border-color: var(--ok); }
+.rs__stat.is-hot b { color: var(--ok); }
+.rs__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.rs__list li {
+  --team: var(--line-strong);
+  display: grid; grid-template-columns: 36px 1fr auto; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 10px; background: var(--bg-raised);
+  border: 1px solid var(--line); border-left: 4px solid var(--team);
+}
+.rs__list li.is-live { border-color: var(--ok); }
+.rs__rank { font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; }
+.rs__name { font-weight: 700; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.rs__name small { font-weight: 500; color: var(--text-dim); }
+.rs__val { color: var(--text-dim); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.rs__tie { font-size: 0.75rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--warn); color: var(--warn); }
+.rs__teams { display: flex; flex-wrap: wrap; gap: 6px; }
+.rs__team { --team: var(--line-strong); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--team); font-weight: 600; }
+.rs__call { border: 2px solid var(--ok); border-radius: 12px; padding: 12px 14px; background: color-mix(in srgb, var(--ok) 8%, transparent); }
+.rs__callhead { margin: 0 0 6px; font-weight: 800; color: var(--ok); }
+.rs__call ol { margin: 0; padding-left: 22px; display: grid; gap: 4px; font-size: 1.05rem; }
+.rs__call span { color: var(--text-dim); font-size: 0.85rem; margin-left: 6px; }
+
+/* ---- remote: a firmer bottom bar ------------------------------------------- */
+.remote__nav { grid-template-columns: minmax(0, 1fr) minmax(0, 2.4fr); align-items: stretch; }
+.remote__prev { min-height: 64px; font-size: 1rem; font-weight: 700; background: var(--bg-raised); }
+.remote__next { min-height: 76px; font-size: 1.35rem; border-radius: 14px; box-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.8); }
+.remote__next small { font-size: 0.85rem; }
+.remote__next:disabled { opacity: 1; }
+.remote__next--act.is-waiting { box-shadow: none; }
+
+.rs__bots { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 10px; border: 1px dashed var(--line-strong); border-radius: 10px; }
+.rs__botn { font-size: 0.82rem; color: var(--text-dim); }
+
+.rs__botbtn { min-height: 44px; font-weight: 700; border-color: var(--game-bingo); color: var(--text); background: color-mix(in srgb, var(--game-bingo) 18%, var(--bg-raised)); }
+.pane__body > .rs__bots { margin-bottom: 12px; }
+
+/* Top-3 at the bingo reveal: any of their cards can go on the projector. */
+.rs__list li.rs__winner { grid-template-columns: 36px 1fr auto; }
+.rs__winner .rs__name { flex-direction: column; gap: 2px; align-items: flex-start; }
+.rs__cardbtns { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.rs__show { border-color: var(--game-bingo); }
+
+.remote__prev--undo { border-color: var(--warn); color: var(--warn); }
+.remote__prev--undo small { color: var(--text-dim); }
+.rs__secret { font-size: 0.75rem; padding: 1px 8px; border-radius: 999px; border: 1px solid #FFD873; color: #FFD873; }

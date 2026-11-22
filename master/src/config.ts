@@ -1,8 +1,11 @@
 /** Deployment configuration (spec §12). One process, one port, one database. */
+import { dirname, join } from 'node:path';
 
 export interface Config {
   port: number;
   dbPath: string;
+  /** Slide images/videos and BGM files for the 진행 순서, served at /media/. */
+  mediaDir: string;
   masterPasscodeHash: string | null;
   sessionSecret: string | null;
   projectorHoldMs: number;
@@ -14,6 +17,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     port: Number(env['PORT'] ?? 3000),
     dbPath: env['DB_PATH'] ?? './soonot.db',
+    // Next to the database by default, so on Fly it lands on the /data volume.
+    mediaDir: env['MEDIA_DIR'] ?? join(dirname(env['DB_PATH'] ?? './soonot.db'), 'media'),
     masterPasscodeHash: env['MASTER_PASSCODE_HASH'] ?? null,
     sessionSecret: env['SESSION_SECRET'] ?? null,
     projectorHoldMs: Number(env['PROJECTOR_HOLD_MS'] ?? 20_000),

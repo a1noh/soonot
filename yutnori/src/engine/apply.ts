@@ -84,6 +84,10 @@ function endGame(r: Room, reason: EndReason, now: number): Emit[] {
   r.endedAt = now;
   r.endReason = reason;
   r.pendingThrow = null;
+  // Ending abandons any in-flight ★ 미니게임 / 잡기 대결 — otherwise the invariant
+  // `pendingMiniGame while ENDED` would crash 게임 종료 and block 순위 발표. The board
+  // is already consistent (a deferred-catch 말 simply stays where it is).
+  r.pendingMiniGame = null;
   return [{ e: 'game:ended', endedAt: now, reason }];
 }
 

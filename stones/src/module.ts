@@ -99,6 +99,12 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
     }
     case 'master:undo':
       return { t: 'UNDO' };
+    case 'master:back':
+      return { t: 'BACK' };
+    case 'master:rewind': {
+      const round = rec(payload)?.round;
+      return typeof round === 'number' && Number.isInteger(round) && round >= 1 ? { t: 'REWIND', round } : null;
+    }
     case 'master:end':
       return { t: 'END' };
     case 'master:resumeFromEnded':

@@ -11,6 +11,7 @@ import { GAME_IDS } from '../../shared/lifecycle.js';
 import type { AnyGameModule } from '../module.js';
 import type { EventRecord } from '../../event/event.js';
 import type { HostDb } from './strategy.js';
+import { readShow, writeShow } from '../../event/show.js';
 
 /** A game older than an evening is not being recovered into (spec §8.4). */
 export const MAX_AGE_MS = 6 * 60 * 60 * 1000;
@@ -23,6 +24,7 @@ interface EventRow {
   bingo_enabled: number;
   yut_enabled: number;
   stones_enabled: number;
+  show_json?: string | null;
   created_at: number;
   closed_at: number | null;
 }
@@ -35,14 +37,15 @@ const ENABLED_COLUMN: Record<GameId, (row: EventRow) => number> = {
 
 export function writeEventRow(db: HostDb, event: EventRecord): void {
   db.prepare(
-    `INSERT INTO events (id, code, title, projector, bingo_enabled, yut_enabled, stones_enabled, created_at, closed_at)
-     VALUES (?,?,?,?,?,?,?,?,?)
+    `INSERT INTO events (id, code, title, projector, bingo_enabled, yut_enabled, stones_enabled, show_json, created_at, closed_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?)
      ON CONFLICT(id) DO UPDATE SET
        title = excluded.title,
        projector = excluded.projector,
        bingo_enabled = excluded.bingo_enabled,
        yut_enabled = excluded.yut_enabled,
        stones_enabled = excluded.stones_enabled,
+       show_json = excluded.show_json,
        closed_at = excluded.closed_at`,
   ).run(
     event.id,
@@ -52,6 +55,7 @@ export function writeEventRow(db: HostDb, event: EventRecord): void {
     event.games.bingo.enabled ? 1 : 0,
     event.games.yutnori.enabled ? 1 : 0,
     event.games.stones.enabled ? 1 : 0,
+    event.show ? writeShow(event.show) : null,
     event.createdAt,
     event.closedAt,
   );
@@ -106,6 +110,8 @@ export function recoverEvent(
     bingoCheck: null,
     // A countdown does not survive a restart either.
     projectorTimer: null,
+    // The cue list comes back; what was on air (a slide, a BGM) does not.
+    show: readShow(row.show_json),
     games,
     createdAt: row.created_at,
     closedAt: null,

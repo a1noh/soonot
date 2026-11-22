@@ -19,9 +19,12 @@ import { MINI_GAMES } from '@soonot/yutnori/src/shared/minigames.js';
 import { DUEL_GAMES } from '@soonot/yutnori/src/shared/constants.js';
 import { Qr, joinUrl } from '../shared/Qr.js';
 import type { StonesView } from '@soonot/stones/src/project.js';
-import { StonesStage, TiebreakStage } from './StonesStage.js';
+import { StonesStage, TallyStage, TiebreakStage } from './StonesStage.js';
 import { Leaf, LEAF_COLORS } from '../shared/Leaf.js';
 import { formatLeft, useCountdown } from '../shared/countdown.js';
+import { BgmPlayer, MusicCredit, SlideLayer, SoundPrompt } from './ShowLayer.js';
+import { useGameSfx } from './useSfx.js';
+import { playSfx } from './sound.js';
 import '../shared/harvest.css';
 import './projector.css';
 import './harvest-stage.css';
@@ -404,7 +407,7 @@ function stonesRank(view: StonesView): RankEntry[] {
   return view.standings.map((s, i) => ({
     id: s.teamId,
     label: s.teamName,
-    detail: `스톤 ${s.stoneIds.length}개`,
+    detail: `스톤 ${s.stoneIds.length}개${view.secretStone?.teamId === s.teamId ? ` + ✨${view.secretStone.name}` : ''}`,
     ...(prize(s.rank) ? { prize: prize(s.rank) } : {}),
     ...(i < 3 ? { medal: (i + 1) as 1 | 2 | 3 } : {}),
   }));
@@ -421,6 +424,8 @@ export function App() {
   const [autoGame, setAutoGame] = useState<GameId>('yutnori');
   const [reactions, setReactions] = useState<FloatingReaction[]>([]);
   const [mgShow, setMgShow] = useState(false); // hold the roulette until the 미니게임! callout finishes
+  const [videoOn, setVideoOn] = useState(false); // a video slide is playing — the BGM waits
+  const [soundBlocked, setSoundBlocked] = useState(false);
   const lastActivity = useRef<Record<GameId, number>>({ yutnori: 0, bingo: 0, stones: 0 });
   const reactId = useRef(0);
   const fxId = useRef(0);
@@ -486,6 +491,7 @@ export function App() {
       setTimeout(() => showFx(fx.kind, fx.text, fx.sub), 260);
     });
     socket.on('bingo:announced', () => {
+      playSfx('ding');
       // Anonymous on purpose: the room sees a bingo happened + a green flash, but
       // NOT who — identities stay secret until the reveal (builds suspense).
       bump('bingo');
@@ -497,6 +503,8 @@ export function App() {
       socket.close();
     };
   }, []);
+
+  useGameSfx(summary, sView, bView);
 
   const active: GameId = useMemo(() => {
     if (summary?.projectorLock) return summary.projectorLock;
@@ -522,18 +530,23 @@ export function App() {
   const screen = (() => {
     if (!summary) return <Standby summary={null} joinable={false} />;
     if (active === 'stones') {
-      if (sView && sView.state === 'ENDED' && sView.activeTiebreak) return <TiebreakStage view={sView} />;
-      if (sView && (sView.state === 'REVEAL' || sView.state === 'ENDED')) {
+      // A tie for 1위 is played off before any podium: the 결정전 screen, never the drumroll.
+      if (sView && sView.state === 'ENDED' && (sView.activeTiebreak || sView.firstTie)) return <TiebreakStage view={sView} />;
+      // The podium only once 순위 발표 is pressed: after 게임 종료 the board stays up,
+      // so the room never sees "순위 발표" while the remote is still on 최종 집계.
+      if (sView && sView.state === 'REVEAL') {
         return (
           <Podium
             ranked={stonesRank(sView)}
-            step={sView.state === 'ENDED' ? 0 : sView.revealStep}
+            step={sView.revealStep}
             title={sView.title || '스톤'}
             theme="stones"
             footnote={sView.prizes?.everyone ? `모든 팀에게 · ${sView.prizes.everyone}` : undefined}
           />
         );
       }
+      // 게임 종료 (decided), 순위 발표 not pressed yet: the suspense screen, never the standings.
+      if (sView && sView.state === 'ENDED') return <TallyStage view={sView} />;
       if (sView && sView.stones.length > 0) return <StonesStage view={sView} />;
       return <Standby summary={summary} joinable={false} theme="stones" />;
     }
@@ -570,9 +583,12 @@ export function App() {
       const spot = summary.bingoSpotlight;
       const winner = spot != null ? bView.winners.find((w) => w.n === spot) : undefined;
       if (winner) return <WinnerCardStage winner={winner} check={summary.bingoCheck} />;
-      return <Podium ranked={bView.standings} step={bView.state === 'ENDED' ? 0 : bView.revealStep} title="빙고" theme="bingo" winners={bView.winners} prizeOpen={summary.bingoPrize} />;
+      // After 빙고 종료 the final board stays up; the podium comes with 순위 발표.
+      if (bView.state === 'REVEAL') {
+        return <Podium ranked={bView.standings} step={bView.revealStep} title="빙고" theme="bingo" winners={bView.winners} prizeOpen={summary.bingoPrize} />;
+      }
     }
-    if (bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY')) {
+    if (bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY' || bView.state === 'ENDED')) {
       return <BingoScreen view={bView} flash={flash} />;
     }
     return <Standby summary={summary} joinable={true} theme="bingo" />;
@@ -593,13 +609,24 @@ export function App() {
 
   return (
     <>
-      {screen}
+      <div key={active} className={`screenfx screenfx--${summary?.screenTransition ?? 'fade'}`}>
+        {screen}
+      </div>
       <Reactions items={reactions} onDone={removeReaction} />
       {bView && bView.connectedCount > 0 ? <OnlineBox online={bView.connectedCount} harvest={active === 'bingo'} /> : null}
       {summary && joinChipCorner ? <JoinChip code={summary.code} corner={joinChipCorner} /> : null}
       {greenKey > 0 ? <div key={greenKey} className="greenflash" aria-hidden="true" /> : null}
       {active === 'yutnori' && fx ? <YutFx key={fx.id} fx={fx} onDone={() => setFx(null)} /> : null}
+      <SlideLayer
+        slide={summary?.slide ?? null}
+        kicker={summary?.title ?? ''}
+        onVideo={setVideoOn}
+        onBlocked={() => setSoundBlocked(true)}
+      />
+      <BgmPlayer bgm={summary?.bgm ?? null} hold={videoOn} onBlocked={() => setSoundBlocked(true)} />
+      {videoOn ? null : <MusicCredit bgm={summary?.bgm ?? null} muted={!!summary?.muted} />}
       {summary ? <TimerOverlay timer={summary.projectorTimer} serverNow={summary.serverNow} /> : null}
+      <SoundPrompt needed={soundBlocked} />
       <FullscreenButton />
     </>
   );
@@ -621,6 +648,15 @@ function TimerOverlay({ timer, serverNow }: { timer: EventSummary['projectorTime
     setEndedAt(null);
   }, [key]);
   if (left !== null && left > 0) sawRunning.current = true;
+  const secLeft = left === null ? null : Math.ceil(left / 1000);
+  const lastSec = useRef<number | null>(null);
+  useEffect(() => {
+    const before = lastSec.current;
+    lastSec.current = secLeft;
+    if (secLeft === null || before === null || secLeft === before) return;
+    if (secLeft >= 1 && secLeft <= 5) playSfx('tick');
+    else if (secLeft === 0 && sawRunning.current) playSfx('buzzer');
+  }, [secLeft]);
   useEffect(() => {
     if (left === 0 && sawRunning.current && endedAt === null) setEndedAt(Date.now());
   }, [left, endedAt]);

@@ -17,7 +17,15 @@ export type Action =
   | { t: 'SET_CHOOSER'; teamId?: string; guest?: string }
   | { t: 'SET_PLAYING'; teamId: string; playing: boolean }
   | { t: 'UNDO' }
+  /**
+   * Back to the start of round N (the 진행 순서 ◀ 이전): rounds N and later are
+   * taken back — their results undone, their stones returned, the chooser of
+   * round N restored. Also reopens an ended game (before the reveal).
+   */
+  | { t: 'REWIND'; round: number }
   | { t: 'END' }
+  /** ◀ 이전 during the reveal: one place back, or out of the reveal. */
+  | { t: 'BACK' }
   | { t: 'RESUME_FROM_ENDED' }
   | { t: 'REVEAL'; step: number }
   | { t: 'TIEBREAK_START'; teamIds: string[] }
@@ -68,6 +76,7 @@ export type EngineErrorCode =
   | 'BAD_REVEAL_STEP'
   | 'NOT_TIED'
   | 'TIEBREAK_PENDING'
+  | 'TIE_FOR_FIRST'
   | 'NO_TIEBREAK'
   | 'BAD_ORDER'
   | 'BAD_CHOOSER';

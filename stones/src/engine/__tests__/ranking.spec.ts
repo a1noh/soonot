@@ -16,7 +16,8 @@ describe('ranking', () => {
       ['조1', 1, 2], // setup order inside a shared place
       ['조3', 1, 2],
     ]);
-    expect(tiedGroups(r)).toEqual([['t1', 't3']]);
+    // A tie below 1위 shares its place: no 결정전 for it.
+    expect(tiedGroups(r)).toEqual([]);
   });
 
   it('a three-way tie at the top shares 1st, and the next team is 4th', () => {

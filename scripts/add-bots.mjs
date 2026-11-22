@@ -1,6 +1,7 @@
 /**
  * Add PLAYING bots to a 빙고 game without you touching the console for them.
  *   node scripts/add-bots.mjs [baseUrl] [count]
+ *   node scripts/add-bots.mjs http://localhost:3000 12      (리허설: 로컬, 12명)
  *   node scripts/add-bots.mjs https://soonot-hanmadang.fly.dev 50
  *
  * It first WAITS until the game is a fresh LOBBY with traits set and 0 players
@@ -11,7 +12,7 @@
  */
 import { io } from 'socket.io-client';
 
-const base = process.argv[2] ?? 'https://soonot-hanmadang.fly.dev';
+const base = process.argv[2] ?? 'http://localhost:3000';
 const N = Number(process.argv[3] ?? process.env.BOTS ?? 50);
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 const flush = (s) => new Promise((r) => process.stdout.write(s + '\n', r));
@@ -31,7 +32,7 @@ await new Promise((resolve) => {
     const v = m.view;
     const tag = `${v.state} players=${v.playerCount} traits=${v.traitCount}`;
     if (tag !== last) { last = tag; void flush(`   상태: ${tag}`); }
-    if (v.state === 'LOBBY' && v.playerCount === 0 && v.traitCount >= 20) {
+    if (v.state === 'LOBBY' && v.traitCount >= 20) {
       obs.close();
       resolve();
     }
@@ -59,7 +60,7 @@ async function fillOne(me) {
   me.filled = true;
   const others = bots.filter((x) => x !== me && x.number !== null);
   if (others.length < 5) { me.filled = false; return; }
-  const count = 5 + Math.floor(Math.random() * 10); // 5..14 cells → 1–2 줄
+  const count = 5 + Math.floor(Math.random() * 13); // 5..17 cells → 1–3 줄 (목표 3줄)
   for (let cell = 0; cell < count; cell++) {
     me.sock.emit('cell:fill', { cellIndex: cell, query: String(others[cell % others.length].number) });
     await wait(6);

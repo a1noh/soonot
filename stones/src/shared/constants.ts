@@ -26,15 +26,21 @@ export const STONE_COLORS: readonly string[] = [
   '#E8F1FF', // white
 ];
 
-/** The six stones the MCs name on the main board, in the script's order. */
+/** The six stones the MCs name on the main board. */
 export const DEFAULT_STONES: readonly string[] = [
-  '예배 스톤',
-  '섬김 스톤',
-  '사역 스톤',
-  '양육 스톤',
-  '선교 스톤',
-  '행정 스톤',
+  '믿음 스톤',
+  '소망 스톤',
+  '사랑 스톤',
+  '지혜 스톤',
+  '온유 스톤',
+  '은혜 스톤',
 ];
+
+/**
+ * The secret 7th stone. Never on the board: it appears only if 1위 is tied,
+ * as the prize of the 결정전, and goes to the team that wins it.
+ */
+export const SECRET_STONE = { name: '감사 스톤', color: '#FFD873' } as const;
 
 export const DEFAULT_TEAMS: readonly string[] = ['아이언맨', '헐크', '캡틴 아메리카', '토르', '블랙 위도우', '호크아이'];
 

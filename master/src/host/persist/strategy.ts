@@ -71,6 +71,8 @@ export interface Persistence {
    * master resets the event, so a restart does not recover the old one.
    */
   closeEvent?(event: unknown): void;
+  /** Persist the event row now — the 진행 순서 changed, no game did. */
+  saveEvent?(event: unknown): void;
   enqueue(input: {
     gameId: string;
     state: unknown;

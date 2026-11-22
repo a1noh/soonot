@@ -1,0 +1,92 @@
+/* 진행 순서 on the projector: slides over the game screen, screen transitions. */
+
+.fsbtn { z-index: 50; }
+
+.slide {
+  position: fixed; inset: 0; z-index: 30;
+  display: grid; place-items: center;
+  background: #05060c;
+  animation: slideFadeIn 600ms ease both;
+}
+.slide.is-leaving { z-index: 29; animation: slideFadeOut 600ms ease both; pointer-events: none; }
+.slide--zoom { animation-name: slideZoomIn; animation-duration: 750ms; animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+.slide--zoom.is-leaving { animation-name: slideZoomOut; animation-duration: 600ms; }
+.slide--slide { animation-name: slidePushIn; animation-duration: 650ms; animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+.slide--slide.is-leaving { animation-name: slidePushOut; }
+.slide--cut, .slide--cut.is-leaving { animation: none; }
+
+@keyframes slideFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideFadeOut { from { opacity: 1; } to { opacity: 0; } }
+@keyframes slideZoomIn { from { opacity: 0; transform: scale(1.12); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes slideZoomOut { from { opacity: 1; transform: none; } to { opacity: 0; transform: scale(0.94); } }
+@keyframes slidePushIn { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes slidePushOut { from { transform: none; opacity: 1; } to { transform: translateX(-30%); opacity: 0; } }
+
+.slide__media { width: 100vw; height: 100dvh; object-fit: contain; background: #000; display: block; }
+
+/* The placeholder: a title card in the 어벤추수 땡스게임 look. */
+.slide__ph {
+  position: absolute; inset: 0; overflow: hidden;
+  display: grid; place-content: center; justify-items: center; gap: 2.4vmin;
+  padding: 8vmin; text-align: center; color: #fff;
+  background:
+    radial-gradient(90vmax 60vmax at 50% 120%, rgba(240, 180, 41, 0.22), transparent 60%),
+    radial-gradient(70vmax 50vmax at 50% -20%, rgba(68, 110, 255, 0.28), transparent 65%),
+    linear-gradient(180deg, #070a1c 0%, #0b0f24 55%, #120d1e 100%);
+  font-family: var(--sans);
+}
+.slide__phglow {
+  position: absolute; left: 50%; top: 50%; width: 120vmin; height: 120vmin;
+  transform: translate(-50%, -50%); border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 9vmin rgba(255, 255, 255, 0.015), 0 0 0 18vmin rgba(255, 255, 255, 0.01);
+  pointer-events: none;
+}
+.slide__kicker {
+  position: relative; margin: 0;
+  font-size: clamp(16px, 2.6vmin, 40px); font-weight: 700; letter-spacing: 0.3em;
+  color: #f0b429; text-transform: uppercase;
+}
+.slide__title {
+  position: relative; margin: 0; max-width: 16em;
+  font-size: clamp(36px, 9vmin, 150px); line-height: 1.12; font-weight: 800;
+  word-break: keep-all; overflow-wrap: anywhere;
+  text-shadow: 0 0.6vmin 3vmin rgba(0, 0, 0, 0.5);
+}
+.slide__body {
+  position: relative; margin: 0; max-width: 32em;
+  font-size: clamp(18px, 3.6vmin, 60px); line-height: 1.35; color: rgba(255, 255, 255, 0.78);
+  word-break: keep-all;
+}
+
+/* Game screens: the master's cue picks how the projector moves between them. */
+.screenfx { animation: screenFade 600ms ease both; }
+.screenfx--zoom { animation: screenZoom 750ms cubic-bezier(0.16, 1, 0.3, 1) both; }
+.screenfx--slide { animation: screenPush 650ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.screenfx--cut { animation: none; }
+@keyframes screenFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes screenZoom { from { opacity: 0; transform: scale(1.08); } to { opacity: 1; transform: none; } }
+@keyframes screenPush { from { opacity: 0.4; transform: translateX(12%); } to { opacity: 1; transform: none; } }
+
+.soundprompt {
+  position: fixed; left: 50%; top: 2vmin; z-index: 55; transform: translateX(-50%);
+  padding: 1.2vmin 2.6vmin; border-radius: 999px; cursor: pointer;
+  background: rgba(10, 12, 26, 0.9); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3);
+  font-size: clamp(14px, 2.2vmin, 28px); font-weight: 700;
+  animation: soundPulse 1.6s ease-in-out infinite;
+}
+@keyframes soundPulse { 50% { box-shadow: 0 0 0 1vmin rgba(240, 180, 41, 0.35); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .slide, .slide.is-leaving, .screenfx { animation-duration: 1ms !important; }
+}
+
+/* CC BY credit for the track that just started (8 s, bottom right). */
+.musiccredit {
+  position: fixed; right: 2vmin; bottom: 1.6vmin; z-index: 45;
+  padding: 0.6vmin 1.4vmin; border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45); color: rgba(255, 255, 255, 0.82);
+  font-family: var(--sans); font-size: clamp(11px, 1.5vmin, 18px);
+  animation: creditIn 8s ease both; pointer-events: none;
+}
+@keyframes creditIn { 0% { opacity: 0; } 8% { opacity: 1; } 88% { opacity: 1; } 100% { opacity: 0; } }

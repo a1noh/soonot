@@ -1,87 +1,42 @@
-# SOONOT — status (pick-up notes)
+---
+status: active
+updated: 2026-11-21
+summary: 어벤추수 땡스게임 show runner (bingo + 스톤 + 진행 순서 remote, intro video, sound); rehearsed end to end; not committed yet
+---
+## Where we left off
+- 2026-11-21: big session on branch `feat/script-alignment` (13 commits ahead of `main`; today's work is **uncommitted**).
+  The live site (soonot-hanmadang.fly.dev) still runs `main`; nothing from today is deployed.
+- **진행 순서** is now a remote that runs the whole evening: 10 steps, 다음 ▶ does each step's next action
+  (autopilot), ◀ 이전 mirrors it, the 스톤 rounds are one step driven by the game, ↺ 전체 초기화 restarts the evening
+  on the same 참여 코드. Status-only game panels in the remote; full controls stay in the game tabs.
+- 스톤: stones are 믿음·소망·사랑·지혜·온유·은혜; a secret 7th **감사 스톤** is the prize of a 1위 tie-breaker (only
+  1위 ties get a 결정전; 순위 발표 is blocked until it's decided). Rewind (◀ per round) and BACK (reveal steps) added.
+- Sound: projector effects (made with ffmpeg), BGM per step and per round (Kevin MacLeod, CC BY, credit shown 8 s),
+  🔇 소리 끄기. Timers start by themselves on their step / round and end when you leave the step.
+- Intro video: chocojitsu patched the stone names (no 7th-stone tease: 감사 stays a complete secret); this session mixed
+  41 effects, plus a super-dramatic explosion (picture + sound) when Thanos pushes Gamora at 32.12 s →
+  `master/media/어벤추수-mc-intro-sfx.mp4` (see `video/intro/README.md`). The show plays it on step 2.
+- Bingo: 🤖 테스트 봇 button; at the reveal any of the top 3 cards can go on the projector with 랜덤 5명.
+- Verified: 400 unit tests; `scripts/rehearse.mjs` (whole show, sound checks) and `scripts/rehearse-paths.mjs`
+  (14 scenarios) all pass against a throwaway server on :3100.
+- The local server (`npm start`, :3000) runs all of it; Austin rehearses there (event code PDSX).
 
-_Last updated: 2026-09-21._
+## Next steps
+1. **Commit** today's work on `feat/script-alignment` (Austin hasn't said yes yet), then push the branch.
+2. Austin to listen to the intro's effects and the 11 BGM picks (chosen by description, not by ear); swap tracks in
+   ✎ 순서 편집 or `MUSIC` / `ROUNDS` in `master/src/event/show.ts`.
+3. Before the event on Fly: merge to `main` (ask first: it deploys), upload the intro video and run
+   `scripts/fetch-music.mjs` on the machine (or upload the tracks), `/media` lives on the 1 GB volume.
+4. Optional: a "참가자 카드 보기" list for any bingo player (today only the top 3); `npm run verify` uses bash
+   that fails on Windows (`set -o pipefail`), fix the script.
 
-## TL;DR
-Everything builds and **279 tests pass** (`npm run verify`). The app is feature-complete for a
-church 한마당 and **is LIVE**: **https://soonot-hanmadang.fly.dev** (master passcode `soonot`).
-Deployed to Fly.io (Tokyo/nrt), one always-on machine + a 1GB SQLite volume.
-
-### Live site
-- Operator: https://soonot-hanmadang.fly.dev/master  (passcode `soonot`)
-- Projector: https://soonot-hanmadang.fly.dev/p
-- Players:  https://soonot-hanmadang.fly.dev/b  (or scan the projector QR → `/{참여코드}`)
-- Redeploy: **automatic on every push to `main`** (CI → deploy, via `FLY_API_TOKEN` secret +
-  `DEPLOY_ENABLED=true` variable). Manual: `flyctl deploy --remote-only --app soonot-hanmadang`.
-- Cost control: it's **always-on (~$3/mo)**. To stop billing between events:
-  `flyctl scale count 0 --app soonot-hanmadang` (and `scale count 1` to bring it back), or
-  `flyctl apps destroy soonot-hanmadang` to remove it entirely.
-
-## What works (verified)
-- **윷놀이** — authentic **29-밭 윷판** with real **지름길**: 20 outer 밭 + two diagonals
-  (4 밭 each) + centre 방. Landing exactly on 모/뒷모/방 opens the shortcut and the move
-  picker offers *both* paths (지름길/바깥길). Throw pad, labelled move picker, 1 Hz clock with
-  time-up auto-end, pause/extend, undo, reveal podium. Mario-Party **mini-games** on ★ 밭
-  (roulette → master judges 성공/실패; fail reverts the 말 & passes the turn). **미니게임
-  데이터베이스** is editable per event in the 윷놀이 setup.
-- **빙고** — 5×5 card, join by **닉네임**, fill by number/name/초성, ambiguous-name picker,
-  reconnect-restore, reveal. Master console: traits, start, live who's-online, dashboard.
-- **Projector `/p`** — the single presentation screen: the board, roulette, podium, a prominent
-  **⛶ 전체화면** button, a **QR** to join, a bottom-left **"who's online" box** (접속 N명 +
-  names), and **Kahoot-style emoji reactions** that rise up the **right-side column** each with
-  the **sender's nickname**. Anti-도배: per-phone cooldown + rolling budget on the phone, plus a
-  per-socket throttle and a global cap on the host. `/y` aliases `/p`.
-- **Join by 참여 코드** — the projector QR encodes `/{code}`; scanning goes straight to the
-  nickname screen. Opening bare `/b` first asks for the 참여 코드 shown on the projector, so
-  random visitors can't wander into a live event. A persistent QR + code chip on the bingo screen
-  lets latecomers join mid-game.
-- **Anonymous bingo suspense** — a bingo flashes the projector green + updates a live **anonymous
-  chart** (1줄 N명 / 2줄 N명 …, no names) so identities stay secret until the reveal. The
-  projector's bingo screens are kawaii-pastel (matching `/b`); 윷놀이 stays gold-paper.
-- **Who's online = connected only** — offline players (incl. ghosts recovered from a previous
-  session) never show. Console lists connected names; the projector shows a name list on bingo and a
-  compact 접속 N명 count on the 윷놀이 board (so it never covers the map). A bingo **다시 하기**
-  also bounces connected phones back to waiting.
-- **Clean-slate restart** — 빙고 persistence is **config-only**: only the trait list is saved; the
-  roster and play are session-only and are **never persisted or recovered**, so a deploy/restart
-  never resurrects old players. (윷놀이 still recovers fully via its event log.)
-- **Open the projector from the console** — the master top bar has a **🖥 발표 화면 열기**
-  button that opens `/p` in a new window (then one tap of ⛶ there goes fullscreen).
-- **Master console** — drives both games; per-game **다시 하기** reset + **새 행사**; the
-  **순위** shown during reveal for suspense.
-- **Host** — one process, SQLite persistence + recovery, cache-busting HTML (no more stale
-  builds), crash-safe (a player acting before an event no longer kills the server).
-
-Visual proof: `node scripts/shoot.mjs` drives real Chrome and writes PNGs to `scripts/shots/`
-(board, roulette, podium, setup form, card, emoji reactions) — asserts zero page errors.
-
-## Deploy-ready (the overnight ask)
-- `Dockerfile` (multi-stage, builds client + native better-sqlite3), `.dockerignore`.
-- `fly.toml` (one always-on machine, `/data` volume for SQLite, TLS).
-- `.github/workflows/ci.yml` — push/PR → tsc + vitest (280) + build.
-- `.github/workflows/deploy.yml` — green `main` → `flyctl deploy`, **gated on a repo variable
-  `DEPLOY_ENABLED=true`** so a push runs CI green without deploying until you opt in.
-- **DEPLOY.md** — full step-by-step (create app + volume, set `MASTER_PASSCODE_HASH`,
-  add `FLY_API_TOKEN` repo secret).
-
-### To go live (≈10 min)
-```sh
-fly launch --no-deploy            # pick app name (soonot)
-fly volumes create soonot_data --size 1 --region nrt
-npm run -s hash-passcode          # → copy hash
-fly secrets set MASTER_PASSCODE_HASH="<hash>"
-fly tokens create deploy          # → add as GitHub secret FLY_API_TOKEN
-# then in GitHub → Settings → Secrets and variables → Actions → Variables:
-#   DEPLOY_ENABLED = true          # flips on the auto-deploy job
-fly deploy                        # first deploy (CI auto-deploys on green main after)
-```
-
-## Next up (small, not blocking)
-1. **Verify the Docker build locally** — Docker Desktop was off during authoring, so the
-   image build wasn't run here (config is standard; CI/Fly will build it). First real proof
-   is `fly deploy` (or `docker build .` once Desktop is running).
-2. Optional: bundle a Korean display font so the projector title looks identical on any laptop.
-
-## Run locally
-`npm install && npm run build && npm start` → `/master` (passcode `soonot`), `/p`, `/b`.
-See RUNNING.md.
+## Decisions
+- One path: the remote is the only way forward (다음 ▶); game tabs are for emergencies.
+- 결정전 only for a tie for 1위; other ties share their place.
+- Stone names 믿음·소망·사랑·지혜·온유·은혜 + secret 감사 (Austin, 2026-11-21).
+- Music must be free to play at an event: Kevin MacLeod (CC BY 4.0). TikTok's library can't be used outside TikTok.
+  Hand-played songs (찬양 clips, 태양 「눈, 코, 입」, I Will Always Love You) stop the BGM on their round.
+- Media work (video, sound) is done in this project with the hub toolbox, not handed to other sessions.
+- `feat/script-alignment` stays unmerged until Austin approves (pushing `main` deploys live).
+- Live site basics (unchanged): Fly app `soonot-hanmadang`, Tokyo, always-on (~$3/mo, `flyctl scale count 0` to pause);
+  master passcode set by `MASTER_PASSCODE_HASH`; auto-deploy on green `main` (`DEPLOY_ENABLED=true`).

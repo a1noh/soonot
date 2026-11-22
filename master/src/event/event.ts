@@ -11,6 +11,7 @@ import type { GameId, RoomState } from '../shared/lifecycle';
 import { GAME_IDS } from '../shared/lifecycle';
 import { generateCode } from './code';
 import type { AnyGameModule } from '../host/module';
+import { defaultShow, type BgmOnAir, type Cue, type ShowState, type SlideOnAir, type Transition } from './show';
 
 export type ProjectorSetting = GameId | 'auto';
 
@@ -48,6 +49,8 @@ export interface EventRecord {
   bingoCheck: number[] | null;
   /** A countdown over whatever the projector shows (any game), or null. */
   projectorTimer: ProjectorTimer | null;
+  /** 진행 순서: the script's slides, screens and BGM, and what is on air now. */
+  show: ShowState;
   readonly games: Record<GameId, GameHandle>;
   readonly createdAt: number;
   closedAt: number | null;
@@ -95,6 +98,7 @@ export function createEvent(input: CreateEventInput): EventRecord {
     bingoPrize: false,
     bingoCheck: null,
     projectorTimer: null,
+    show: defaultShow(),
     games,
     createdAt: now,
     closedAt: null,
@@ -124,6 +128,22 @@ export interface EventSummary {
   bingoPrize: boolean;
   bingoCheck: number[] | null;
   projectorTimer: ProjectorTimer | null;
+  /** A slide over the projector, or null for the game screen. */
+  slide: SlideOnAir | null;
+  /** The BGM the projector plays (or, with no file, a placeholder for the MC). */
+  bgm: BgmOnAir | null;
+  /** How the projector moves between game screens. */
+  screenTransition: Transition;
+  /** 🔇 소리 끄기 on the console: the projector stays silent. */
+  muted: boolean;
+  /** The cue last sent to the projector. */
+  liveCue: string | null;
+  /**
+   * The whole 진행 순서 — the CONSOLE's copy only. It names every round in
+   * order, which the room must not learn early, so phones and the projector
+   * never get it.
+   */
+  cues?: Cue[];
   /** The server's clock when this summary was made, so a screen can line its countdown up. */
   serverNow: number;
   games: Record<GameId, { enabled: boolean; state: RoomState }>;
@@ -132,6 +152,7 @@ export interface EventSummary {
 export function summarize(
   event: EventRecord,
   modules: Readonly<Record<GameId, AnyGameModule>>,
+  forMaster = false,
 ): EventSummary {
   const games = {} as EventSummary['games'];
   for (const gameId of GAME_IDS) {
@@ -150,6 +171,12 @@ export function summarize(
     bingoPrize: event.bingoPrize,
     bingoCheck: event.bingoCheck,
     projectorTimer: event.projectorTimer,
+    slide: event.show.slide,
+    bgm: event.show.bgm,
+    screenTransition: event.show.screenTransition,
+    muted: event.show.muted,
+    liveCue: event.show.liveCue,
+    ...(forMaster ? { cues: event.show.cues } : {}),
     serverNow: Date.now(),
     games,
   };

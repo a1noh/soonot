@@ -123,6 +123,10 @@ describe('스톤 end to end', () => {
     expect(denied?.ok).not.toBe(true);
 
     expect(await send(m, 'master:end')).toMatchObject({ ok: true });
+    // 예배 and 양육 are tied for 1위: no podium until the 결정전 decides it.
+    expect(await send(m, 'master:reveal', { step: 0 })).toMatchObject({ ok: false, error: { code: 'TIE_FOR_FIRST' } });
+    await send(m, 'master:tiebreak:start', { teamIds: ['t2', 't3'] });
+    await send(m, 'master:tiebreak:resolve', { order: ['t2', 't3'] });
     const revealed = nextView(p, (v) => v.state === 'REVEAL' && v.revealStep === 1);
     await send(m, 'master:reveal', { step: 0 });
     await send(m, 'master:reveal', { step: 1 });

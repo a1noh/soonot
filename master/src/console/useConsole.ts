@@ -10,6 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import type { EventSummary } from '../event/event.js';
 import type { GameId } from '../shared/lifecycle.js';
+import type { Cue } from '../event/show.js';
 
 export type AuthState = 'checking' | 'signed-out' | 'signed-in';
 
@@ -27,8 +28,23 @@ export interface ConsoleApi {
   /** Start a countdown on the projector (seconds), or stop it (null). */
   setTimer(seconds: number | null, label?: string): Promise<void>;
   enableGame(gameId: GameId, enabled: boolean): Promise<void>;
+  /** 진행 순서: replace the cue list. */
+  saveCues(cues: Cue[]): Promise<void>;
+  /** Put one cue on the projector (a slide, or a game screen) and start its BGM. */
+  goCue(id: string): Promise<void>;
+  /** 시작: play the cue on air — its video, then its BGM. */
+  startCue(): Promise<void>;
+  /** Music for what is on now inside a step (each 스톤 round's track); '' stops it. */
+  setMusic(name: string, url: string): Promise<void>;
+  /** 🔇 소리 끄기 (true) / 🔊 소리 켜기 (false) on the projector. */
+  setMuted(muted: boolean): Promise<void>;
+  /** Take the slide down — back to the game screen. */
+  clearSlide(): Promise<void>;
+  bgm(action: 'play' | 'pause' | 'restart' | 'stop' | null, volume?: number): Promise<void>;
   /** Reset one game back to SETUP, keeping the event and the other game. */
   resetGame(gameId: GameId): Promise<void>;
+  /** ↺ 전체 초기화: every game and the 진행 순서 back to the start; same event and code. */
+  restartEvent(): Promise<void>;
   /** Close the current event and return to the create screen. */
   resetEvent(): Promise<void>;
   /** Every game action names its game — both games share `master:start` etc. */
@@ -167,11 +183,35 @@ export function useConsole(): ConsoleApi {
       setTimer: async (seconds, label) => {
         await hostOp('projector:timer', seconds === null ? { stop: true } : { seconds, label: label ?? '' });
       },
+      saveCues: async (cues) => {
+        await hostOp('show:save', { cues });
+      },
+      goCue: async (id) => {
+        await hostOp('show:go', { id });
+      },
+      startCue: async () => {
+        await hostOp('show:start');
+      },
+      setMusic: async (name, url) => {
+        await hostOp('show:music', { name, url });
+      },
+      setMuted: async (muted) => {
+        await hostOp('show:mute', { muted });
+      },
+      clearSlide: async () => {
+        await hostOp('show:clear');
+      },
+      bgm: async (action, volume) => {
+        await hostOp('show:bgm', { ...(action ? { action } : {}), ...(volume !== undefined ? { volume } : {}) });
+      },
       enableGame: async (gameId, enabled) => {
         await hostOp('game:enable', { gameId, enabled });
       },
       resetGame: async (gameId) => {
         await hostOp('game:reset', { gameId });
+      },
+      restartEvent: async () => {
+        await hostOp('event:restart');
       },
       resetEvent: async () => {
         await hostOp('event:reset');

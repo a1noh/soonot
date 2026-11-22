@@ -46,6 +46,8 @@ function route(ev: string, payload: unknown, viewer: Viewer): Action | null {
         return { t: 'START' };
       case 'master:end':
         return { t: 'END' };
+      case 'master:back':
+        return { t: 'BACK' };
       case 'master:reveal': {
         const step = int(payload, 'step');
         return step === null || step < 0 || step > 4 ? null : { t: 'REVEAL', step };

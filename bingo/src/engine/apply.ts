@@ -23,8 +23,8 @@ export const ALLOWED: Readonly<Record<RoomState, readonly ActionType[]>> = {
   SETUP: ['SET_TRAITS'],
   LOBBY: ['JOIN', 'REJOIN', 'DISCONNECT'],
   RUNNING: ['JOIN', 'REJOIN', 'DISCONNECT', 'FILL', 'FILL_PICK', 'CLEAR'],
-  ENDED: ['REJOIN', 'DISCONNECT'],
-  REVEAL: ['REJOIN', 'DISCONNECT'],
+  ENDED: ['REJOIN', 'DISCONNECT', 'BACK'],
+  REVEAL: ['REJOIN', 'DISCONNECT', 'BACK'],
 };
 
 export function create(eventId: string, now: number): Room {
@@ -350,6 +350,17 @@ export function apply(room: Room, action: Action, now: number): Out {
 
     case 'END':
       return { state: { ...room, state: 'ENDED', endedAt: now }, emits: [] };
+
+    case 'BACK': {
+      // ◀ 이전 on the 진행 순서 remote: one step back, the mirror of 다음.
+      // A reveal steps back a place (1st → 2nd …; from 3rd it leaves the reveal),
+      // and an ended game reopens.
+      if (room.state === 'REVEAL') {
+        if (room.revealStep >= 2) return { state: { ...room, revealStep: room.revealStep - 1 }, emits: [] };
+        return { state: { ...room, state: 'ENDED', revealStep: 0 }, emits: [] };
+      }
+      return { state: { ...room, state: 'RUNNING', endedAt: null }, emits: [] };
+    }
 
     case 'REVEAL': {
       // The same protocol 윷놀이 uses: entering the reveal is step 0, and every
