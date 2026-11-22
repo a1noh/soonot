@@ -1,11 +1,12 @@
 ---
 status: active
 updated: 2026-11-21
-summary: 어벤추수 땡스게임 show runner (bingo + 스톤 + 진행 순서 remote, intro video, sound); rehearsed end to end; not committed yet
+summary: 어벤추수 땡스게임 show runner (bingo + 스톤 + 진행 순서 remote, intro video, sound); rehearsed end to end; LIVE on Fly
 ---
 ## Where we left off
-- 2026-11-21: big session on branch `feat/script-alignment` (13 commits ahead of `main`; today's work is **uncommitted**).
-  The live site (soonot-hanmadang.fly.dev) still runs `main`; nothing from today is deployed.
+- 2026-11-21: big session; committed (98fe5bd, d3d7981) and **deployed**: `main` fast-forwarded to d3d7981, CI + Fly
+  deploy green, live site serves the same build. Media uploaded to the Fly volume with `scripts/upload-media.mjs`
+  (intro video + 11 BGM tracks, all served). Live: https://soonot-hanmadang.fly.dev (/master · /p · /b · /rules).
 - **진행 순서** is now a remote that runs the whole evening: 10 steps, 다음 ▶ does each step's next action
   (autopilot), ◀ 이전 mirrors it, the 스톤 rounds are one step driven by the game, ↺ 전체 초기화 restarts the evening
   on the same 참여 코드. Status-only game panels in the remote; full controls stay in the game tabs.
@@ -22,12 +23,11 @@ summary: 어벤추수 땡스게임 show runner (bingo + 스톤 + 진행 순서 r
 - The local server (`npm start`, :3000) runs all of it; Austin rehearses there (event code PDSX).
 
 ## Next steps
-1. **Commit** today's work on `feat/script-alignment` (Austin hasn't said yes yet), then push the branch.
+1. Before the event: create the event on the live /master, open /p on the projector laptop and tap it once for sound.
+   After any change to the intro or music, re-run `scripts/upload-media.mjs` (media is not in git).
 2. Austin to listen to the intro's effects and the 11 BGM picks (chosen by description, not by ear); swap tracks in
    ✎ 순서 편집 or `MUSIC` / `ROUNDS` in `master/src/event/show.ts`.
-3. Before the event on Fly: merge to `main` (ask first: it deploys), upload the intro video and run
-   `scripts/fetch-music.mjs` on the machine (or upload the tracks), `/media` lives on the 1 GB volume.
-4. Optional: a "참가자 카드 보기" list for any bingo player (today only the top 3); `npm run verify` uses bash
+3. Optional: a "참가자 카드 보기" list for any bingo player (today only the top 3); `npm run verify` uses bash
    that fails on Windows (`set -o pipefail`), fix the script.
 
 ## Decisions
