@@ -127,9 +127,12 @@ function Podium({
 }) {
   const shown = podiumAt(ranked, step);
   const champ = winners && winners[0]; // 1등's matched people, once fully revealed
+  // The matched list shows after the full reveal — and steps aside when the prize opens,
+  // so the podium always fits one screen (a 1등 can have matched up to 25 people).
+  const showList = step >= 4 && !!champ && champ.matched.length > 0 && !prizeOpen;
   return (
     <Stage kind="podium" theme={theme}>
-      <div className="podium">
+      <div className={`podium${showList ? ' podium--list' : ''}${prizeOpen ? ' podium--prize' : ''}`}>
         <h2 className="podium__title">🏆 {title} 순위 발표</h2>
         {shown.length === 0 ? (
           <p className="podium__hold">두구두구두구…</p>
@@ -145,11 +148,11 @@ function Podium({
             ))}
           </ol>
         )}
-        {step >= 4 && champ && champ.matched.length > 0 ? (
+        {showList ? (
           <div className="wreveal">
-            <div className="wreveal__cap">🥇 {champ.name} 님이 매칭한 사람들</div>
+            <div className="wreveal__cap">🥇 {champ!.name} 님이 매칭한 사람들</div>
             <div className="wreveal__chips">
-              {champ.matched.map((m, i) => (
+              {champ!.matched.map((m, i) => (
                 <span key={i} className="wreveal__chip">
                   <b>{m.name} #{m.number}</b>
                   <small>{m.trait}</small>

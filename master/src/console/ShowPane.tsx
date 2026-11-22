@@ -316,6 +316,8 @@ function Remote({
     if (openRound === null) return;
     const r = ROUNDS[openRound - 1];
     if (r && r.timer > 0) void setTimer(r.timer, r.timerLabel).catch(() => {});
+    // A round without a timer must not inherit the last round's countdown.
+    else if (event.projectorTimer) void setTimer(null).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRound]);
 

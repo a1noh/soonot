@@ -463,3 +463,29 @@ body { margin: 0; background: var(--stage); color: var(--ink); font-family: var(
   .ptimer, .ptimer.is-urgent .ptimer__time { animation: none; }
   .ptimer__bar > span { transition: none; }
 }
+
+/* The podium always fits one screen (fullscreen 1920×1080 down to 1024×768). */
+.stage--podium { height: 100dvh; min-height: 0; overflow: hidden; }
+.podium--list { gap: 1.6vmin; }
+.podium--list .podium__title { font-size: clamp(26px, 5vmin, 72px); }
+.podium--list .podium__row { padding: 1vmin 2.4vmin; }
+.podium--list .wreveal__chips {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(min(16vw, 250px), 1fr));
+  gap: 0.8vmin; width: min(1500px, 94vw); max-height: 42vh; overflow: hidden;
+}
+.podium--list .wreveal__chip { padding: 0.6vmin 1vmin; }
+.podium--list .wreveal__chip b { font-size: clamp(13px, 2vmin, 28px); }
+.podium--list .wreveal__chip small { font-size: clamp(10px, 1.3vmin, 18px); }
+.podium--list .prizebox { margin-top: 0; flex-direction: row; gap: 1.4vmin; }
+.podium--list .prizebox__lid { font-size: clamp(28px, 5vmin, 64px); }
+/* The prize opened: it gets the space the list had. */
+.podium--prize .prizebox { margin-top: 3vmin; }
+.podium--prize .prizebox__prize { font-size: clamp(28px, 6vmin, 90px); }
+
+/* On the 스톤 screens the timer sits bottom-left, over the stone's empty space,
+   so it never covers the game rules (a 4:3 projector makes the card reach the bottom). */
+body:has(.stage--theme-stones) .ptimer {
+  left: 2.4vmin; bottom: 7vmin; transform: none; min-width: 22vmin;
+  animation-name: ptimerInLeft;
+}
+@keyframes ptimerInLeft { from { opacity: 0; transform: translateY(2vmin); } to { opacity: 1; transform: none; } }

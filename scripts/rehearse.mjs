@@ -16,7 +16,8 @@ import { io } from 'socket.io-client';
 import { existsSync, mkdirSync } from 'node:fs';
 
 const BASE = process.argv[2] ?? 'http://localhost:3100';
-const OUT = 'scripts/shots/rehearsal/';
+const [PW, PH] = (process.env.PROJ ?? '1280x720').split('x').map(Number);
+const OUT = `scripts/shots/rehearsal/${PW}x${PH}/`;
 mkdirSync(OUT, { recursive: true });
 const CHROME = [
   'C:/Program Files/Google/Chrome/Application/chrome.exe',
@@ -33,10 +34,12 @@ m.setDefaultTimeout(20000);
 m.on('pageerror', (e) => errors.push('console: ' + e.message));
 m.on('dialog', (d) => d.accept());
 await m.setViewport({ width: 1000, height: 1150 });
-const p = await browser.newPage();
+// The projector gets its own window, as on the night (switching tabs would drop its fullscreen).
+const projBrowser = await puppeteer.launch({ executablePath: CHROME, headless: 'new', args: ['--no-sandbox', '--autoplay-policy=no-user-gesture-required'] });
+const p = await projBrowser.newPage();
 p.setDefaultTimeout(20000);
 p.on('pageerror', (e) => errors.push('projector: ' + e.message));
-await p.setViewport({ width: 1280, height: 720 });
+await p.setViewport({ width: PW, height: PH });
 // Record every sound the projector actually starts (effects, music, video).
 await p.evaluateOnNewDocument(() => {
   window.__plays = [];
@@ -59,6 +62,18 @@ async function shot(name) {
   await p.bringToFront();
   await sleep(900); // let the projector's transition finish (background tabs pause animations)
   await p.screenshot({ path: `${OUT}${n}-${name}-projector.png` });
+  const fit = await p.evaluate(() => {
+    const d = document.documentElement;
+    const over = [...document.querySelectorAll('h1, h2, .podium__row, .tally__team, .ranks, .tb__team, .slide__title, .ptimer, .joinchip, .bingo, .board')]
+      .filter((el) => {
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && (r.right > innerWidth + 2 || r.bottom > innerHeight + 2 || r.left < -2);
+      })
+      .map((el) => el.className.toString().split(' ')[0]);
+    return { scrollX: d.scrollWidth > innerWidth + 2, scrollY: d.scrollHeight > innerHeight + 2, over, fs: !!document.fullscreenElement };
+  });
+  if (fit.scrollX || fit.scrollY || fit.over.length) errors.push(`${name} @${PW}x${PH}: ${JSON.stringify(fit)}`);
+  if (!fit.fs) errors.push(`${name}: projector left fullscreen`);
   await m.bringToFront();
 }
 async function click(scope, text, { exact = false } = {}) {
@@ -114,7 +129,9 @@ if (!(await m.$('.gametabs'))) {
 }
 await m.waitForSelector('.remote');
 await p.goto(`${BASE}/p`);
-await p.mouse.click(640, 360); // the one tap that lets the projector play sound
+await p.waitForSelector('.fsbtn');
+await p.click('.fsbtn'); // ⛶ 전체화면 — also the tap that lets the projector play sound
+await sleep(600);
 await m.bringToFront();
 
 // ---- 1 빙고 QR 안내 ---------------------------------------------------------------
@@ -216,6 +233,11 @@ for (let r = 1; r <= 6; r++) {
     await click('.srm', '마지막 스톤 열기');
   }
   await shot(`round${r}-game-open`);
+  // Rounds 3, 5 and 6 have no timer: the last round's countdown must not carry over.
+  if ([3, 5, 6].includes(r) && (await p.$('.ptimer'))) {
+    const t = await p.$eval('.ptimer', (e) => e.textContent.trim());
+    if (!/시간 종료/.test(t) || r !== 3) errors.push(`round ${r} opened with a leftover timer: "${t}"`);
+  }
   if (r === 2) {
     const during = (await plays()).slice(mutedMark);
     log('sounds while muted:', JSON.stringify(during));
@@ -287,4 +309,5 @@ for (const need of ['ding.mp3', 'reveal.mp3', 'win.mp3', 'boom.mp3', 'drumroll.m
 }
 for (const b of bots) b.sock.close();
 await browser.close();
+await projBrowser.close();
 console.log(JSON.stringify({ ok: errors.length === 0, shots: shotN, errors }, null, 1));
