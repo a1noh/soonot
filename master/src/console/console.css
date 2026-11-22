@@ -1088,3 +1088,16 @@
 .remote__prev--undo { border-color: var(--warn); color: var(--warn); }
 .remote__prev--undo small { color: var(--text-dim); }
 .rs__secret { font-size: 0.75rem; padding: 1px 8px; border-radius: 999px; border: 1px solid #FFD873; color: #FFD873; }
+
+/* Phones: menus open full-width under their button (anchored right, they ran off the left edge),
+   the 발표 화면 switch wraps instead of squeezing labels into vertical letters, and the remote
+   keeps its content clear of the bottom bar. */
+.seg { flex-wrap: wrap; }
+.seg__btn { white-space: nowrap; }
+@media (max-width: 640px) {
+  .more__menu, .timer .more__menu {
+    position: fixed; left: 12px; right: 12px; top: auto; min-width: 0; z-index: 70;
+  }
+  .seg__locked { flex-basis: 100%; }
+  .remote { padding-bottom: 150px; }
+}
