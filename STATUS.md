@@ -1,9 +1,23 @@
 ---
 status: active
-updated: 2026-11-21
-summary: 어벤추수 땡스게임 show runner (bingo + 스톤 + 진행 순서 remote, intro video, sound); rehearsed end to end; LIVE on Fly
+updated: 2026-11-23
+summary: 어벤추수 땡스게임 show runner; LIVE on Fly (d3d7981); 2 fixes undeployed; team's simulation feedback to build into the remote
 ---
 ## Where we left off
+- 2026-11-22/23: **Team simulation feedback** (Austin pasted it) is written up as a colour-coded 진행순서 (추가 green,
+  수정 orange, 논의 red, old struck through) for the team's Google Doc. NOT built into the app yet. Changes it asks for:
+  - no 5분 추가 시간; instead a 5분 countdown screen from 5:55 PM, then 빙고 종료
+  - NEW step after 빙고 시상: 게임 방식 · 우승 조건 설명, a slide with the key rules (+ 초콜릿 안내)
+  - no timer during rule explanations; a round's timer starts only when the game itself starts
+  - prize screens (빙고 1등, 최종 시상) hidden first, shown at the reveal
+  - rounds by the team's names: 1 코끼리코 비행기 (10바퀴, BGM while spinning), 2 찬양 맞추기 (1초 → 2초, then
+    ~5초 of the song), 3 4지선다 and 6 일심동체 (drum 120 BPM beat as BGM), 4 매의 눈, 5 휘트니 휴스턴 (song once,
+    from 5 s); 타이브레이커 timer 20초; 구디백 안내 for everyone (placed at 감사합니다, to confirm)
+  - still 논의: mid-game score updates, 코끼리코 20초 limit scope + team order method, BGM for the new rules step
+- Run-of-show doc for the team (Claude Doc, one table): https://claude.ai/artifact/VmGQiiqrvXi5ZhZTV8pFaH (pre-feedback
+  version). The colour-coded post-feedback page was a scratch HTML file; regenerate from the list above if needed.
+- 2026-11-21 fixes on `feat/script-alignment`, pushed but **not deployed**: d7deb70 (projector fits fullscreen
+  1920×1080 and 1024×768, podium fits, stones timer moved, no stale round timer), 38d70d0 (phone console menus fit).
 - 2026-11-21: big session; committed (98fe5bd, d3d7981) and **deployed**: `main` fast-forwarded to d3d7981, CI + Fly
   deploy green, live site serves the same build. Media uploaded to the Fly volume with `scripts/upload-media.mjs`
   (intro video + 11 BGM tracks, all served). Live: https://soonot-hanmadang.fly.dev (/master · /p · /b · /rules).
@@ -23,11 +37,16 @@ summary: 어벤추수 땡스게임 show runner (bingo + 스톤 + 진행 순서 r
 - The local server (`npm start`, :3000) runs all of it; Austin rehearses there (event code PDSX).
 
 ## Next steps
-1. Before the event: create the event on the live /master, open /p on the projector laptop and tap it once for sound.
+1. Get the team's answers on the 논의 items and which round names show on screen; then build the feedback into
+   `master/src/event/show.ts` (steps, `ROUNDS`, `MUSIC`), `autopilot.ts` (countdown, timer on game start, prize hidden)
+   and `stones/src/shared/constants.ts` (game names, tiebreak timer); re-run both rehearsal scripts.
+2. Ask Austin, then deploy (merge to `main`) d7deb70 + 38d70d0 + the feedback build; re-run `upload-media.mjs` if
+   media changed (drum 120 BPM beat, 코끼리코 BGM are new media).
+3. Before the event: create the event on the live /master, open /p on the projector laptop and tap it once for sound.
    After any change to the intro or music, re-run `scripts/upload-media.mjs` (media is not in git).
-2. Austin to listen to the intro's effects and the 11 BGM picks (chosen by description, not by ear); swap tracks in
+4. Austin to listen to the intro's effects and the 11 BGM picks (chosen by description, not by ear); swap tracks in
    ✎ 순서 편집 or `MUSIC` / `ROUNDS` in `master/src/event/show.ts`.
-3. Optional: a "참가자 카드 보기" list for any bingo player (today only the top 3); `npm run verify` uses bash
+5. Optional: a "참가자 카드 보기" list for any bingo player (today only the top 3); `npm run verify` uses bash
    that fails on Windows (`set -o pipefail`), fix the script.
 
 ## Decisions
@@ -40,3 +59,5 @@ summary: 어벤추수 땡스게임 show runner (bingo + 스톤 + 진행 순서 r
 - `feat/script-alignment` stays unmerged until Austin approves (pushing `main` deploys live).
 - Live site basics (unchanged): Fly app `soonot-hanmadang`, Tokyo, always-on (~$3/mo, `flyctl scale count 0` to pause);
   master passcode set by `MASTER_PASSCODE_HASH`; auto-deploy on green `main` (`DEPLOY_ENABLED=true`).
+- 2026-11-22: The team gets the run of show as one flow, details per row (Claude Doc table; plain or colour-coded text for their Google Doc).
+- 2026-11-23: Simulation feedback is the new spec for the show (see Where we left off); 5분 추가 시간 dropped.
