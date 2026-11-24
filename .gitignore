@@ -9,3 +9,6 @@ coverage/
 scripts/shots/
 .claude/
 media/
+
+# Hub inbox router drops files here
+inbox/
