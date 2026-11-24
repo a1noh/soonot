@@ -135,8 +135,7 @@ await sleep(600);
 await m.bringToFront();
 
 // ---- 1 빙고 QR 안내 ---------------------------------------------------------------
-await press('시작하기');
-await press('빙고 준비');
+await press('시작하기'); // the same tap sets the bingo up: the QR works at once
 const POOL = ['민지', '지은', '철수', '영희', '현우', '수빈', '지훈', '예린', '도윤', '하늘', '서준', '유나'];
 const bots = [];
 for (const name of POOL) {
@@ -160,16 +159,12 @@ await sleep(1500);
 await shot('bingo-running');
 
 // ---- 2 MC 등장 영상 ---------------------------------------------------------------
-await press('MC 등장 영상');
-const waiting = await p.$eval('.slide video', (v) => ({ t: v.currentTime, paused: v.paused })).catch(() => null);
-if (!waiting?.paused) errors.push('the video started before 다음 ▶ 영상 시작');
-await shot('intro-ready');
-await press('영상 시작');
+await press('MC 등장 영상'); // one tap: the step opens and the video plays
 await sleep(2500);
 const playing = await p.$eval('.slide video', (v) => ({ t: v.currentTime, paused: v.paused })).catch(() => null);
-if (!playing || playing.paused) errors.push('the video did not play on 다음 ▶ 영상 시작');
+if (!playing || playing.paused) errors.push('the video did not start with the tap that opened its step');
 await shot('intro-playing');
-log('video before', JSON.stringify(waiting), 'after', JSON.stringify(playing));
+log('video', JSON.stringify(playing));
 
 // ---- 3 빙고 마감 안내: a sign across the bingo screen, no timer of its own -------------
 await press('빙고 마감 안내');
@@ -189,13 +184,11 @@ await m.evaluate(() => { document.querySelector('.timer')?.removeAttribute('open
 await click('.remote__do', '5분 타이머');
 await sleep(600);
 if (!(await p.$('.ptimer'))) errors.push('⏱ 5분 did not put a timer on the projector');
-await press('빙고 종료');
+
+// ---- 4 빙고 1등 공개: the tap that opens it ends bingo (and the ⏱) and starts the reveal --
+await press('빙고 1등 공개');
 const timerLeft = await m.evaluate(() => document.querySelector('.remote__timer.is-running') !== null);
 if (timerLeft) errors.push('빙고 종료 left the 5분 timer running');
-
-// ---- 4 빙고 1등 공개 -------------------------------------------------------------
-await press('빙고 1등 공개');
-await press('순위 발표');
 await sleep(3200); // 두구두구 → 3등 (by itself)
 await press('2등 공개');
 await shot('bingo-2nd-hero');
@@ -216,9 +209,8 @@ await press('게임 방식');
 await shot('rules-slide');
 await press('자리 안내도');
 await shot('seating-slide');
-await press('메인 보드');
-await press('스톤 게임 준비');
-await press('스톤 게임 시작');
+await press('메인 보드'); // one tap: the board is set up and started, 빙고 1등 choosing
+if (await p.$('.join')) errors.push('the 스톤 board shows a join QR');
 const firstChooser = await m.$eval('.srm__steplabel b', (b) => b.textContent.trim()).catch(() => '');
 log('first chooser:', firstChooser);
 if (!firstChooser.startsWith('빙고 1등')) errors.push(`round 1 chooser should be the 빙고 1등, was "${firstChooser}"`);
@@ -319,8 +311,7 @@ await click('.remote__game', '결과 확정');
 await shot('tiebreak-decided');
 
 // ---- 10 최종 시상 · 11 감사합니다 -------------------------------------------------
-await press('최종 시상');
-await press('순위 발표');
+await press('최종 시상'); // one tap: the step opens with the 순위 발표 drumroll
 await sleep(3200);
 await press('2위 공개');
 await shot('final-2nd-hero');

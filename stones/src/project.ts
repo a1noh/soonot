@@ -55,6 +55,8 @@ export interface StonesView {
   tiebreak?: Game;
   tiedGroups?: string[][];
   canUndoTiebreak?: boolean;
+  /** master: the teams of the last decided 결정전, in finishing order (◀ reopens it). */
+  lastTiebreak?: string[] | null;
   /** Master only. */
   games?: Game[];
   nextGame?: Game | null;
@@ -132,6 +134,7 @@ export function project(room: Room, viewer: Viewer): StonesView {
     view.tiebreak = room.tiebreak;
     view.tiedGroups = room.state === 'ENDED' ? tiedGroups(room) : [];
     view.canUndoTiebreak = room.state === 'ENDED' && room.activeTiebreak === null && room.tiebreaks.length > 0;
+    view.lastTiebreak = room.tiebreaks.length ? [...room.tiebreaks[room.tiebreaks.length - 1]!] : null;
   }
   return view;
 }

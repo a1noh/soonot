@@ -54,12 +54,12 @@ export function autoOf(cue: Cue | null | undefined): AutoKind | null {
 /** The plan of a step, for the little checklist under the title. */
 export const AUTO_PLAN: Record<AutoKind, readonly string[]> = {
   'bingo-open': ['빙고 준비', '빙고 게임 시작'],
-  'bingo-last-call': ['빙고 종료'],
-  'bingo-reveal': ['순위 발표', '2등', '1등', '1·2·3등 함께', '1등 카드', '랜덤 5명', '1등 상품'],
-  'stones-start': ['스톤 준비', '스톤 게임 시작'],
+  'bingo-last-call': [],
+  'bingo-reveal': ['2등', '1등', '1·2·3등 함께', '1등 카드', '랜덤 5명', '1등 상품'],
+  'stones-start': [],
   'stones-rounds': ['1라운드', '2라운드', '3라운드', '4라운드', '5라운드', '6라운드'],
   'stones-final': ['스톤 게임 종료', '1위 결정전'],
-  'stones-podium': ['순위 발표', '2위', '2위 상금', '1위', '1위 상금', '모두 함께'],
+  'stones-podium': ['2위', '2위 상금', '1위', '1위 상금', '모두 함께'],
 };
 
 export interface Action {
@@ -96,13 +96,9 @@ const STONES_SETUP = {
 
 /** The step's next action, or null when the step is done (다음 goes to the next step). */
 export function nextAction(ctx: AutoContext): Action | null {
-  const { cue, event } = ctx;
-
-  // A video step: ▶ 시작 is the first thing 다음 does.
-  if (event.slide && event.slide.cueId === cue.id && isVideo(event.slide.media) && !event.slide.playing) {
-    return { label: '영상 시작', run: ctx.startCue };
-  }
-
+  const { cue } = ctx;
+  // A video step has no tap of its own: entering it starts the video (enterAction),
+  // and the remote's ▶ 영상 재생 chip plays it again if needed.
   const auto = autoOf(cue);
   if (auto === 'bingo-open' || auto === 'bingo-last-call' || auto === 'bingo-reveal') return bingoAction(auto, ctx);
   if (auto === 'stones-start' || auto === 'stones-rounds' || auto === 'stones-final' || auto === 'stones-podium') return stonesAction(auto, ctx);
@@ -135,8 +131,10 @@ function bingoAction(auto: AutoKind, ctx: AutoContext): Action | null {
       if (ctx.event.projectorTimer) await ctx.setTimer(null);
       return send('master:end');
     };
-    // The 마감 안내 is a sign, not a countdown: its timer is only the optional ⏱ chip.
-    return { label: '빙고 종료', plan: '빙고 종료', run: end };
+    // The 마감 안내 is a sign: ▶ moves on, and entering 1등 공개 ends bingo in the same tap.
+    if (auto === 'bingo-last-call') return null;
+    // 1등 공개 reached by a jump with bingo still running: end it and start the reveal.
+    return { label: '빙고 종료 · 순위 발표', plan: '순위 발표', run: async () => { await end(); await send('master:reveal', { step: 0 }); } };
   }
   if (auto === 'bingo-last-call') return null; // ENDED / REVEAL: on to the 1등 공개 step
 
@@ -150,6 +148,7 @@ function bingoAction(auto: AutoKind, ctx: AutoContext): Action | null {
   const first = b.winners.find((w) => w.rank === 1);
   if (!first) return null;
   if (ctx.event.bingoPrize) return null;
+  const openPrize = () => send('projector:prize', { open: true });
   if (ctx.event.bingoSpotlight !== first.n) {
     return { label: `1등 카드 띄우기 · ${first.name}`, plan: '1등 카드', run: () => send('projector:spotlight', { n: first.n }) };
   }
@@ -158,17 +157,11 @@ function bingoAction(auto: AutoKind, ctx: AutoContext): Action | null {
       label: '랜덤 5명 확인',
       plan: '랜덤 5명',
       run: () => send('projector:check', { cells: drawCheck(first.grid) }),
-      skip: { label: '확인 없이 상품으로', run: () => openPrize(send) },
+      skip: { label: '확인 없이 상품으로', run: openPrize },
     };
   }
-  return { label: '1등 상품 공개', plan: '1등 상품', run: () => openPrize(send) };
-}
-
-/** The prize box lives on the podium, so the card comes down first. */
-async function openPrize(send: (ev: string, payload?: Record<string, unknown>) => Promise<unknown>) {
-  await send('projector:check', { cells: null });
-  await send('projector:spotlight', { n: null });
-  await send('projector:prize', { open: true });
+  // The prize screen goes over the card, so ◀ (상품 닫기) lands back on the card as it was.
+  return { label: '1등 상품 공개', plan: '1등 상품', run: openPrize };
 }
 
 function stonesAction(auto: AutoKind, ctx: AutoContext): Action | null {
@@ -237,17 +230,29 @@ export function prevAction(ctx: AutoContext): { label: string; run: () => Promis
     if (ctx.event.bingoPrize) return { label: '1등 상품 닫기', run: () => bingo('projector:prize', { open: false }) };
     if (ctx.event.bingoCheck) return { label: '랜덤 5명 지우기', run: () => bingo('projector:check', { cells: null }) };
     if (ctx.event.bingoSpotlight !== null) return { label: '카드 내리기', run: () => bingo('projector:spotlight', { n: null }) };
-    if (b.state === 'REVEAL') return { label: REVEAL_BACK[b.revealStep] ?? '순위 발표 취소', run: () => bingo('master:back') };
+    // 3등 (or the drumroll) is where entering left it: ◀ leaves the step (see leaveBackAction).
+    if (b.state === 'REVEAL' && b.revealStep >= 2) return { label: REVEAL_BACK[b.revealStep] ?? '순위 발표 취소', run: () => bingo('master:back') };
   }
   if (auto === 'stones-final' && s?.state === 'ENDED') {
     if (s.activeTiebreak) return { label: '결정전 취소', run: () => stones('master:tiebreak:cancel') };
-    if (s.canUndoTiebreak) return { label: '결정전 결과 되돌리기', run: () => stones('master:undo') };
+    // Back to the 결정전 as it was before 결과 확정: still open, same teams.
+    if (s.canUndoTiebreak) {
+      const teams = s.lastTiebreak;
+      return {
+        label: '결정전 결과 되돌리기',
+        run: async () => {
+          await stones('master:undo');
+          if (teams?.length) await stones('master:tiebreak:start', { teamIds: teams });
+        },
+      };
+    }
     return { label: '게임 종료 취소', run: () => stones('master:resumeFromEnded') };
   }
   if (auto === 'stones-podium' && s?.state === 'REVEAL') {
     if ((s.revealStep === 2 || s.revealStep === 3) && ctx.event.podiumPrize === s.revealStep) {
       return { label: `${s.revealStep === 3 ? '1위' : '2위'} 상금 닫기`, run: () => stones('projector:podiumPrize', { step: null }) };
     }
+    if (s.revealStep <= 1) return null; // where entering left it: ◀ leaves the step
     const label = { 4: '함께 보기 취소', 3: '1위 공개 취소', 2: '2위 공개 취소' }[s.revealStep as 2 | 3 | 4] ?? '순위 발표 취소';
     // Back from 1위 lands on 2위 as it was left: with its prize showing.
     if (s.revealStep === 3) {
@@ -255,5 +260,76 @@ export function prevAction(ctx: AutoContext): { label: string; run: () => Promis
     }
     return { label, run: () => stones('master:back') };
   }
+  return null;
+}
+
+/**
+ * What ▶ does as it moves INTO a step, in the same tap: the work the room can't
+ * see on its own (빙고 준비, 스톤 준비) and the step's first visible beat (the video
+ * starts, the 순위 발표 drumroll). So every tap changes the projector.
+ */
+export function enterAction(next: Cue, ctx: Omit<AutoContext, 'cue'>): { label: string; run: () => Promise<unknown> } | null {
+  if (next.kind === 'slide' && isVideo(next.media)) return { label: '영상 바로 시작', run: ctx.startCue };
+  const auto = autoOf(next);
+  const b = ctx.bingo;
+  const s = ctx.stones;
+  const bingo = (ev: string, payload?: Record<string, unknown>) => ctx.send('bingo', ev, payload);
+  const stones = (ev: string, payload?: Record<string, unknown>) => ctx.send('stones', ev, payload);
+  if (auto === 'bingo-open' && b?.state === 'SETUP') {
+    return { label: '빙고 준비 (QR로 바로 참여)', run: () => bingo('master:setTraits', { texts: [...DEFAULT_BINGO_TRAITS] }) };
+  }
+  if (auto === 'bingo-reveal' && (b?.state === 'RUNNING' || b?.state === 'ENDED')) {
+    return {
+      label: b.state === 'RUNNING' ? '빙고 종료 · 순위 발표' : '순위 발표',
+      run: async () => {
+        if (b.state === 'RUNNING') {
+          if (ctx.event.projectorTimer) await ctx.setTimer(null);
+          await bingo('master:end');
+        }
+        await bingo('master:reveal', { step: 0 });
+      },
+    };
+  }
+  if (auto === 'stones-start' && (s?.state === 'SETUP' || s?.state === 'LOBBY')) {
+    return {
+      label: '스톤 보드 · 빙고 1등이 선택',
+      run: async () => {
+        if (s.state === 'SETUP') await stones('master:setup', STONES_SETUP);
+        await stones('master:start');
+      },
+    };
+  }
+  if (auto === 'stones-podium' && s?.state === 'ENDED' && !s.activeTiebreak && !s.tiedGroups?.length) {
+    return {
+      label: '순위 발표',
+      run: async () => {
+        await stones('projector:podiumPrize', { step: null }); // a fresh 시상 starts with no prize open
+        await stones('master:reveal', { step: 0 });
+      },
+    };
+  }
+  return null;
+}
+
+/**
+ * The mirror of enterAction: ◀ at a step's starting state takes back what
+ * entering did, in the same tap that goes back a step (null: nothing to undo).
+ */
+export function leaveBackAction(cue: Cue, ctx: Omit<AutoContext, 'cue'>): (() => Promise<unknown>) | null {
+  const auto = autoOf(cue);
+  const b = ctx.bingo;
+  const s = ctx.stones;
+  const bingo = (ev: string, payload?: Record<string, unknown>) => ctx.send('bingo', ev, payload);
+  const stones = (ev: string, payload?: Record<string, unknown>) => ctx.send('stones', ev, payload);
+  if (auto === 'bingo-reveal' && b && (b.state === 'REVEAL' || b.state === 'ENDED')) {
+    return async () => {
+      if (b.state === 'REVEAL') await bingo('master:back'); // REVEAL → ENDED
+      await bingo('master:back'); // ENDED → RUNNING (빙고 종료 취소)
+    };
+  }
+  if (auto === 'stones-start' && s && s.state !== 'SETUP' && !s.pending && s.played === 0) {
+    return () => stones('game:reset');
+  }
+  if (auto === 'stones-podium' && s?.state === 'REVEAL') return () => stones('master:back'); // → ENDED
   return null;
 }

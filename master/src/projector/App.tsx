@@ -88,7 +88,7 @@ function Standby({ summary, joinable, theme }: { summary: EventSummary | null; j
       <div className="standby">
         <h1 className="standby__title">{summary?.title ?? '추수감사절'}</h1>
         {theme === 'bingo' ? <p className="standby__game">사람 빙고</p> : null}
-        {summary ? (
+        {summary && joinable ? (
           <div className="join">
             <Qr text={joinUrl(summary.code)} />
             <div className="join__meta">
@@ -111,7 +111,6 @@ function Podium({
   step,
   title,
   theme,
-  winners,
   prizeOpen,
   footnote,
   prizeStep,
@@ -122,43 +121,33 @@ function Podium({
   theme?: string;
   /** A closing line once the whole podium is up (e.g. a gift for every team). */
   footnote?: string;
-  winners?: readonly WinnerCard[];
-  /** bingo only — the 1등 mystery box: undefined = no box, false = closed 🎁, true = opened. */
+  /** bingo only — the 1등 prize: undefined = none, false = a closed 🎁 teaser, true = the prize screen. */
   prizeOpen?: boolean;
   /** 스톤 only — the reveal step whose prize is shown big under the name (최종 시상). */
   prizeStep?: number | null;
 }) {
   const shown = podiumAt(ranked, step);
+  const unit = theme === 'bingo' ? '등' : '위';
+  // The 빙고 1등 prize: the winner and the prize fill the screen (예진: 크게 뙇).
+  if (prizeOpen && ranked[0]) {
+    return <PodiumHero entry={{ ...ranked[0], medal: 1 }} heading={`${title} 1${unit} 상품`} prize="첫 스톤 선택권" theme={theme} />;
+  }
   // One place at a time (3위/2위/1위): that name fills the screen, the list waits for 모두 함께.
   if (step >= 1 && step <= 3 && shown.length === 1) {
     const e = shown[0]!;
-    const [name, tag] = e.label.split(' #');
-    const unit = theme === 'bingo' ? '등' : '위';
-    const prize = prizeStep === step && e.prize ? e.prize : null;
     return (
-      <Stage kind="podium" theme={theme}>
-        <div key={`${e.id}-${step}`} className={`phero medal--${e.medal ?? 3}${prize ? ' has-prize' : ''}`}>
-          <p className="phero__rank">
-            {['🥇', '🥈', '🥉'][(e.medal ?? 3) - 1]} {title} {e.medal}{unit}
-          </p>
-          <h1 className="phero__name">{name}</h1>
-          {tag ? <p className="phero__tag">#{tag}</p> : null}
-          {prize ? (
-            <p key="prize" className="phero__prize">
-              🎁 {prize}
-            </p>
-          ) : null}
-        </div>
-      </Stage>
+      <PodiumHero
+        entry={e}
+        heading={`${title} ${e.medal}${unit}`}
+        prize={prizeStep === step && e.prize ? e.prize : null}
+        theme={theme}
+        stepKey={step}
+      />
     );
   }
-  const champ = winners && winners[0]; // 1등's matched people, once fully revealed
-  // The matched list shows after the full reveal — and steps aside when the prize opens,
-  // so the podium always fits one screen (a 1등 can have matched up to 25 people).
-  const showList = step >= 4 && !!champ && champ.matched.length > 0 && !prizeOpen;
   return (
     <Stage kind="podium" theme={theme}>
-      <div className={`podium${showList ? ' podium--list' : ''}${prizeOpen ? ' podium--prize' : ''}`}>
+      <div className={`podium${prizeOpen === false ? ' podium--teaser' : ''}`}>
         <h2 className="podium__title">🏆 {title} 순위 발표</h2>
         {shown.length === 0 ? (
           <p className="podium__hold">두구두구두구…</p>
@@ -174,30 +163,47 @@ function Podium({
             ))}
           </ol>
         )}
-        {showList ? (
-          <div className="wreveal">
-            <div className="wreveal__cap">🥇 {champ!.name} 님이 매칭한 사람들</div>
-            <div className="wreveal__chips">
-              {champ!.matched.map((m, i) => (
-                <span key={i} className="wreveal__chip">
-                  <b>{m.name} #{m.number}</b>
-                  <small>{m.trait}</small>
-                </span>
-              ))}
-            </div>
+        {footnote && step >= 4 ? <p className="podium__footnote">{footnote}</p> : null}
+        {/* The 1등 prize stays hidden in a 🎁 until its own screen (상품 공개). */}
+        {prizeOpen === false && step >= 4 ? (
+          <div className="prizebox">
+            <div className="prizebox__lid" aria-hidden="true">🎁</div>
+            <div className="prizebox__hint">1등 미스터리 박스</div>
           </div>
         ) : null}
-        {footnote && step >= 4 ? <p className="podium__footnote">{footnote}</p> : null}
-        {/* 1등 mystery box — appears once 1등 is on screen; operator opens it. */}
-        {prizeOpen !== undefined && step >= 4 ? (
-          <div className={`prizebox${prizeOpen ? ' is-open' : ''}`}>
-            <div className="prizebox__lid" aria-hidden="true">🎁</div>
-            {prizeOpen ? (
-              <div className="prizebox__prize">🥇 1등 상품 · <b>첫 스톤 선택권</b></div>
-            ) : (
-              <div className="prizebox__hint">1등 미스터리 박스 🎁</div>
-            )}
-          </div>
+      </div>
+    </Stage>
+  );
+}
+
+/** One name filling the screen (a podium place, or the 빙고 1등 with the prize under it). */
+function PodiumHero({
+  entry,
+  heading,
+  prize,
+  theme,
+  stepKey = 0,
+}: {
+  entry: RankEntry;
+  heading: string;
+  prize: string | null;
+  theme?: string;
+  stepKey?: number;
+}) {
+  const [name, tag] = entry.label.split(' #');
+  const medal = entry.medal ?? 3;
+  return (
+    <Stage kind="podium" theme={theme}>
+      <div key={`${entry.id}-${stepKey}`} className={`phero medal--${medal}${prize ? ' has-prize' : ''}`}>
+        <p className="phero__rank">
+          {['🥇', '🥈', '🥉'][medal - 1]} {heading}
+        </p>
+        <h1 className="phero__name">{name}</h1>
+        {tag ? <p className="phero__tag">#{tag}</p> : null}
+        {prize ? (
+          <p key="prize" className="phero__prize">
+            🎁 {prize}
+          </p>
         ) : null}
       </div>
     </Stage>
@@ -612,10 +618,11 @@ export function App() {
       // interview; otherwise the shared podium (which already reveals 1등's list).
       const spot = summary.bingoSpotlight;
       const winner = spot != null ? bView.winners.find((w) => w.n === spot) : undefined;
-      if (winner) return <WinnerCardStage winner={winner} check={summary.bingoCheck} />;
+      // The prize screen goes over the card; closing it (◀) shows the card again.
+      if (winner && !summary.bingoPrize) return <WinnerCardStage winner={winner} check={summary.bingoCheck} />;
       // After 빙고 종료 the final board stays up; the podium comes with 순위 발표.
       if (bView.state === 'REVEAL') {
-        return <Podium ranked={bView.standings} step={bView.revealStep} title="빙고" theme="bingo" winners={bView.winners} prizeOpen={summary.bingoPrize} />;
+        return <Podium ranked={bView.standings} step={bView.revealStep} title="빙고" theme="bingo" prizeOpen={summary.bingoPrize} />;
       }
     }
     if (bView && (bView.state === 'RUNNING' || bView.state === 'LOBBY' || bView.state === 'ENDED')) {

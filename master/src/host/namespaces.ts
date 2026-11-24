@@ -516,11 +516,11 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       const show = event.show;
       // A step's timer is the step's and never starts by itself (the 진행순서:
       // timers only when a game really starts, ⏱ on the remote). Leaving a step
-      // ends its countdown, its quiz question and its prize beat.
+      // ends its countdown and its quiz question. (The 시상 prize beat stays: it only
+      // shows on its own reveal step, so ◀ back into 최종 시상 finds it as it was.)
       if (show.liveCue !== cue.id) {
         event.projectorQuiz = null;
         event.projectorTimer = null;
-        event.podiumPrize = null;
       }
       show.liveCue = cue.id;
       if (cue.kind === 'screen' && cue.screen) {

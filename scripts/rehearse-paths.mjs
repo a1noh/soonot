@@ -83,16 +83,13 @@ function dropBots() {
 }
 /** From a fresh start: bingo running with `n` bots. Ends on step 1. */
 async function bingoRunning(n = 6) {
-  await press(); // → step 1
-  await press(); // 빙고 준비
+  await press(); // → step 1 (the same tap sets the bingo up)
   await joinBots(n);
   await press(); // 빙고 게임 시작
 }
 /** Stones set up and started on step 7, the main board (bingo skipped: the guest chooser is absent). */
 async function stonesStarted() {
-  await jump(7);
-  await press(); // 스톤 게임 준비
-  await press(); // 스톤 게임 시작
+  await jump(7); // opening the board sets 스톤 up and starts it
 }
 async function playRound(winners) {
   const stone = await m.$eval('.srm__stones button:not(:disabled)', (b) => b.textContent.trim()).catch(() => null);
@@ -139,8 +136,7 @@ await m.waitForSelector('.remote');
 
 // ---- scenarios ---------------------------------------------------------------
 await scenario('빙고: 1명뿐이면 다음은 기다림, 2명이 되면 “게임 시작”', async (expect) => {
-  await press();
-  await press(); // 빙고 준비
+  await press(); // → step 1, bingo set up in the same tap
   await joinBots(1);
   expect(/기다리는 중/.test(await nextText()), `1명: 다음 = "${await nextText()}"`);
   expect((await nextDisabled()) === true, '1명: 다음이 눌려요');
@@ -148,7 +144,7 @@ await scenario('빙고: 1명뿐이면 다음은 기다림, 2명이 되면 “게
   expect(/빙고 게임 시작 \(2명\)/.test(await nextText()), `2명: 다음 = "${await nextText()}"`);
 });
 
-await scenario('마감 안내: 타이머 없이 안내만, ⏱ 를 누르면 시작, 다음 ▶ 빙고 종료가 타이머도 끝내요', async (expect) => {
+await scenario('마감 안내: 타이머 없이 안내만, ⏱ 를 누르면 시작, 다음 ▶ 이 빙고 종료 + 순위 발표 (타이머도 끝)', async (expect) => {
   await bingoRunning();
   await jump(3);
   expect(!(await m.$('.remote__timer.is-running')), '타이머가 저절로 시작됐어요');
@@ -156,11 +152,12 @@ await scenario('마감 안내: 타이머 없이 안내만, ⏱ 를 누르면 시
   await click('.remote__do', '5분 타이머');
   await sleep(500);
   expect(!!(await p.$('.ptimer')), '⏱ 를 눌러도 타이머가 없어요');
-  expect(/빙고 종료/.test(await nextText()), `다음 = "${await nextText()}"`);
-  await press(); // 빙고 종료
+  expect(/빙고 1등 공개.*빙고 종료/.test(await nextText()), `다음 = "${await nextText()}"`);
+  await press(); // → 빙고 1등 공개: bingo ends and the reveal starts in this one tap
+  await sleep(600);
+  expect((await step()) === 4, `step ${await step()}`);
   expect(!(await m.$('.remote__timer.is-running')), '빙고 종료 뒤에도 타이머가 돌아요');
-  expect(/다음 장면.*빙고 1등 공개/.test(await nextText()), `종료 뒤 다음 = "${await nextText()}"`);
-  expect((await views())[1] === '종료됨', `빙고 상태 ${(await views())[1]}`);
+  expect(!!(await p.$('.stage--podium')), '순위 발표가 시작되지 않았어요');
 });
 
 await scenario('라운드: 룰 설명 중엔 타이머 없음, ⏱ 를 눌러야 시작, ⟲ 로 다시', async (expect) => {
@@ -221,8 +218,10 @@ await scenario('라운드 중 ◀ 이전: 스톤 선택 취소 → 지난 라운
   await back();
   expect(/1라운드 결과를 되돌릴까요/.test(await backQ()), `물음 "${await backQ()}"`);
   await click('.remote__back', '1라운드로 되돌리기');
-  expect((await roundNow()) === '1라운드', `되돌린 뒤 "${await roundNow()}"`);
-  expect((await step()) === 8, `step ${await step()}`);
+  await sleep(600);
+  // Round 1 began on the 메인 보드 (the pick moved the remote on): taking it back returns there.
+  expect((await step()) === 7, `step ${await step()}`);
+  expect((await views())[3] === '진행 중', `스톤 상태 ${(await views())[3]}`);
 });
 
 await scenario('라운드 진행 중 자리 안내로 ◀: “스톤도 처음으로” 또는 장면만 이동', async (expect) => {
@@ -243,8 +242,10 @@ await scenario('동점 없이 끝나면 결정전 없이 바로 시상으로', a
   expect((await step()) === 9, `6라운드 뒤 step ${await step()}`);
   await press(); // 게임 종료
   expect(/다음 장면.*최종 시상/.test(await nextText()), `종료 뒤 다음 = "${await nextText()}"`);
-  await press(); // → 최종 시상
-  expect(/순위 발표/.test(await nextText()), `시상: 다음 = "${await nextText()}"`);
+  await press(); // → 최종 시상, the drumroll starts in the same tap
+  await sleep(3500);
+  expect((await step()) === 10, `step ${await step()}`);
+  expect(/2위 공개/.test(await nextText()), `시상: 다음 = "${await nextText()}"`);
 });
 
 await scenario('최종 집계에서 ◀: 먼저 게임 종료 취소, 한 번 더 ◀ 면 라운드로 (◀ = 다음의 거울)', async (expect) => {
@@ -259,14 +260,17 @@ await scenario('최종 집계에서 ◀: 먼저 게임 종료 취소, 한 번 �
   expect((await step()) === 9, `◀ 한 번 뒤 step ${await step()}`);
   expect((await views())[3] === '진행 중', `스톤 상태 ${(await views())[3]}`);
   expect(/스톤 게임 종료/.test(await nextText()), `다음 = "${await nextText()}"`);
-  await back();
+  await back(); // the tap before was the 6th stone: ◀ offers to take it back
+  expect(/6라운드 결과를 되돌릴까요/.test(await backQ()), `물음 "${await backQ()}"`);
+  await click('.remote__back', '6라운드로 되돌리기');
+  await sleep(700);
   expect((await step()) === 8, `◀ 두 번 뒤 step ${await step()}`);
+  expect((await roundNow()) === '6라운드', `라운드 "${await roundNow()}"`);
 });
 
 await scenario('↺ 전체 초기화 (게임 중간에): 0번으로, 모든 게임 준비, 화면 정리', async (expect) => {
   await bingoRunning();
-  await press(); // → 영상
-  await press(); // 영상 시작
+  await press(); // → 영상 (plays in the same tap)
   await reset();
   expect((await step()) === 0, `step ${await step()}`);
   const v = await views();
@@ -277,10 +281,8 @@ await scenario('↺ 전체 초기화 (게임 중간에): 0번으로, 모든 게�
 await scenario('빙고 1등 공개에서 ◀ 를 계속: 발표가 한 단계씩 거꾸로, 발표 화면도 따라와요', async (expect) => {
   await bingoRunning(6);
   for (const b of bots) for (let c = 0; c < 6; c++) b.emit('cell:fill', { cellIndex: c, query: String(((c + 2) % 6) + 1) });
-  await jump(4);
-  await press(); // 빙고 종료
-  await press(); // 순위 발표
-  await sleep(3200);
+  await jump(4); // opening 1등 공개 ends bingo and starts the reveal
+  await sleep(3500);
   await press(); // 2등
   await press(); // 1등
   const labels = [];
@@ -290,13 +292,12 @@ await scenario('빙고 1등 공개에서 ◀ 를 계속: 발표가 한 단계씩
     if ((await step()) !== 4) break;
   }
   expect(labels[0]?.includes('1등 공개 취소'), `처음 ◀ = "${labels[0]}"`);
-  expect(labels.some((l) => l.includes('순위 발표 취소')), `◀ 순서: ${labels.join(' → ')}`);
+  expect(labels.some((l) => l.includes('2등 공개 취소')), `◀ 순서: ${labels.join(' → ')}`);
+  // From 3등 (where opening the step left it) one ◀ takes back the reveal AND 빙고 종료.
   expect((await step()) === 3, `끝까지 ◀ 한 뒤 step ${await step()}`);
   const v = await views();
-  expect(v[1] === '종료됨', `빙고 상태 ${v[1]} (step 3 끝 = 종료됨)`);
-  expect(!(await p.$('.podium')), '발표 화면에 아직 순위가 떠 있어요');
-  const firstBack = await m.$eval('.remote__prev', (b) => b.textContent);
-  expect(/빙고 종료 취소/.test(firstBack), `step 3의 ◀ = "${firstBack}"`);
+  expect(v[1] === '진행 중', `빙고 상태 ${v[1]} (step 3 = 빙고 진행 중)`);
+  expect(!(await p.$('.podium')) && !(await p.$('.phero')), '발표 화면에 아직 순위가 떠 있어요');
 });
 
 await scenario('🔇 소리 꺼짐 ↔ 켜짐', async (expect) => {

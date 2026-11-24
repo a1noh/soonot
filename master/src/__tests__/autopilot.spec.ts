@@ -3,7 +3,7 @@
  * action by action, and only an empty plan moves to the next step.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { nextAction, prevAction, type AutoContext } from '../console/autopilot';
+import { enterAction, leaveBackAction, nextAction, prevAction, type AutoContext } from '../console/autopilot';
 import { defaultCues } from '../event/show';
 import type { EventSummary } from '../event/event';
 
@@ -43,22 +43,11 @@ describe('다음 ▶ in the 빙고 steps', () => {
     expect(nextAction(ctx('빙고 QR 안내', { bingo: bingo({ state: 'RUNNING' }) }))).toBeNull();
   });
 
-  it('마감 안내: a sign, no countdown — 다음 ▶ is 빙고 종료 straight away (and ends a ⏱ if one runs)', async () => {
-    const c = ctx('빙고 마감 안내', { bingo: bingo({ state: 'RUNNING' }) });
-    const a = nextAction(c)!;
-    expect(a.label).toBe('빙고 종료');
-    expect(a.skip).toBeUndefined();
-    await a.run!();
-    expect(c.setTimer).not.toHaveBeenCalled();
-    expect(c.send).toHaveBeenCalledWith('bingo', 'master:end', undefined);
-
-    const timed = ctx('빙고 마감 안내', {
-      bingo: bingo({ state: 'RUNNING' }),
-      event: event({ projectorTimer: { label: '빙고 마감까지', totalMs: 300_000, endsAt: 0 } }),
-    });
-    await nextAction(timed)!.run!();
-    expect(timed.setTimer).toHaveBeenCalledWith(null);
+  it('마감 안내: a sign with no tap of its own — ▶ goes straight on (빙고 종료 happens as 1등 공개 opens)', () => {
+    expect(nextAction(ctx('빙고 마감 안내', { bingo: bingo({ state: 'RUNNING' }) }))).toBeNull();
     expect(nextAction(ctx('빙고 마감 안내', { bingo: bingo({ state: 'ENDED' }) }))).toBeNull();
+    // Reached 1등 공개 by a jump with bingo still on: one tap ends it and starts the reveal.
+    expect(nextAction(ctx('빙고 1등 공개', { bingo: bingo({ state: 'RUNNING' }) }))!.label).toBe('빙고 종료 · 순위 발표');
   });
 
   it('1등 공개: 발표 → (drumroll) → 2등 → 1등 → 함께 → 카드 → 랜덤 5명 → 상품 → done', async () => {
@@ -85,7 +74,7 @@ describe('다음 ▶ in the 스톤 steps', () => {
   const stones = (o: Record<string, unknown>) =>
     ({ state: 'RUNNING', pending: null, played: 6, total: 6, revealStep: 0, teams: [{ id: 't1', name: '토르' }, { id: 't2', name: '헐크' }], tiedGroups: [], activeTiebreak: null, ...o }) as never;
 
-  it('메인 보드: 준비 → 시작 → done (the rounds take over)', () => {
+  it('메인 보드: (reached by a jump) 준비 → 시작 → done (the rounds take over)', () => {
     expect(nextAction(ctx('어벤추수 땡스게임 메인 보드', { stones: stones({ state: 'SETUP' }) }))!.label).toMatch(/스톤 게임 준비/);
     expect(nextAction(ctx('어벤추수 땡스게임 메인 보드', { stones: stones({ state: 'LOBBY' }) }))!.label).toBe('스톤 게임 시작');
     expect(nextAction(ctx('어벤추수 땡스게임 메인 보드', { stones: stones({ played: 0 }) }))).toBeNull();
@@ -119,10 +108,9 @@ describe('다음 ▶ in the 스톤 steps', () => {
 });
 
 describe('다음 ▶ on a video step', () => {
-  it('starts the video first', () => {
+  it('has no tap of its own: entering started it, so ▶ moves on (even after ◀ back onto it)', () => {
     const c = cue('MC 등장 영상 · 타이틀');
-    const a = nextAction(ctx(c.title, { event: event({ slide: { cueId: c.id, title: c.title, body: '', media: c.media, transition: 'zoom', playing: false, startedAt: 0 } }) }))!;
-    expect(a.label).toBe('영상 시작');
+    expect(nextAction(ctx(c.title, { event: event({ slide: { cueId: c.id, title: c.title, body: '', media: c.media, transition: 'zoom', playing: false, startedAt: 0 } }) }))).toBeNull();
   });
 });
 
@@ -131,13 +119,14 @@ describe('◀ 이전 mirrors 다음 ▶ inside a step', () => {
   const at = (o: Record<string, unknown>, e: Partial<EventSummary> = {}) =>
     prevAction(ctx('빙고 1등 공개', { bingo: bingo({ winners: [winner], ...o }), event: event(e) }));
 
-  it('빙고 1등 공개: 상품 → 5명 → 카드 → 1등 → 2등 → 순위 발표, then the step before', () => {
+  it('빙고 1등 공개: 상품 → 5명 → 카드 → 1등 → 2등, then (3등 = where entering left it) the step before', () => {
     expect(at({ state: 'REVEAL', revealStep: 4 }, { bingoPrize: true })!.label).toBe('1등 상품 닫기');
     expect(at({ state: 'REVEAL', revealStep: 4 }, { bingoCheck: [1] })!.label).toBe('랜덤 5명 지우기');
     expect(at({ state: 'REVEAL', revealStep: 4 }, { bingoSpotlight: 7 })!.label).toBe('카드 내리기');
     expect(at({ state: 'REVEAL', revealStep: 3 })!.label).toBe('1등 공개 취소');
     expect(at({ state: 'REVEAL', revealStep: 2 })!.label).toBe('2등 공개 취소');
-    expect(at({ state: 'REVEAL', revealStep: 1 })!.label).toBe('순위 발표 취소');
+    expect(at({ state: 'REVEAL', revealStep: 1 })).toBeNull();
+    expect(at({ state: 'REVEAL', revealStep: 0 })).toBeNull();
     expect(at({ state: 'ENDED' })).toBeNull();
   });
 
@@ -159,5 +148,62 @@ describe('◀ 이전 mirrors 다음 ▶ inside a step', () => {
     expect(prevAction(ctx('최종 시상', { stones: st({ state: 'REVEAL', revealStep: 3 }), event: event({ podiumPrize: 3 }) }))!.label).toBe('1위 상금 닫기');
     expect(prevAction(ctx('최종 시상', { stones: st({ state: 'REVEAL', revealStep: 2 }), event: event({ podiumPrize: 2 }) }))!.label).toBe('2위 상금 닫기');
     expect(prevAction(ctx('최종 시상', { stones: st({}) }))).toBeNull();
+  });
+});
+
+describe('▶ into a step does its first visible beat; ◀ at its start takes it back', () => {
+  const stones = (o: Record<string, unknown>) =>
+    ({ state: 'RUNNING', pending: null, played: 0, total: 6, revealStep: 0, teams: [], tiedGroups: [], activeTiebreak: null, ...o }) as never;
+  const into = (title: string, o: Partial<AutoContext>) => enterAction(cue(title), ctx(title, o));
+
+  it('빙고 QR: traits are set as the step opens, so phones can join at once', async () => {
+    const c = ctx('빙고 QR 안내', { bingo: bingo({ state: 'SETUP' }) });
+    const e = enterAction(cue('빙고 QR 안내'), c)!;
+    await e.run();
+    expect(c.send).toHaveBeenCalledWith('bingo', 'master:setTraits', expect.objectContaining({ texts: expect.any(Array) }));
+    expect(into('빙고 QR 안내', { bingo: bingo({ state: 'LOBBY' }) })).toBeNull();
+  });
+
+  it('영상: the video starts as the step opens', async () => {
+    const c = ctx('MC 등장 영상 · 타이틀', {});
+    await enterAction(cue('MC 등장 영상 · 타이틀'), c)!.run();
+    expect(c.startCue).toHaveBeenCalled();
+  });
+
+  it('빙고 1등 공개: entering ends bingo (and any ⏱) and starts the drumroll; ◀ undoes both', async () => {
+    const c = ctx('빙고 1등 공개', { bingo: bingo({ state: 'RUNNING' }), event: event({ projectorTimer: { label: 'x', totalMs: 1, endsAt: 0 } }) });
+    await enterAction(cue('빙고 1등 공개'), c)!.run();
+    expect(c.setTimer).toHaveBeenCalledWith(null);
+    expect(c.send.mock.calls.map((x) => x[1])).toEqual(['master:end', 'master:reveal']);
+
+    const back = ctx('빙고 1등 공개', { bingo: bingo({ state: 'REVEAL', revealStep: 1 }) });
+    await leaveBackAction(cue('빙고 1등 공개'), back)!();
+    expect(back.send.mock.calls.map((x) => x[1])).toEqual(['master:back', 'master:back']);
+  });
+
+  it('메인 보드: entering sets up and starts 스톤 (no waiting screen); ◀ before any pick resets it', async () => {
+    const c = ctx('어벤추수 땡스게임 메인 보드', { stones: stones({ state: 'SETUP' }) });
+    await enterAction(cue('어벤추수 땡스게임 메인 보드'), c)!.run();
+    expect(c.send.mock.calls.map((x) => x[1])).toEqual(['master:setup', 'master:start']);
+    const back = ctx('어벤추수 땡스게임 메인 보드', { stones: stones({}) });
+    await leaveBackAction(cue('어벤추수 땡스게임 메인 보드'), back)!();
+    expect(back.send).toHaveBeenCalledWith('stones', 'game:reset', undefined);
+    expect(leaveBackAction(cue('어벤추수 땡스게임 메인 보드'), ctx('x', { stones: stones({ played: 1 }) }))).toBeNull();
+  });
+
+  it('최종 시상: entering starts the drumroll (only once the 1위 is decided); ◀ at 3위 leaves the reveal', async () => {
+    expect(into('최종 시상', { stones: stones({ state: 'ENDED', tiedGroups: [['a', 'b']] }) })).toBeNull();
+    const c = ctx('최종 시상', { stones: stones({ state: 'ENDED' }) });
+    await enterAction(cue('최종 시상'), c)!.run();
+    expect(c.send).toHaveBeenCalledWith('stones', 'master:reveal', { step: 0 });
+    expect(prevAction(ctx('최종 시상', { stones: stones({ state: 'REVEAL', revealStep: 1 }) }))).toBeNull();
+    const back = ctx('최종 시상', { stones: stones({ state: 'REVEAL', revealStep: 1 }) });
+    await leaveBackAction(cue('최종 시상'), back)!();
+    expect(back.send).toHaveBeenCalledWith('stones', 'master:back', undefined);
+  });
+
+  it('slides with nothing to do have no entry beat', () => {
+    expect(into('게임 방식 · 우승 조건', {})).toBeNull();
+    expect(into('감사합니다', {})).toBeNull();
   });
 });

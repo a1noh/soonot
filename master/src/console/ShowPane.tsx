@@ -19,7 +19,7 @@ import { formatLeft, useCountdown } from '../shared/countdown.js';
 import { t } from '../shared/i18n.js';
 import type { StonesView } from '@soonot/stones/src/project.js';
 import type { MasterView } from '@soonot/bingo/src/project.js';
-import { AUTO_PLAN, autoOf, nextAction, prevAction } from './autopilot.js';
+import { AUTO_PLAN, autoOf, enterAction, leaveBackAction, nextAction, prevAction } from './autopilot.js';
 
 export interface ShowPaneProps {
   event: EventSummary;
@@ -223,11 +223,22 @@ function Remote({
       // A beat for the new state to arrive, so a double tap never runs a step twice.
       .finally(() => window.setTimeout(() => setBusy(false), 500));
   };
+  // Moving into a step does that step's first, visible beat in the same tap
+  // (enterAction), so ▶ never needs a second press before the projector moves.
+  const gameCtx = game ? { event, bingo: game.bingo, stones: sv, send: game.send, setTimer, startCue } : null;
+  const enter = next && gameCtx ? enterAction(next, gameCtx) : null;
+  const goInto = (c: Cue) => {
+    const e = gameCtx ? enterAction(c, gameCtx) : null;
+    runAction(async () => {
+      await goCue(c.id);
+      if (e) await e.run();
+    });
+  };
   const advance = () => {
     if (busy) return;
     if (action?.run) return runAction(action.run);
     if (action?.wait) return;
-    if (!stonesDrive) go(next);
+    if (!stonesDrive && next) goInto(next);
   };
   const auto = autoOf(live);
   const plan = auto ? AUTO_PLAN[auto] : null;
@@ -247,23 +258,49 @@ function Remote({
       if (!busy) runAction(undo.run);
       return;
     }
+    // At a step's starting point, ◀ takes back what entering it did, in the same tap.
+    const leave = !fromList && live && gameCtx && target === liveIdx - 1 ? leaveBackAction(live, gameCtx) : null;
+    if (leave) {
+      if (!busy) runAction(async () => {
+        await leave();
+        await goCue(c.id);
+      });
+      return;
+    }
+    // 최종 집계 before 게임 종료: the last tap was the 6th stone (which moved here),
+    // so ◀ takes that result back and returns to the rounds.
+    if (!fromList && target === liveIdx - 1 && autoOf(live) === 'stones-final' && sv?.state === 'RUNNING' && !sv.pending && sv.played > 0) {
+      return setBack({
+        question: `${sv.played}라운드 결과를 되돌릴까요? 스톤이 돌아가고 ${sv.played}라운드를 다시 해요.`,
+        loss: rewindLoss(sv, sv.played),
+        doLabel: `${sv.played}라운드로 되돌리기`,
+        run: () => (stones?.rewind(sv.played) ?? Promise.resolve()).then(() => goCue(c.id)),
+        moveTo: c,
+      });
+    }
     // ◀ inside the 스톤 step: undo the last stone pick, then the last round.
     // (A jump from 전체 순서 means "leave this step" — handled below.)
     if (!fromList && stonesDrive && target === liveIdx - 1 && sv) {
       if (sv.pending) {
+        // The first pick was made on the 메인 보드 and moved here: cancelling it goes back there.
+        const toBoard = sv.played === 0;
         return setBack({
           question: `${sv.pending.number}라운드 스톤 선택을 취소할까요?`,
           loss: [`${sv.pending.number}라운드 스톤 선택`],
           doLabel: '스톤 선택 취소',
-          run: () => sendStones('master:cancel'),
+          run: () => sendStones('master:cancel').then(() => (toBoard ? goCue(c.id) : undefined)),
+          ...(toBoard ? { moveTo: c } : {}),
         });
       }
       if (sv.played > 0) {
+        // Round 1 started on the 메인 보드: taking it back returns there.
+        const toBoard = sv.played === 1;
         return setBack({
           question: `${sv.played}라운드 결과를 되돌릴까요? 스톤이 돌아가고 ${sv.played}라운드를 다시 해요.`,
           loss: rewindLoss(sv, sv.played),
           doLabel: `${sv.played}라운드로 되돌리기`,
-          run: () => stones?.rewind(sv.played) ?? Promise.resolve(),
+          run: () => (stones?.rewind(sv.played) ?? Promise.resolve()).then(() => (toBoard ? goCue(c.id) : undefined)),
+          ...(toBoard ? { moveTo: c } : {}),
         });
       }
     }
@@ -289,7 +326,7 @@ function Remote({
     }
     go(c);
   };
-  const goTo = (c: Cue) => (cues.indexOf(c) < liveIdx ? goBack(c, true) : go(c));
+  const goTo = (c: Cue) => (cues.indexOf(c) < liveIdx ? goBack(c, true) : goInto(c));
 
   // Follow the 스톤 game: a stone given out for this step's round moves on to
   // the next step; a stone picked for another round jumps to that round's step.
@@ -457,6 +494,10 @@ function Remote({
             <button type="button" className="btn remote__chip" onClick={() => void startCue().catch(() => {})}>
               ⟲ 영상 처음부터
             </button>
+          ) : event.slide && event.slide.cueId === live.id && isVideo(event.slide.media) ? (
+            <button type="button" className="btn remote__chip" onClick={() => void startCue().catch(() => {})}>
+              ▶ 영상 재생
+            </button>
           ) : null}
           {stonesDrive && round && round.timer > 0 ? (
             <TimerButton event={event} cue={{ ...live, timer: round.timer, timerLabel: round.timerLabel }} setTimer={setTimer} />
@@ -551,6 +592,7 @@ function Remote({
             {next ? (
               <small>
                 {cueIcon(next)} {next.title}
+                {enter ? ` · ${enter.label}` : ''}
               </small>
             ) : null}
           </button>
