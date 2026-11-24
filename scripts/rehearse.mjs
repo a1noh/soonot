@@ -14,8 +14,14 @@
 import puppeteer from 'puppeteer-core';
 import { io } from 'socket.io-client';
 import { existsSync, mkdirSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 
 const BASE = process.argv[2] ?? 'http://localhost:3100';
+/** Test files for the 찬양 / 눈코입 uploads (made with ffmpeg on first run). */
+const FIX = { song: 'scripts/shots/fixtures/01 테스트 찬양.mp3', face: 'scripts/shots/fixtures/01 테스트 인물.jpg' };
+mkdirSync('scripts/shots/fixtures', { recursive: true });
+if (!existsSync(FIX.song)) execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=523:duration=12', '-c:a', 'libmp3lame', FIX.song]);
+if (!existsSync(FIX.face)) execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=640x640:duration=1', '-frames:v', '1', FIX.face]);
 const [PW, PH] = (process.env.PROJ ?? '1280x720').split('x').map(Number);
 const OUT = `scripts/shots/rehearsal/${PW}x${PH}/`;
 mkdirSync(OUT, { recursive: true });
@@ -158,15 +164,7 @@ for (const [i, b] of bots.entries()) {
 await sleep(1500);
 await shot('bingo-running');
 
-// ---- 2 MC 등장 영상 ---------------------------------------------------------------
-await press('MC 등장 영상'); // one tap: the step opens and the video plays
-await sleep(2500);
-const playing = await p.$eval('.slide video', (v) => ({ t: v.currentTime, paused: v.paused })).catch(() => null);
-if (!playing || playing.paused) errors.push('the video did not start with the tap that opened its step');
-await shot('intro-playing');
-log('video', JSON.stringify(playing));
-
-// ---- 3 빙고 마감 안내: a sign across the bingo screen, no timer of its own -------------
+// ---- 2 빙고 마감 안내 (5층에 내려올 때): a sign across the bingo screen, no timer of its own -------------
 await press('빙고 마감 안내');
 await sleep(800);
 if (await m.$('.remote__timer.is-running')) errors.push('the 마감 안내 started a timer by itself');
@@ -185,6 +183,14 @@ await click('.remote__do', '5분 타이머');
 await sleep(600);
 if (!(await p.$('.ptimer'))) errors.push('⏱ 5분 did not put a timer on the projector');
 
+// ---- 3 MC 등장 영상 (the ⏱ ends as the video starts) ---------------------------------------------------------------
+await press('MC 등장 영상'); // one tap: the step opens and the video plays
+await sleep(2500);
+const playing = await p.$eval('.slide video', (v) => ({ t: v.currentTime, paused: v.paused })).catch(() => null);
+if (!playing || playing.paused) errors.push('the video did not start with the tap that opened its step');
+await shot('intro-playing');
+log('video', JSON.stringify(playing));
+
 // ---- 4 빙고 1등 공개: the tap that opens it ends bingo (and the ⏱) and starts the reveal --
 await press('빙고 1등 공개');
 const timerLeft = await m.evaluate(() => document.querySelector('.remote__timer.is-running') !== null);
@@ -196,9 +202,7 @@ await press('1등 공개');
 const bingoHero = await p.$eval('.phero__name', (e) => e.textContent).catch(() => '');
 if (!bingoHero) errors.push('the bingo 1등 is not shown big');
 await shot('bingo-1st-hero');
-await press('함께');
-await shot('bingo-podium');
-await press('1등 카드');
+await press('1등 카드'); // no 1·2·3등 together screen (수정사항)
 await press('랜덤 5명');
 await shot('bingo-winner-card-check5');
 await press('1등 상품');
@@ -206,6 +210,10 @@ await shot('bingo-prize');
 
 // ---- 5 게임 방식 · 6 자리 안내도 · 7 메인 보드 ------------------------------------------
 await press('게임 방식');
+await sleep(2200);
+const stonesShown = await p.$$eval('.rules__stone', (l) => l.length).catch(() => 0);
+const linesShown = await p.$$eval('.rules__line', (l) => l.length).catch(() => 0);
+if (stonesShown !== 6 || linesShown !== 3) errors.push(`게임 방식 screen shows ${stonesShown} stones and ${linesShown} rules`);
 await shot('rules-slide');
 await press('자리 안내도');
 await shot('seating-slide');
@@ -246,6 +254,43 @@ for (let r = 1; r <= 6; r++) {
     if (!(await p.$('.ptimer'))) errors.push(`round ${r}: ⏱ did not put the timer on the projector`);
     if (r === 1) await shot('round1-timer-started');
   }
+  // 찬양 (2) and 눈코입 (4): upload a file from the remote, then play it on the projector.
+  if (r === 2 || r === 4) {
+    const input = await m.$('.remote__upload input');
+    await input.uploadFile(r === 2 ? FIX.song : FIX.face);
+    await sleep(1500);
+    if (r === 2) {
+      await click('.remote__qnav', '3·2·1 → 1초');
+      await sleep(1200);
+      const c = await p.$eval('.pcard__count', (e) => e.textContent).catch(() => '');
+      if (!/[123]/.test(c)) errors.push(`찬양: no 3·2·1 countdown ("${c}")`);
+      await sleep(3600);
+      await click('.remote__qnav', '정답 + 10초');
+      await sleep(900);
+      const t = await p.$eval('.pcard__answer', (e) => e.textContent).catch(() => '');
+      if (!t.includes('테스트 찬양')) errors.push(`찬양 정답 shows "${t}"`);
+      await shot('round2-song-answer');
+    } else {
+      await click('.remote__qnav', '사진 띄우기');
+      await sleep(900);
+      if (!(await p.$('.pcard__photo.is-zoomed'))) errors.push('눈코입: the zoomed photo is not on the projector');
+      await shot('round4-face-zoom');
+      await click('.remote__qnav', '정답 공개');
+      await sleep(900);
+      const t = await p.$eval('.pcard__answer', (e) => e.textContent).catch(() => '');
+      if (!t.includes('테스트 인물')) errors.push(`눈코입 정답 shows "${t}"`);
+      await shot('round4-face-answer');
+    }
+  }
+  // 일심동체: a 제시어 goes up big from the remote.
+  if (r === 6) {
+    await click('.remote__wordrow', '야구');
+    await sleep(800);
+    const w = await p.$eval('.pcard__word', (e) => e.textContent).catch(() => '');
+    if (w !== '야구') errors.push(`제시어 on screen: "${w}"`);
+    await shot('round6-word');
+    await click('.remote__wordrow', '야구'); // tap again: down
+  }
   // 4지선다: a question goes up with only 1–4 on the projector; the 보기 stay on the remote.
   if (r === 3) {
     await click('.remote__qnav', '문제 1 화면에 띄우기');
@@ -258,13 +303,7 @@ for (let r = 1; r <= 6; r++) {
     await sleep(500);
     if (!(await p.$eval('.pquiz', (e) => e.textContent).catch(() => '')).includes('문제 2')) errors.push('round 3: 다음 문제 did not move the projector');
   }
-  // 일심동체: the 제시어 are on the remote only.
-  if (r === 6) {
-    const words = await m.$$eval('.remote__words li', (l) => l.length).catch(() => 0);
-    if (words !== 6) errors.push(`round 6: the remote shows ${words} teams of 제시어`);
-    if ((await p.content()).includes('하트')) errors.push('round 6: a 제시어 is on the projector');
-    await shot('round6-words');
-  }
+
   if (r === 2) {
     const during = (await plays()).slice(mutedMark);
     log('sounds while muted:', JSON.stringify(during));

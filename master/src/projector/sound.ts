@@ -12,8 +12,9 @@ import buzzer from './sfx/buzzer.mp3';
 import boom from './sfx/boom.mp3';
 import drumroll from './sfx/drumroll.mp3';
 import fanfare from './sfx/fanfare.mp3';
+import bam from './sfx/bam.mp3';
 
-export const SFX = { reveal, win, ding, tick, buzzer, boom, drumroll, fanfare } as const;
+export const SFX = { reveal, win, ding, tick, buzzer, boom, drumroll, fanfare, bam } as const;
 export type SfxName = keyof typeof SFX;
 
 /** Relative loudness, so a tick never drowns the fanfare. */
@@ -26,6 +27,7 @@ const LEVEL: Record<SfxName, number> = {
   boom: 0.9,
   drumroll: 0.85,
   fanfare: 0.9,
+  bam: 0.95,
 };
 
 let muted = false;

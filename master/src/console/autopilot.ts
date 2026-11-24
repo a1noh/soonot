@@ -55,7 +55,7 @@ export function autoOf(cue: Cue | null | undefined): AutoKind | null {
 export const AUTO_PLAN: Record<AutoKind, readonly string[]> = {
   'bingo-open': ['빙고 준비', '빙고 게임 시작'],
   'bingo-last-call': [],
-  'bingo-reveal': ['2등', '1등', '1·2·3등 함께', '1등 카드', '랜덤 5명', '1등 상품'],
+  'bingo-reveal': ['2등', '1등', '1등 카드', '랜덤 5명', '1등 상품'],
   'stones-start': [],
   'stones-rounds': ['1라운드', '2라운드', '3라운드', '4라운드', '5라운드', '6라운드'],
   'stones-final': ['스톤 게임 종료', '1위 결정전'],
@@ -144,7 +144,7 @@ function bingoAction(auto: AutoKind, ctx: AutoContext): Action | null {
   if (step === 0) return { label: '', plan: '순위 발표', wait: '두구두구… 곧 3등이 나와요' };
   if (step === 1) return { label: '2등 공개', plan: '2등', run: () => send('master:reveal', { step: 2 }) };
   if (step === 2) return { label: '1등 공개', plan: '1등', run: () => send('master:reveal', { step: 3 }) };
-  if (step === 3) return { label: '1·2·3등 함께 보기', plan: '1·2·3등 함께', run: () => send('master:reveal', { step: 4 }) };
+  // (수정사항: no 1·2·3등 together screen — from 1등 straight to the 1등 card.)
   const first = b.winners.find((w) => w.rank === 1);
   if (!first) return null;
   if (ctx.event.bingoPrize) return null;

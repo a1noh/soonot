@@ -46,7 +46,10 @@ export interface Cue {
   controls: GameId | null;
   /** The game actions 다음 ▶ performs inside this step, or null for none. */
   auto: AutoKind | null;
+  /** A designed slide instead of the title card: 'rules' = the 게임 방식 screen (numbered lines from the body + the 6 stones). */
+  layout: SlideLayout;
 }
+export type SlideLayout = '' | 'rules';
 
 /** The slide on the projector right now — only what the room is allowed to see. */
 export interface SlideOnAir {
@@ -55,6 +58,7 @@ export interface SlideOnAir {
   body: string;
   media: string;
   transition: Transition;
+  layout: SlideLayout;
   /** A video waits on its first frame until the master presses 시작. */
   playing: boolean;
   /** Bumped by 시작, so the video starts from 0. */
@@ -118,6 +122,7 @@ function seed(list: Seed[]): Cue[] {
     timerLabel: c.timerLabel ?? '',
     controls: c.controls ?? null,
     auto: c.auto ?? null,
+    layout: c.layout ?? '',
   }));
 }
 
@@ -146,10 +151,11 @@ const MUSIC: Record<string, string> = {
   '빙고 QR 안내': '/media/bgm/local-forecast-elevator.mp3',
   'MC 등장 영상 · 타이틀': '/media/bgm/heroic-age.mp3',
   '빙고 마감 안내': '/media/bgm/volatile-reaction.mp3',
-  '빙고 1등 공개': '/media/bgm/carefree.mp3',
+  '빙고 1등 공개': '/media/bgm/fanfare-for-space.mp3',
+  '게임 방식 · 우승 조건': '/media/bgm/strength-of-the-titans.mp3',
   '어벤추수 땡스게임 메인 보드': '/media/bgm/five-armies.mp3',
   '최종 집계 · 타이브레이커': '/media/bgm/clash-defiant.mp3',
-  '최종 시상': '/media/bgm/life-of-riley.mp3',
+  '최종 시상': '/media/bgm/hero-theme.mp3',
   '감사합니다': '/media/bgm/inspired.mp3',
 };
 /** The 대본's game steps, and what 다음 ▶ automates in each. */
@@ -181,15 +187,15 @@ export interface RoundPlan {
   /** Empty: the MC plays the song by hand, so the background music stops. */
   bgmUrl: string;
   /** Extra MC tools in the remote: the 4지선다 questions, or the 일심동체 제시어 (console/RoundExtras). */
-  extra?: 'quiz' | 'words';
+  extra?: 'quiz' | 'words' | 'songs' | 'faces';
 }
 export const ROUNDS: readonly RoundPlan[] = [
   { n: 1, name: '아이언맨의 비행 테스트', note: '코끼리코 비행기 · 빙고 1등이 스톤 선택 · 각 팀 2명, 가위바위보로 순서 · 코끼리코 꼭 10바퀴 · 날개 있게 접기 · 시작선 표시 · 나온 분들 참가 선물', timer: 20, timerLabel: '20초 제한', bgm: '코끼리코 도는 동안 (Monkeys Spinning Monkeys)', bgmUrl: '/media/bgm/monkeys-spinning-monkeys.mp3' },
-  { n: 2, name: '가디언즈 오브 찬양', note: '찬양 맞추기 · 1라운드 1등 팀이 스톤 선택 · 1초 → 3초 들려주고 10초 상의 · 정답 후 그 찬양 약 10초 재생', timer: 10, timerLabel: '상의 시간', bgm: '찬양 음원 · 직접 틀기', bgmUrl: '' },
+  { n: 2, name: '가디언즈 오브 찬양', note: '찬양 맞추기 · 1라운드 1등 팀이 스톤 선택 · 아래에서 3·2·1 → 1초 (어려우면 3초) → 10초 상의 → 정답 + 10초', timer: 10, timerLabel: '상의 시간', bgm: '찬양 음원 (아래에서 재생)', bgmUrl: '', extra: 'songs' },
   { n: 3, name: '닥터 스트레인지의 1,400만 분의 1', note: '4지선다 · 2라운드 꼴찌 팀이 스톤 선택 (누가 고르나요에서 바꾸기) · 아래에서 문제 띄우기 (화면엔 번호 1~4만) · “하나, 둘, 셋!”에 번호 들기', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'quiz' },
-  { n: 4, name: '호크아이의 매의 눈', note: '매의 눈 · 3라운드 1등 팀이 스톤 선택 · 사진마다 10초 상의 (사진은 따로 틀기)', timer: 10, timerLabel: '상의 시간', bgm: '태양 「눈, 코, 입」 · 직접 틀기', bgmUrl: '' },
+  { n: 4, name: '호크아이의 매의 눈', note: '매의 눈 · 3라운드 1등 팀이 스톤 선택 · 아래에서 사진 띄우기 → 10초 상의 → 정답 공개', timer: 10, timerLabel: '상의 시간', bgm: '태양 「눈, 코, 입」 · 직접 틀기', bgmUrl: '', extra: 'faces' },
   { n: 5, name: '토르의 번개 같은 센스', note: '휘트니 휴스턴 · 4라운드 1등 팀이 스톤 선택 · 각 팀 1명, 가위바위보로 순서 · 게임 전에 모두 한 번 같이 듣기 · 도전자는 연습 없이 한 번, 5초 지점부터 · 판독용 촬영 (목사님/효준) · “성공을 어케해~”에서 효준 시범', timer: 0, timerLabel: '', bgm: 'I Will Always Love You · 직접 틀기', bgmUrl: '' },
-  { n: 6, name: '어벤져스 어셈블', note: '일심동체 · 마지막 스톤은 자동 · 각 팀 3명, 팀마다 제시어 5개 (아래 목록, 화면엔 안 나와요) · 1등 동점이면 동점 팀끼리 제시어 몇 개 더', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'words' },
+  { n: 6, name: '어벤져스 어셈블', note: '일심동체 · 마지막 스톤은 자동 · 각 팀 3명, 팀마다 제시어 5개 (아래에서 누르면 화면에 크게) · 1등 동점이면 동점 팀끼리 제시어 몇 개 더', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'words' },
 ];
 
 /** The 결정전's countdown: the MC starts it from the remote once the teams are at the line. */
@@ -220,15 +226,15 @@ export function defaultCues(): Cue[] {
 
 function scriptCues(): Cue[] {
   return seed([
-    { kind: 'screen', screen: 'bingo', title: '빙고 QR 안내', bgm: '밝고 잔잔한 식사 배경음악', note: '식사 30분 후 · 효준이 QR 안내' },
-    // The intro video (39.6 s, ends on the title card). If the file is not on this
-    // host the projector falls back to the placeholder title card.
-    { title: 'MC 등장 영상 · 타이틀', body: '어벤추수 땡스게임', media: '/media/어벤추수-mc-intro-sfx.mp4', bgm: '웅장한 테마 (영상이 끝나면 이어져요)', transition: 'zoom', note: '5층 본당 · 시작을 누르면 영상 39초, 끝나면 BGM이 이어져요 · 효준/예진 인사' },
+    { kind: 'screen', screen: 'bingo', title: '빙고 QR 안내', bgm: '밝고 잔잔한 식사 배경음악', note: '6층 식사 30분 후 · 효준이 QR 안내' },
     // The body is a banner across the bingo screen (a screen cue's body always is). The
     // timer is only an option: it never starts by itself (⏱ on the remote if wanted).
-    { kind: 'screen', screen: 'bingo', title: '빙고 마감 안내', body: '6시까지 와주세요! · 빙고는 6시에 마감돼요', bgm: '긴장감 있는 카운트다운 음악', timer: 300, timerLabel: '빙고 마감까지', note: '화면에 “6시까지 와주세요” 안내 · 추가 시간은 없어요 · 타이머는 필요할 때만 ⏱ · 다음 ▶ = 빙고 종료' },
-    { kind: 'screen', screen: 'bingo', title: '빙고 1등 공개', bgm: '축하 팡파르', note: '예진: 랜덤 5명 이름을 불러 확인 · 1등 상품은 첫 스톤 선택권 (상자는 마지막에 열려요)' },
-    { title: '게임 방식 · 우승 조건', body: '스톤 6개 · 스톤마다 게임 하나 · 게임 1등 팀이 스톤 획득 · 스톤을 가장 많이 모은 팀이 우승!', note: '빙고 시상 직후 짧게 · 게임 참가자는 초콜릿 한 개씩 가져가요 · BGM은 앞 음악 계속' },
+    { kind: 'screen', screen: 'bingo', title: '빙고 마감 안내', body: '6시까지 와주세요! · 빙고는 6시에 마감돼요', bgm: '긴장감 있는 카운트다운 음악', timer: 300, timerLabel: '빙고 마감까지', note: '6층 식사 후 5층으로 내려올 때 띄워 두기 · 추가 시간은 없어요 · 타이머는 필요할 때만 ⏱' },
+    // The intro video (39.6 s, ends on the title card). If the file is not on this
+    // host the projector falls back to the placeholder title card.
+    { title: 'MC 등장 영상 · 타이틀', body: '어벤추수 땡스게임', media: '/media/어벤추수-mc-intro-sfx.mp4', bgm: '웅장한 테마 (영상이 끝나면 이어져요)', transition: 'zoom', note: '모두 모이면 ▶ · 영상 39초, 끝나면 BGM이 이어져요 · 효준/예진 인사' },
+    { kind: 'screen', screen: 'bingo', title: '빙고 1등 공개', bgm: '웅장한 팡파르 (두구두구 → 빠밤)', note: '열면서 빙고 종료 · 3등 → 2등 → 1등 → 1등 카드 → 랜덤 5명 → 상품 (첫 스톤 선택권)' },
+    { title: '게임 방식 · 우승 조건', body: '6개의 스톤 존재! · 각 스톤의 게임을 이기는 팀에게 스톤 지급! · 스톤을 가장 많이 모은 팀 우승!!', layout: 'rules', bgm: '웅장한 어벤져스 느낌 (코너 전환)', note: '빙고 시상 직후 짧게 · 게임 참가자는 초콜릿 한 개씩 가져가요' },
     { title: '팀 별 자리 안내도', body: '이름표 색상과 디자인에 맞춰 앉아주세요', note: '팀끼리 모이기 · 팀 대장 고르기 (타이브레이커 때 팀장이 나와요)' },
     { kind: 'screen', screen: 'stones', title: '어벤추수 땡스게임 메인 보드', bgm: '웅장한 어벤져스 테마', transition: 'zoom', note: '효준: 스톤 6가지 소개 · 빙고 1등이 첫 스톤을 골라요 (고르면 라운드로 넘어가요)' },
     // The whole 스톤 game is ONE step: the game drives the rounds (pick → play → winner),
@@ -236,7 +242,7 @@ function scriptCues(): Cue[] {
     // A round's timer never starts by itself: the rules come first, then the MC taps ⏱.
     { kind: 'screen', screen: 'stones', title: '스톤 게임 · 1–6라운드', note: '매 라운드: 스톤 선택 → 룰 설명 → ⏱ 게임 시작 → 이긴 팀 체크' },
     { kind: 'screen', screen: 'stones', title: '최종 집계 · 타이브레이커', bgm: '긴장감 넘치는 추격/스포츠 음악', note: '1위가 동점이면 타노스의 핑거 스냅 (인피니티 컵 컬링) · 결정전 때 ⏱ 20초 · 던지기·굴리기·튕기기 금지 · 종이컵 3개' },
-    { kind: 'screen', screen: 'stones', title: '최종 시상', bgm: '축하 팡파르', transition: 'zoom', note: '2등 50불 → 1등 100불 → 모든 팀 70불 상당 커피 기프트카드 (참여를 잘 해주셔서)' },
+    { kind: 'screen', screen: 'stones', title: '최종 시상', bgm: '영웅적인 축하 음악 · 호명마다 빠밤', transition: 'zoom', note: '2등 50불 → 1등 100불 → 모든 팀 70불 상당 커피 기프트카드 (참여를 잘 해주셔서)' },
     { title: '감사합니다', body: '어벤추수 땡스게임 · MC 효준, 예진', bgm: '마무리 음악', note: '목사님 마무리 · 나가면서 14기가 준비한 연말 구디백 안내 (모든 참석자)' },
   ]);
 }
@@ -284,6 +290,7 @@ export function parseCues(raw: unknown): Cue[] {
       timerLabel: str(c['timerLabel'], 40),
       controls: kind === 'slide' && GAME_IDS.includes(c['controls'] as GameId) ? (c['controls'] as GameId) : null,
       auto: AUTO_KINDS.includes(c['auto'] as AutoKind) ? (c['auto'] as AutoKind) : null,
+      layout: c['layout'] === 'rules' ? 'rules' : '',
     };
   });
 }
@@ -297,6 +304,8 @@ export function parseCues(raw: unknown): Cue[] {
 const OLD_DEFAULTS: readonly (readonly string[])[] = [
   // 2026-11-21
   ['빙고 QR 안내', 'MC 등장 영상 · 타이틀', '빙고 5분 마지막 기회', '빙고 1등 공개', '어벤추수 땡스게임 메인 보드', '팀 별 자리 안내도', '스톤 게임 · 1–6라운드', '최종 집계 · 타이브레이커', '최종 시상', '감사합니다'],
+  // 2026-11-24 (마감 안내 after the video)
+  ['빙고 QR 안내', 'MC 등장 영상 · 타이틀', '빙고 마감 안내', '빙고 1등 공개', '게임 방식 · 우승 조건', '팀 별 자리 안내도', '어벤추수 땡스게임 메인 보드', '스톤 게임 · 1–6라운드', '최종 집계 · 타이브레이커', '최종 시상', '감사합니다'],
   // 2026-11-24 (first 시뮬레이션 build)
   ['빙고 QR 안내', 'MC 등장 영상 · 타이틀', '빙고 종료 카운트다운', '빙고 1등 공개', '게임 방식 · 우승 조건', '팀 별 자리 안내도', '어벤추수 땡스게임 메인 보드', '스톤 게임 · 1–6라운드', '최종 집계 · 타이브레이커', '최종 시상', '감사합니다'],
 ];

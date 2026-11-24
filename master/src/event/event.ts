@@ -53,12 +53,19 @@ export interface EventRecord {
   projectorQuiz: ProjectorQuiz | null;
   /** 최종 시상: the 스톤 reveal step whose prize is shown big (2 = 2위, 3 = 1위), or null. */
   podiumPrize: number | null;
+  /** A round card over the projector (일심동체 제시어, 눈코입 photo, 찬양 clip), or null. */
+  projectorCard: ProjectorCard | null;
   /** 진행 순서: the script's slides, screens and BGM, and what is on air now. */
   show: ShowState;
   readonly games: Record<GameId, GameHandle>;
   readonly createdAt: number;
   closedAt: number | null;
 }
+
+export type ProjectorCard =
+  | { kind: 'word'; kicker: string; text: string }
+  | { kind: 'face'; n: number; total: number; url: string; zoomUrl: string | null; name: string; revealed: boolean }
+  | { kind: 'song'; n: number; total: number; url: string; title: string; phase: 'play1' | 'play3' | 'answer'; startedAt: number };
 
 export interface ProjectorQuiz {
   /** 1-based question number, and how many there are. */
@@ -111,6 +118,7 @@ export function createEvent(input: CreateEventInput): EventRecord {
     projectorTimer: null,
     projectorQuiz: null,
     podiumPrize: null,
+    projectorCard: null,
     show: defaultShow(),
     games,
     createdAt: now,
@@ -143,6 +151,7 @@ export interface EventSummary {
   projectorTimer: ProjectorTimer | null;
   projectorQuiz: ProjectorQuiz | null;
   podiumPrize: number | null;
+  projectorCard: ProjectorCard | null;
   /** A banner across the game screen (a screen step's body), or null. */
   banner: string | null;
   /** A slide over the projector, or null for the game screen. */
@@ -190,6 +199,7 @@ export function summarize(
     projectorTimer: event.projectorTimer,
     projectorQuiz: event.projectorQuiz,
     podiumPrize: event.podiumPrize,
+    projectorCard: event.projectorCard,
     banner: event.show.banner,
     slide: event.show.slide,
     bgm: event.show.bgm,

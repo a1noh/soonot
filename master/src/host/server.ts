@@ -110,7 +110,7 @@ export function createHost(options: HostOptions): Host {
     checkInvariants: !config.production,
   });
 
-  attachNamespaces({ io, registry, dispatch, sessions, persistence, now, playerSockets });
+  attachNamespaces({ io, registry, dispatch, sessions, persistence, now, playerSockets, mediaDir: config.mediaDir });
 
   // The shared 1 Hz clock (spec §7). Dispatching TICK is what lets a game end
   // itself on time expiry. The countdown itself now ticks **client-side** (the
@@ -201,10 +201,14 @@ export function createHost(options: HostOptions): Host {
   app.get('/master/media', (req: Request, res: Response) => {
     if (!isMaster(req)) return void res.status(401).json({ ok: false });
     let files: { name: string; url: string; size: number }[] = [];
-    if (existsSync(config.mediaDir)) {
-      files = readdirSync(config.mediaDir)
+    // ?dir=songs|faces lists a round's folder (찬양 clips, 눈코입 photos).
+    const dir = String(req.query['dir'] ?? '');
+    if (dir && !['bgm', 'songs', 'faces'].includes(dir)) return void res.status(400).json({ ok: false });
+    const folder = dir ? join(config.mediaDir, dir) : config.mediaDir;
+    if (existsSync(folder)) {
+      files = readdirSync(folder)
         .filter((f) => MEDIA_OK.test(f))
-        .map((f) => ({ name: f, url: `/media/${encodeURIComponent(f)}`, size: statSync(join(config.mediaDir, f)).size }));
+        .map((f) => ({ name: f, url: `/media/${dir ? `${dir}/` : ''}${encodeURIComponent(f)}`, size: statSync(join(folder, f)).size }));
     }
     res.json({ ok: true, files });
   });
@@ -219,7 +223,7 @@ export function createHost(options: HostOptions): Host {
     }
     // One optional subfolder, from a fixed list (the show's music lives in /media/bgm/).
     const dir = String(req.query['dir'] ?? '');
-    if (dir && !['bgm'].includes(dir)) return void res.status(400).json({ ok: false, message: '폴더가 맞지 않아요' });
+    if (dir && !['bgm', 'songs', 'faces'].includes(dir)) return void res.status(400).json({ ok: false, message: '폴더가 맞지 않아요' });
     const folder = dir ? join(config.mediaDir, dir) : config.mediaDir;
     mkdirSync(folder, { recursive: true });
     const finalPath = join(folder, name);

@@ -24,7 +24,7 @@ import { Leaf, LEAF_COLORS } from '../shared/Leaf.js';
 import { formatLeft, useCountdown } from '../shared/countdown.js';
 import { BgmPlayer, MusicCredit, SlideLayer, SoundPrompt } from './ShowLayer.js';
 import { useGameSfx } from './useSfx.js';
-import { playSfx } from './sound.js';
+import { isMuted, playSfx } from './sound.js';
 import '../shared/harvest.css';
 import './projector.css';
 import './harvest-stage.css';
@@ -663,11 +663,108 @@ export function App() {
       <BgmPlayer bgm={summary?.bgm ?? null} hold={videoOn} onBlocked={() => setSoundBlocked(true)} />
       {videoOn ? null : <MusicCredit bgm={summary?.bgm ?? null} muted={!!summary?.muted} />}
       {summary?.banner && !summary.slide ? <ScreenBanner key={summary.banner} text={summary.banner} /> : null}
+      {summary?.projectorCard ? <CardOverlay card={summary.projectorCard} /> : null}
       {summary?.projectorQuiz ? <QuizOverlay key={summary.projectorQuiz.n} quiz={summary.projectorQuiz} /> : null}
       {summary ? <TimerOverlay timer={summary.projectorTimer} serverNow={summary.serverNow} /> : null}
       <SoundPrompt needed={soundBlocked} />
       <FullscreenButton />
     </>
+  );
+}
+
+/**
+ * A round card from the MC's remote, over the 스톤 screen:
+ *  word — 일심동체: one 제시어, huge;
+ *  face — 눈코입: the zoomed picture, then (정답) the whole photo and the name;
+ *  song — 찬양: 3·2·1, then the clip plays 1초 or 3초; 정답 shows the title and plays ~10초.
+ */
+function CardOverlay({ card }: { card: NonNullable<EventSummary['projectorCard']> }) {
+  if (card.kind === 'word') {
+    return (
+      <div className="pcard pcard--word" role="dialog" aria-label="제시어">
+        <p className="pcard__kicker">{card.kicker}</p>
+        <h1 key={card.text} className="pcard__word">{card.text}</h1>
+      </div>
+    );
+  }
+  if (card.kind === 'face') {
+    return (
+      <div className="pcard pcard--face" role="dialog" aria-label={`눈코입 ${card.n}`}>
+        <p className="pcard__kicker">
+          호크아이의 매의 눈 · <b>{card.n}</b> / {card.total}
+        </p>
+        {card.revealed ? (
+          <div key="full" className="pcard__photo is-full">
+            <img src={card.url} alt={card.name} />
+          </div>
+        ) : (
+          <div key="zoom" className={`pcard__photo${card.zoomUrl ? '' : ' is-zoomed'}`}>
+            <img src={card.zoomUrl ?? card.url} alt="누구일까요?" />
+          </div>
+        )}
+        <h1 className="pcard__answer">{card.revealed ? card.name : '누구일까요?'}</h1>
+      </div>
+    );
+  }
+  return <SongCard card={card} />;
+}
+
+function SongCard({ card }: { card: Extract<NonNullable<EventSummary['projectorCard']>, { kind: 'song' }> }) {
+  const audio = useRef<HTMLAudioElement>(null);
+  const [count, setCount] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    const a = audio.current;
+    if (!a) return undefined;
+    const timers: number[] = [];
+    const later = (ms: number, f: () => void) => timers.push(window.setTimeout(f, ms));
+    a.pause();
+    a.currentTime = 0;
+    a.volume = 1;
+    a.muted = isMuted();
+    setPlaying(false);
+    const play = (seconds: number) => {
+      a.currentTime = 0;
+      void a.play().catch(() => {});
+      setPlaying(true);
+      later(seconds * 1000, () => {
+        a.pause();
+        setPlaying(false);
+      });
+    };
+    if (card.phase === 'answer') {
+      setCount(null);
+      play(10);
+    } else {
+      setCount(3);
+      later(1000, () => setCount(2));
+      later(2000, () => setCount(1));
+      later(3000, () => {
+        setCount(null);
+        play(card.phase === 'play3' ? 3 : 1);
+      });
+    }
+    return () => {
+      timers.forEach((t) => window.clearTimeout(t));
+      a.pause();
+    };
+  }, [card.n, card.phase, card.startedAt]);
+  return (
+    <div className="pcard pcard--song" role="dialog" aria-label={`찬양 ${card.n}`}>
+      <audio ref={audio} src={card.url} preload="auto" />
+      <p className="pcard__kicker">
+        가디언즈 오브 찬양 · <b>{card.n}</b> / {card.total}
+      </p>
+      {card.phase === 'answer' ? (
+        <h1 key="answer" className="pcard__answer pcard__answer--song">{card.title}</h1>
+      ) : count !== null ? (
+        <div key={`c${count}`} className="pcard__count">{count}</div>
+      ) : (
+        <div className={`pcard__listen${playing ? ' is-playing' : ''}`}>
+          <span aria-hidden="true">♪</span> {card.phase === 'play3' ? '3초' : '1초'} {playing ? '듣기' : '끝! 어떤 찬양일까요?'}
+        </div>
+      )}
+    </div>
   );
 }
 

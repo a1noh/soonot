@@ -249,6 +249,42 @@ describe('projector overlays the master drives', () => {
     }
   });
 
+  it('round cards: 제시어 from the host copy; 눈코입 / 찬양 from the uploaded folders; off', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    await emit(master, 'event:create', { title: 'x' });
+    const cookie = `${COOKIE_NAME}=${token}`;
+
+    const word = once<EventSummary>(master, 'event:summary');
+    expect((await emit(master, 'projector:card', { kind: 'word', team: 0, i: 1 })).ok).toBe(true);
+    expect((await word).projectorCard).toMatchObject({ kind: 'word', text: '야구' });
+
+    // Nothing uploaded yet: a clear error, nothing on screen.
+    expect((await emit(master, 'projector:card', { kind: 'face', n: 1 })).ok).toBe(false);
+    for (const [dir, name] of [['faces', '02 유재석.jpg'], ['faces', '02 유재석-zoom.jpg'], ['faces', '01 아이유.png'], ['songs', '01 제이어스 - 내 모습 이대로.mp3']]) {
+      const up = await fetch(`${base}/master/media?dir=${dir}&name=${encodeURIComponent(name!)}`, { method: 'POST', headers: { cookie }, body: 'x' });
+      expect(up.status).toBe(200);
+    }
+    const list = await (await fetch(`${base}/master/media?dir=faces`, { headers: { cookie } })).json();
+    expect(list.files).toHaveLength(3);
+
+    const face = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:card', { kind: 'face', n: 2, revealed: false });
+    expect((await face).projectorCard).toMatchObject({ kind: 'face', n: 2, total: 2, name: '유재석', revealed: false, zoomUrl: expect.stringContaining('zoom') });
+
+    const song = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:card', { kind: 'song', n: 1, phase: 'answer' });
+    expect((await song).projectorCard).toMatchObject({ kind: 'song', title: '제이어스 - 내 모습 이대로', phase: 'answer' });
+
+    const off = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:card', { off: true });
+    expect((await off).projectorCard).toBeNull();
+    for (const bad of [{ kind: 'word', team: 9, i: 0 }, { kind: 'song', n: 5 }, { kind: 'x' }]) {
+      expect((await emit(master, 'projector:card', bad)).ok).toBe(false);
+    }
+  });
+
   it('starts and stops a countdown, with the server clock to line screens up', async () => {
     const { base } = await boot();
     const { token } = await signIn(base);
@@ -420,14 +456,15 @@ describe('진행 순서 (slides, screens, BGM)', () => {
     expect((await stop).bgm).toMatchObject({ url: '', playing: false });
     // A step's timer never starts by itself (only ⏱); a screen step's body is its banner.
     const sign = once<EventSummary>(master, 'event:summary');
-    await emit(master, 'show:go', { id: cues[2]!.id });
+    const signCue = cues.find((c) => c.title === '빙고 마감 안내')!;
+    await emit(master, 'show:go', { id: signCue.id });
     const onSign = await sign;
     expect(onSign.projectorTimer).toBeNull();
     expect(onSign.banner).toBe('6시까지 와주세요! · 빙고는 6시에 마감돼요');
     // A ⏱ started on the step ends when you leave it, and so does the banner.
     await emit(master, 'projector:timer', { seconds: 300, label: '빙고 마감까지' });
     const moved = once<EventSummary>(master, 'event:summary');
-    await emit(master, 'show:go', { id: cues[3]!.id });
+    await emit(master, 'show:go', { id: cues.find((c) => c.title === '빙고 1등 공개')!.id });
     const after = await moved;
     expect(after.projectorTimer).toBeNull();
     expect(after.banner).toBeNull();

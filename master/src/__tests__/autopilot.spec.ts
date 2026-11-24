@@ -50,7 +50,7 @@ describe('다음 ▶ in the 빙고 steps', () => {
     expect(nextAction(ctx('빙고 1등 공개', { bingo: bingo({ state: 'RUNNING' }) }))!.label).toBe('빙고 종료 · 순위 발표');
   });
 
-  it('1등 공개: 발표 → (drumroll) → 2등 → 1등 → 함께 → 카드 → 랜덤 5명 → 상품 → done', async () => {
+  it('1등 공개: (drumroll) → 2등 → 1등 → 카드 → 랜덤 5명 → 상품 → done', async () => {
     const winner = { rank: 1, n: 7, name: '지훈', grid: Array.from({ length: 25 }, (_, i) => ({ name: i < 10 ? `p${i}` : null })) };
     const at = (o: Record<string, unknown>, e: Partial<EventSummary> = {}) =>
       nextAction(ctx('빙고 1등 공개', { bingo: bingo({ winners: [winner], ...o }), event: event(e) }));
@@ -58,8 +58,8 @@ describe('다음 ▶ in the 빙고 steps', () => {
     expect(at({ state: 'REVEAL', revealStep: 0 })!.wait).toMatch(/두구두구/);
     expect(at({ state: 'REVEAL', revealStep: 1 })!.label).toBe('2등 공개');
     expect(at({ state: 'REVEAL', revealStep: 2 })!.label).toBe('1등 공개');
-    expect(at({ state: 'REVEAL', revealStep: 3 })!.label).toMatch(/함께/);
-    expect(at({ state: 'REVEAL', revealStep: 4 })!.label).toBe('1등 카드 띄우기 · 지훈');
+    // No 1·2·3등 together screen (수정사항): from 1등 straight to the card.
+    expect(at({ state: 'REVEAL', revealStep: 3 })!.label).toBe('1등 카드 띄우기 · 지훈');
     expect(at({ state: 'REVEAL', revealStep: 4 }, { bingoSpotlight: 7 })!.label).toBe('랜덤 5명 확인');
     const prize = ctx('빙고 1등 공개', { bingo: bingo({ state: 'REVEAL', revealStep: 4, winners: [winner] }), event: event({ bingoSpotlight: 7, bingoCheck: [0, 1, 2, 3, 4] }) });
     const p = nextAction(prize)!;
@@ -110,7 +110,7 @@ describe('다음 ▶ in the 스톤 steps', () => {
 describe('다음 ▶ on a video step', () => {
   it('has no tap of its own: entering started it, so ▶ moves on (even after ◀ back onto it)', () => {
     const c = cue('MC 등장 영상 · 타이틀');
-    expect(nextAction(ctx(c.title, { event: event({ slide: { cueId: c.id, title: c.title, body: '', media: c.media, transition: 'zoom', playing: false, startedAt: 0 } }) }))).toBeNull();
+    expect(nextAction(ctx(c.title, { event: event({ slide: { cueId: c.id, title: c.title, body: '', media: c.media, layout: '', transition: 'zoom', playing: false, startedAt: 0 } }) }))).toBeNull();
   });
 });
 

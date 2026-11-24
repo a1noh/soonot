@@ -144,14 +144,18 @@ await scenario('빙고: 1명뿐이면 다음은 기다림, 2명이 되면 “게
   expect(/빙고 게임 시작 \(2명\)/.test(await nextText()), `2명: 다음 = "${await nextText()}"`);
 });
 
-await scenario('마감 안내: 타이머 없이 안내만, ⏱ 를 누르면 시작, 다음 ▶ 이 빙고 종료 + 순위 발표 (타이머도 끝)', async (expect) => {
+await scenario('마감 안내: 타이머 없이 안내만, ⏱ 를 누르면 시작, 다음 ▶ 영상이 타이머를 끝내고, 그다음 ▶ 이 빙고 종료 + 순위 발표', async (expect) => {
   await bingoRunning();
-  await jump(3);
+  await jump(2);
   expect(!(await m.$('.remote__timer.is-running')), '타이머가 저절로 시작됐어요');
   expect(!!(await p.$('.pbanner')), '발표 화면에 안내가 없어요');
   await click('.remote__do', '5분 타이머');
   await sleep(500);
   expect(!!(await p.$('.ptimer')), '⏱ 를 눌러도 타이머가 없어요');
+  expect(/MC 등장 영상/.test(await nextText()), `다음 = "${await nextText()}"`);
+  await press(); // → 영상 (the ⏱ ends with the step)
+  await sleep(500);
+  expect(!(await p.$('.ptimer')), '영상 위에 타이머가 남아 있어요');
   expect(/빙고 1등 공개.*빙고 종료/.test(await nextText()), `다음 = "${await nextText()}"`);
   await press(); // → 빙고 1등 공개: bingo ends and the reveal starts in this one tap
   await sleep(600);
@@ -179,7 +183,7 @@ await scenario('라운드: 룰 설명 중엔 타이머 없음, ⏱ 를 눌러야
 
 await scenario('다른 장면으로 가면 그 장면의 타이머는 끝나요', async (expect) => {
   await bingoRunning();
-  await jump(3);
+  await jump(2);
   await click('.remote__do', '5분 타이머');
   await jump(5);
   const timer = await p.$('.ptimer');

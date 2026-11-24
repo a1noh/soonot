@@ -112,6 +112,7 @@ export function recoverEvent(
     projectorTimer: null,
     projectorQuiz: null,
     podiumPrize: null,
+    projectorCard: null,
     // The cue list comes back; what was on air (a slide, a BGM) does not.
     show: readShow(row.show_json),
     games,

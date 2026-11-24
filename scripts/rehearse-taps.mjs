@@ -167,12 +167,11 @@ function fillCards() {
 const WINNERS = [['토르'], ['블랙 위도우'], ['토르'], ['블랙 위도우'], ['헐크'], ['토르', '블랙 위도우']];
 /** From step 4 (bingo running) to the end of the show. */
 async function forwardFromVideo() {
-  await next('MC 등장 영상');
   await next('빙고 마감 안내');
+  await next('MC 등장 영상');
   await next('빙고 1등 공개');
   await next('2등 공개');
   await next('1등 공개');
-  await next('함께');
   await next('1등 카드');
   await next('랜덤 5명');
   await next('1등 상품');

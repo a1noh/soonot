@@ -11,6 +11,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { isVideo, musicCredit, type BgmOnAir, type SlideOnAir } from '../event/show.js';
 import { isMuted, onMutedChange } from './sound.js';
+import { Gem } from '@soonot/stones/src/client/Gem.js';
+import { DEFAULT_STONES, STONE_COLORS } from '@soonot/stones/src/shared/constants.js';
 import './show.css';
 
 /** 🔇 소리 끄기 from the console, as a React value. */
@@ -175,6 +177,7 @@ function SlideBody({
     if (!live) video.current?.pause();
   }, [live]);
 
+  if (slide.layout === 'rules') return <RulesSlide slide={slide} />;
   if (!slide.media || broken) {
     return (
       <div className="slide__ph">
@@ -311,6 +314,36 @@ export function MusicCredit({ bgm, muted }: { bgm: BgmOnAir | null; muted: boole
   return (
     <div className="musiccredit" aria-hidden="true">
       {shown}
+    </div>
+  );
+}
+
+/**
+ * 게임 방식 · 우승 조건: the rules as three numbered lines (the cue's body, split on
+ * " · ") under the six stones drawn exactly like the game board.
+ */
+function RulesSlide({ slide }: { slide: SlideOnAir }) {
+  const lines = slide.body.split(' · ').map((l) => l.trim()).filter(Boolean);
+  return (
+    <div className="rules">
+      <div className="rules__glow" aria-hidden="true" />
+      <h1 className="rules__title">게임 방식</h1>
+      <ul className="rules__stones" aria-label="6개의 스톤">
+        {DEFAULT_STONES.map((name, i) => (
+          <li key={name} className="rules__stone" style={{ animationDelay: `${0.15 + i * 0.12}s` }}>
+            <Gem color={STONE_COLORS[i % STONE_COLORS.length]!} size={110} halo />
+            <span>{name}</span>
+          </li>
+        ))}
+      </ul>
+      <ol className="rules__list">
+        {lines.map((l, i) => (
+          <li key={i} className="rules__line" style={{ animationDelay: `${0.9 + i * 0.35}s` }}>
+            <b>{i + 1}</b>
+            <span>{l}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }

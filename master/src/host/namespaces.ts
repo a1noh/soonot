@@ -18,7 +18,10 @@ import { GAME_IDS, isGameId } from '../shared/lifecycle.js';
 import type { Registry } from '../event/registry.js';
 import { summarize } from '../event/event.js';
 import { isVideo, parseCues, safeUrl } from '../event/show.js';
-import { FOUR_CHOICE } from '../event/quiz.js';
+import { FOUR_CHOICE, ONE_MIND } from '../event/quiz.js';
+import { roundItems, type RoundDir } from '../event/roundItems.js';
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Dispatch } from './dispatch.js';
 import type { Emit } from './emit.js';
 import { STATE_EVENT } from './emit.js';
@@ -48,6 +51,8 @@ export interface NamespaceDeps {
    */
   playerSockets?: Map<string, Socket>;
   buckets?: BucketRegistry;
+  /** Where uploaded media lives (the 찬양 clips and 눈코입 photos for the round cards). */
+  mediaDir?: string;
 }
 
 /** The emojis a phone may fling onto the projector (Kahoot-style reactions). */
@@ -459,6 +464,58 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
   });
 
   /**
+   * A round card over the projector, from the MC's remote:
+   *   { kind: 'word', team: 0–5 | -1 (동점 연장), i }    — 일심동체: one 제시어, big
+   *   { kind: 'face', n, revealed }                     — 눈코입: zoomed, then the whole photo + name
+   *   { kind: 'song', n, phase: play1 | play3 | answer } — 찬양: 3·2·1 then 1초 / 3초, then title + ~10초
+   *   { off: true }                                     — take it down
+   * Words and files come from the host's own copy, never from the payload.
+   */
+  socket.on('projector:card', (payload: unknown, ack: unknown) => {
+    try {
+      const p = (payload ?? {}) as Record<string, unknown>;
+      const event = registry.require();
+      const int = (v: unknown, lo: number, hi: number) => {
+        const n = Number(v);
+        if (!Number.isInteger(n) || n < lo || n > hi) throw new HostError('BAD_PAYLOAD');
+        return n;
+      };
+      const files = (dir: RoundDir) => {
+        const folder = deps.mediaDir ? join(deps.mediaDir, dir) : '';
+        return roundItems(dir, folder && existsSync(folder) ? readdirSync(folder) : []);
+      };
+      if (p['off'] === true) {
+        event.projectorCard = null;
+      } else if (p['kind'] === 'word') {
+        const team = int(p['team'], -1, ONE_MIND.teams.length - 1);
+        const words = team === -1 ? ONE_MIND.tie : ONE_MIND.teams[team]!;
+        const i = int(p['i'], 0, words.length - 1);
+        const kicker = team === -1 ? `어벤져스 어셈블 · 동점 연장 · ${i + 1}/${words.length}` : `어벤져스 어셈블 · ${team + 1}번째 팀 · 제시어 ${i + 1}/${words.length}`;
+        event.projectorCard = { kind: 'word', kicker, text: words[i]! };
+      } else if (p['kind'] === 'face' || p['kind'] === 'song') {
+        const dir: RoundDir = p['kind'] === 'face' ? 'faces' : 'songs';
+        const items = files(dir);
+        if (items.length === 0) throw new HostError('BAD_PAYLOAD', dir === 'faces' ? '눈코입 사진을 먼저 올려주세요' : '찬양 음원을 먼저 올려주세요');
+        const n = int(p['n'], 1, items.length);
+        const it = items[n - 1]!;
+        if (p['kind'] === 'face') {
+          event.projectorCard = { kind: 'face', n, total: items.length, url: it.url, zoomUrl: it.zoomUrl, name: it.name, revealed: p['revealed'] === true };
+        } else {
+          const phase = p['phase'] === 'play3' ? 'play3' : p['phase'] === 'answer' ? 'answer' : 'play1';
+          event.projectorCard = { kind: 'song', n, total: items.length, url: it.url, title: it.name, phase, startedAt: Date.now() };
+        }
+      } else {
+        throw new HostError('BAD_PAYLOAD');
+      }
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /**
    * 3라운드 4지선다: `{ n }` puts question n (1-based) over the projector with only
    * 1–4 showing; `{ n: null }` takes it down. The text comes from the host's own
    * copy (event/quiz.ts), so no screen learns a question before it is asked.
@@ -520,6 +577,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       // shows on its own reveal step, so ◀ back into 최종 시상 finds it as it was.)
       if (show.liveCue !== cue.id) {
         event.projectorQuiz = null;
+        event.projectorCard = null;
         event.projectorTimer = null;
       }
       show.liveCue = cue.id;
@@ -533,7 +591,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       } else {
         show.banner = null;
         // Up and ready, not playing: a video holds its first frame until 시작.
-        show.slide = { cueId: cue.id, title: cue.title, body: cue.body, media: cue.media, transition: cue.transition, playing: false, startedAt: 0 };
+        show.slide = { cueId: cue.id, title: cue.title, body: cue.body, media: cue.media, layout: cue.layout, transition: cue.transition, playing: false, startedAt: 0 };
       }
       // A cue with a BGM takes over the music, loaded but silent until the
       // master presses 시작; one without leaves the music as it is. The same
@@ -690,6 +748,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       event.bingoCheck = null;
       event.projectorTimer = null;
       event.projectorQuiz = null;
+      event.projectorCard = null;
       event.podiumPrize = null;
       Object.assign(event.show, { liveCue: null, slide: null, banner: null, bgm: null, screenTransition: 'fade', muted: false });
       deps.persistence?.saveEvent?.(event);
@@ -716,7 +775,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       if (event.projectorLock === gameId) event.projectorLock = null;
       // A fresh bingo game has no winners — drop any lingering card spotlight.
       if (gameId === 'bingo') { event.bingoSpotlight = null; event.bingoPrize = false; event.bingoCheck = null; }
-      if (gameId === 'stones') { event.projectorQuiz = null; event.podiumPrize = null; }
+      if (gameId === 'stones') { event.projectorQuiz = null; event.projectorCard = null; event.podiumPrize = null; }
       deps.persistence?.enqueue({ gameId, state: fresh, action: { t: 'RESET' }, emits: [], at });
       broadcastSummary(deps);
       pushStateAll(deps.io, gameId, registry, 'everyone');

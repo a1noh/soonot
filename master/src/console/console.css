@@ -1115,3 +1115,8 @@
 .remote__chip--go { border-color: var(--game-stones); font-weight: 800; }
 .remote__words { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 1rem; line-height: 1.45; }
 .remote__words b { display: inline-block; min-width: 5.5em; color: var(--game-stones); }
+.remote__words li { display: grid; gap: 4px; }
+.remote__wordrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.remote__word { min-height: 40px; padding: 4px 12px; font-weight: 700; }
+.remote__word.is-on { background: var(--game-stones); border-color: var(--game-stones); color: #fff; }
+.remote__upload { justify-self: start; cursor: pointer; }

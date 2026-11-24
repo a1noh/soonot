@@ -78,9 +78,26 @@ const SOUNDS = {
     ]),
     af: 'lowpass=f=5000,aecho=0.8:0.6:70:0.3',
   },
+  // A place is called (순위 발표): 빠-밤! — a short brass stab, then a big chord on a timpani hit.
+  bam: {
+    dur: 2.2,
+    expr: sum([
+      note(261.63, 0, 0.14, { amp: 0.2, harm: BRASS, decay: 6 }),
+      note(392, 0, 0.14, { amp: 0.15, harm: BRASS, decay: 6 }),
+      note(261.63, 0.2, 2, { amp: 0.2, harm: BRASS, decay: 1.6 }),
+      note(329.63, 0.2, 2, { amp: 0.15, harm: BRASS, decay: 1.6 }),
+      note(392, 0.2, 2, { amp: 0.15, harm: BRASS, decay: 1.6 }),
+      note(523.25, 0.2, 2, { amp: 0.12, harm: BRASS, decay: 1.6 }),
+      `if(gte(t,0.2),0.7*sin(${PI2}*(70*(t-0.2)-8*(t-0.2)*(t-0.2)))*exp(-3.2*(t-0.2)),0)`,
+      `if(gte(t,0.2),0.18*(random(4)*2-1)*exp(-5*(t-0.2)),0)`,
+    ]),
+    af: 'lowpass=f=6000,aecho=0.8:0.6:80:0.3',
+  },
 };
 
-for (const [name, s] of Object.entries(SOUNDS)) {
+// `node scripts/make-sfx.mjs bam` makes only the named effects (the others stay byte-for-byte).
+const only = process.argv.slice(2);
+for (const [name, s] of Object.entries(SOUNDS).filter(([n]) => only.length === 0 || only.includes(n))) {
   const out = `${OUT}${name}.mp3`;
   const filters = [s.af, 'loudnorm=I=-16:TP=-1.5:LRA=11', 'afade=t=out:st=' + Math.max(0, s.dur - 0.08) + ':d=0.08'].filter(Boolean).join(',');
   execFileSync('ffmpeg', [

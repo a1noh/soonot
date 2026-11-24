@@ -12,7 +12,8 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { EventSummary } from '../event/event.js';
-import { FOUR_CHOICE, ONE_MIND } from '../event/quiz.js';
+import { FOUR_CHOICE } from '../event/quiz.js';
+import { MediaRoundPanel, WordsPanel } from './RoundMedia.js';
 import { controlsOf, defaultCues, isVideo, ROUNDS, TIEBREAK_TIMER, trackTitle, TRANSITIONS, type Cue, type Transition } from '../event/show.js';
 import { GAME_IDS, type GameId } from '../shared/lifecycle.js';
 import { formatLeft, useCountdown } from '../shared/countdown.js';
@@ -96,6 +97,7 @@ function newCue(kind: Cue['kind']): Cue {
     timerLabel: '',
     controls: null,
     auto: null,
+    layout: '',
   };
 }
 
@@ -354,6 +356,7 @@ function Remote({
   const openRound = stonesDrive ? (sv?.pending?.number ?? null) : null;
   useEffect(() => {
     if (event.projectorQuiz) void game?.send('stones', 'projector:quiz', { n: null }).catch(() => {});
+    if (event.projectorCard) void game?.send('stones', 'projector:card', { off: true }).catch(() => {});
     if (openRound === null) return;
     if (event.projectorTimer) void setTimer(null).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -454,7 +457,13 @@ function Remote({
           ) : null}
           {stonesDrive ? <p className="remote__autoline">↻ 스톤을 주면 다음 라운드로 자동으로 넘어가요</p> : null}
           {stonesDrive && round?.extra && sv?.pending?.number === round.n && game ? (
-            <RoundExtras kind={round.extra} event={event} send={(n) => game.send('stones', 'projector:quiz', { n })} />
+            round.extra === 'words' ? (
+              <WordsPanel event={event} send={(p) => game.send('stones', 'projector:card', p)} />
+            ) : round.extra === 'songs' || round.extra === 'faces' ? (
+              <MediaRoundPanel key={round.extra} dir={round.extra} event={event} send={(p) => game.send('stones', 'projector:card', p)} />
+            ) : (
+              <RoundExtras event={event} send={(n) => game.send('stones', 'projector:quiz', { n })} />
+            )
           ) : null}
           {plan ? (
             <ol className="remote__plan" aria-label="이 장면 순서">
@@ -1050,27 +1059,12 @@ function CueEditor({
  * projector (only 1–4 show there), step through them, take it down; the MC sees
  * the 보기 here. 일심동체: each team's 5 제시어, never on the projector.
  */
-function RoundExtras({ kind, event, send }: { kind: 'quiz' | 'words'; event: EventSummary; send(n: number | null): Promise<unknown> }) {
+function RoundExtras({ event, send }: { event: EventSummary; send(n: number | null): Promise<unknown> }) {
   const on = event.projectorQuiz?.n ?? null;
   const [n, setN] = useState(on ?? 1);
   useEffect(() => {
     if (on !== null) setN(on);
   }, [on]);
-  if (kind === 'words') {
-    return (
-      <div className="remote__extra" aria-label="일심동체 제시어 (진행자만)">
-        <p className="remote__extrahead">🤝 제시어 · 진행자만 봐요 (화면에 안 나와요)</p>
-        <ol className="remote__words">
-          {ONE_MIND.teams.map((words, i) => (
-            <li key={i}>
-              <b>{i + 1}번째 팀</b> {words.join(' · ')}
-            </li>
-          ))}
-        </ol>
-        <p className="remote__note">1등 동점 연장: {ONE_MIND.tie.join(' · ')}</p>
-      </div>
-    );
-  }
   const q = FOUR_CHOICE[n - 1]!;
   const total = FOUR_CHOICE.length;
   const show = (k: number) => void send(k).catch(() => {});

@@ -5,7 +5,8 @@
  * actually changes.
  *
  *   stone picked → reveal · stone won → win · 1위 tie → boom
- *   podium: 두구두구 → drumroll · 3rd/2nd → win · 1st → fanfare
+ *   podium: 두구두구 → drumroll · each place called → 빠밤 (bam) · 1st → bam + fanfare · 모두 함께 → win
+ *   a prize shown (최종 시상 상금, 빙고 1등 상품) → fanfare
  *   (bingo's 빙고! → ding and the timer's tick / buzzer are wired where they happen)
  */
 import { useEffect, useRef } from 'react';
@@ -24,8 +25,10 @@ interface Seen {
 function podium(now: number, before: number): void {
   if (now === before || now < 0) return;
   if (now === 0) playSfx('drumroll');
-  else if (now === 3) playSfx('fanfare'); // 1등
-  else if (now >= 1 && now <= 4) playSfx('win');
+  else if (now >= 1 && now <= 3 && now > before) {
+    playSfx('bam'); // each place called: 빠밤!
+    if (now === 3) window.setTimeout(() => playSfx('fanfare'), 700); // 1등 / 1위
+  } else if (now === 4 && now > before) playSfx('win');
 }
 
 export function useGameSfx(
@@ -54,6 +57,17 @@ export function useGameSfx(
     if (cur.secret && cur.secret !== before.secret) playSfx('fanfare'); // the 감사 스톤 is won
     podium(cur.reveal, before.reveal);
   }, [stones]);
+
+  // A prize shown big (최종 시상 상금 beat, 빙고 1등 상품): a fanfare as it appears.
+  const prize = useRef<string | null>(null);
+  useEffect(() => {
+    const cur = `${summary?.podiumPrize ?? ''}|${summary?.bingoPrize ? 'b' : ''}`;
+    const before = prize.current;
+    prize.current = cur;
+    if (before === null || !summary) return;
+    const opened = (summary.podiumPrize != null && !before.startsWith(String(summary.podiumPrize))) || (summary.bingoPrize && !before.endsWith('b'));
+    if (opened) playSfx('fanfare');
+  }, [summary?.podiumPrize, summary?.bingoPrize]);
 
   const b = useRef<number | null>(null);
   useEffect(() => {

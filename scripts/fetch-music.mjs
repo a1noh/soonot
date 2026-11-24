@@ -18,11 +18,12 @@ export const TRACKS = [
   { file: 'local-forecast-elevator.mp3', title: 'Local Forecast - Elevator', use: '빙고 QR 안내 (식사 중, 잔잔하게)' },
   { file: 'heroic-age.mp3', title: 'Heroic Age', use: 'MC 등장 영상이 끝난 뒤 (웅장하게)' },
   { file: 'volatile-reaction.mp3', title: 'Volatile Reaction', use: '빙고 종료 카운트다운 (긴장감)' },
-  { file: 'carefree.mp3', title: 'Carefree', use: '빙고 1등 공개 (밝게)' },
+  { file: 'fanfare-for-space.mp3', title: 'Fanfare for Space', use: '빙고 1등 공개 (웅장한 팡파르)' },
+  { file: 'strength-of-the-titans.mp3', title: 'Strength of the Titans', use: '게임 방식 · 우승 조건 (어벤져스 느낌, 코너 전환)' },
   { file: 'five-armies.mp3', title: 'Five Armies', use: '어벤추수 땡스게임 메인 보드 (웅장하게)' },
   { file: 'monkeys-spinning-monkeys.mp3', title: 'Monkeys Spinning Monkeys', use: '1라운드 · 코끼리코 도는 동안 (빙글빙글)' },
   { file: 'clash-defiant.mp3', title: 'Clash Defiant', use: '최종 집계 · 타이브레이커 (추격)' },
-  { file: 'life-of-riley.mp3', title: 'Life of Riley', use: '최종 시상 (축하)' },
+  { file: 'hero-theme.mp3', title: 'Hero Theme', use: '최종 시상 (영웅적인 축하)' },
   { file: 'inspired.mp3', title: 'Inspired', use: '감사합니다 (마무리)' },
 ];
 
