@@ -49,11 +49,20 @@ export interface EventRecord {
   bingoCheck: number[] | null;
   /** A countdown over whatever the projector shows (any game), or null. */
   projectorTimer: ProjectorTimer | null;
+  /** A 4지선다 question over the projector (number 1–4 only, never the 보기), or null. */
+  projectorQuiz: ProjectorQuiz | null;
   /** 진행 순서: the script's slides, screens and BGM, and what is on air now. */
   show: ShowState;
   readonly games: Record<GameId, GameHandle>;
   readonly createdAt: number;
   closedAt: number | null;
+}
+
+export interface ProjectorQuiz {
+  /** 1-based question number, and how many there are. */
+  n: number;
+  total: number;
+  question: string;
 }
 
 export interface ProjectorTimer {
@@ -98,6 +107,7 @@ export function createEvent(input: CreateEventInput): EventRecord {
     bingoPrize: false,
     bingoCheck: null,
     projectorTimer: null,
+    projectorQuiz: null,
     show: defaultShow(),
     games,
     createdAt: now,
@@ -128,6 +138,7 @@ export interface EventSummary {
   bingoPrize: boolean;
   bingoCheck: number[] | null;
   projectorTimer: ProjectorTimer | null;
+  projectorQuiz: ProjectorQuiz | null;
   /** A slide over the projector, or null for the game screen. */
   slide: SlideOnAir | null;
   /** The BGM the projector plays (or, with no file, a placeholder for the MC). */
@@ -171,6 +182,7 @@ export function summarize(
     bingoPrize: event.bingoPrize,
     bingoCheck: event.bingoCheck,
     projectorTimer: event.projectorTimer,
+    projectorQuiz: event.projectorQuiz,
     slide: event.show.slide,
     bgm: event.show.bgm,
     screenTransition: event.show.screenTransition,

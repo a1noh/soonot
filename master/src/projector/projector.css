@@ -489,3 +489,28 @@ body:has(.stage--theme-stones) .ptimer {
   animation-name: ptimerInLeft;
 }
 @keyframes ptimerInLeft { from { opacity: 0; transform: translateY(2vmin); } to { opacity: 1; transform: none; } }
+
+/* ---- 3라운드 4지선다: the question over the 스톤 screen, answers as numbers only ---- */
+.pquiz {
+  position: fixed; inset: 0; z-index: 30;
+  display: grid; place-items: center; padding: 5vmin 6vmin 16vmin;
+  background: radial-gradient(ellipse at 50% 30%, #2a1650, #070914 72%);
+  color: #fff; font-family: var(--sans);
+  animation: pquizIn 450ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.pquiz__card { width: min(1500px, 100%); display: grid; gap: 4vmin; justify-items: center; text-align: center; }
+.pquiz__kicker { margin: 0; font-size: clamp(14px, 2.4vmin, 34px); font-weight: 700; color: #c9b5ff; letter-spacing: 0.02em; }
+.pquiz__kicker b { color: #ffd76a; }
+.pquiz__q {
+  margin: 0; font-size: clamp(22px, 5vmin, 72px); line-height: 1.35; font-weight: 800;
+  text-wrap: balance; word-break: keep-all; max-width: 30em;
+}
+.pquiz__choices { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2.4vmin; }
+.pquiz__choice {
+  display: grid; justify-items: center; gap: 1vmin; padding: 2.4vmin 1vmin;
+  border-radius: 2.4vmin; background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(201, 181, 255, 0.35);
+}
+.pquiz__num { font-size: clamp(36px, 10vmin, 150px); line-height: 1; font-weight: 800; color: #ffd76a; font-variant-numeric: tabular-nums; }
+.pquiz__hidden { font-size: clamp(14px, 2.6vmin, 38px); font-weight: 800; color: rgba(255, 255, 255, 0.35); letter-spacing: 0.2em; }
+@keyframes pquizIn { from { opacity: 0; transform: scale(0.97); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pquiz { animation: none; } }

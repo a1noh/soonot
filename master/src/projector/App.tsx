@@ -628,10 +628,36 @@ export function App() {
       />
       <BgmPlayer bgm={summary?.bgm ?? null} hold={videoOn} onBlocked={() => setSoundBlocked(true)} />
       {videoOn ? null : <MusicCredit bgm={summary?.bgm ?? null} muted={!!summary?.muted} />}
+      {summary?.projectorQuiz ? <QuizOverlay key={summary.projectorQuiz.n} quiz={summary.projectorQuiz} /> : null}
       {summary ? <TimerOverlay timer={summary.projectorTimer} serverNow={summary.serverNow} /> : null}
       <SoundPrompt needed={soundBlocked} />
       <FullscreenButton />
     </>
+  );
+}
+
+/**
+ * 3라운드 4지선다: the question over the 스톤 screen, with the four answers shown
+ * only as numbers (진행순서: 보기는 번호 1~4번만). Teams hold up a finger on “하나, 둘, 셋!”.
+ */
+function QuizOverlay({ quiz }: { quiz: NonNullable<EventSummary['projectorQuiz']> }) {
+  return (
+    <div className="pquiz" role="dialog" aria-label={`문제 ${quiz.n}`}>
+      <div className="pquiz__card">
+        <p className="pquiz__kicker">
+          닥터 스트레인지의 1,400만 분의 1 · <b>문제 {quiz.n}</b> / {quiz.total}
+        </p>
+        <h1 className="pquiz__q">{quiz.question}</h1>
+        <ol className="pquiz__choices" aria-label="보기는 번호만">
+          {[1, 2, 3, 4].map((k) => (
+            <li key={k} className="pquiz__choice">
+              <span className="pquiz__num">{k}</span>
+              <span className="pquiz__hidden" aria-hidden="true">???</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
   );
 }
 

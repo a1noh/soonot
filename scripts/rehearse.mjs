@@ -244,6 +244,25 @@ for (let r = 1; r <= 6; r++) {
     if (!(await p.$('.ptimer'))) errors.push(`round ${r}: ⏱ did not put the timer on the projector`);
     if (r === 1) await shot('round1-timer-started');
   }
+  // 4지선다: a question goes up with only 1–4 on the projector; the 보기 stay on the remote.
+  if (r === 3) {
+    await click('.remote__qnav', '문제 1 화면에 띄우기');
+    await sleep(700);
+    const q = await p.$eval('.pquiz', (e) => e.textContent).catch(() => '');
+    if (!q.includes('문제 1')) errors.push(`round 3: the question is not on the projector ("${q.slice(0, 40)}")`);
+    if (q.includes('골리앗')) errors.push('round 3: the projector shows the 보기');
+    await shot('round3-quiz-question');
+    await click('.remote__qnav', '다음 문제');
+    await sleep(500);
+    if (!(await p.$eval('.pquiz', (e) => e.textContent).catch(() => '')).includes('문제 2')) errors.push('round 3: 다음 문제 did not move the projector');
+  }
+  // 일심동체: the 제시어 are on the remote only.
+  if (r === 6) {
+    const words = await m.$$eval('.remote__words li', (l) => l.length).catch(() => 0);
+    if (words !== 6) errors.push(`round 6: the remote shows ${words} teams of 제시어`);
+    if ((await p.content()).includes('하트')) errors.push('round 6: a 제시어 is on the projector');
+    await shot('round6-words');
+  }
   if (r === 2) {
     const during = (await plays()).slice(mutedMark);
     log('sounds while muted:', JSON.stringify(during));
@@ -254,6 +273,7 @@ for (let r = 1; r <= 6; r++) {
   for (const w of WINNERS[r - 1]) await click('.srm__winners', w);
   await click('.srm__row', '스톤 주기');
   await sleep(800);
+  if (r === 3 && (await p.$('.pquiz'))) errors.push('the quiz question stayed up after round 3 ended');
   log(`round ${r} given → ${r < 6 ? `now ${await roundNow()}` : `step ${await step()} · ${await title()}`}`);
   if (r === 2) {
     // ◀ 이전 inside the 스톤 step: undo round 2's result, then play it again.

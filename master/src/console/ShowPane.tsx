@@ -12,6 +12,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { EventSummary } from '../event/event.js';
+import { FOUR_CHOICE, ONE_MIND } from '../event/quiz.js';
 import { controlsOf, defaultCues, isVideo, ROUNDS, TIEBREAK_TIMER, trackTitle, TRANSITIONS, type Cue, type Transition } from '../event/show.js';
 import { GAME_IDS, type GameId } from '../shared/lifecycle.js';
 import { formatLeft, useCountdown } from '../shared/countdown.js';
@@ -315,6 +316,7 @@ function Remote({
   // round only takes down the last round's countdown.
   const openRound = stonesDrive ? (sv?.pending?.number ?? null) : null;
   useEffect(() => {
+    if (event.projectorQuiz) void game?.send('stones', 'projector:quiz', { n: null }).catch(() => {});
     if (openRound === null) return;
     if (event.projectorTimer) void setTimer(null).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -414,6 +416,9 @@ function Remote({
             <p className="remote__note">{live.note}</p>
           ) : null}
           {stonesDrive ? <p className="remote__autoline">↻ 스톤을 주면 다음 라운드로 자동으로 넘어가요</p> : null}
+          {stonesDrive && round?.extra && sv?.pending?.number === round.n && game ? (
+            <RoundExtras kind={round.extra} event={event} send={(n) => game.send('stones', 'projector:quiz', { n })} />
+          ) : null}
           {plan ? (
             <ol className="remote__plan" aria-label="이 장면 순서">
               {plan.map((p, i) => (
@@ -995,5 +1000,69 @@ function CueEditor({
         </button>
       </div>
     </form>
+  );
+}
+
+/**
+ * The round's MC tools inside the remote. 4지선다: put question N over the
+ * projector (only 1–4 show there), step through them, take it down; the MC sees
+ * the 보기 here. 일심동체: each team's 5 제시어, never on the projector.
+ */
+function RoundExtras({ kind, event, send }: { kind: 'quiz' | 'words'; event: EventSummary; send(n: number | null): Promise<unknown> }) {
+  const on = event.projectorQuiz?.n ?? null;
+  const [n, setN] = useState(on ?? 1);
+  useEffect(() => {
+    if (on !== null) setN(on);
+  }, [on]);
+  if (kind === 'words') {
+    return (
+      <div className="remote__extra" aria-label="일심동체 제시어 (진행자만)">
+        <p className="remote__extrahead">🤝 제시어 · 진행자만 봐요 (화면에 안 나와요)</p>
+        <ol className="remote__words">
+          {ONE_MIND.teams.map((words, i) => (
+            <li key={i}>
+              <b>{i + 1}번째 팀</b> {words.join(' · ')}
+            </li>
+          ))}
+        </ol>
+        <p className="remote__note">1등 동점 연장: {ONE_MIND.tie.join(' · ')}</p>
+      </div>
+    );
+  }
+  const q = FOUR_CHOICE[n - 1]!;
+  const total = FOUR_CHOICE.length;
+  const show = (k: number) => void send(k).catch(() => {});
+  return (
+    <div className="remote__extra" aria-label="4지선다 문제">
+      <p className="remote__extrahead">
+        ❓ 문제 {n} / {total} {on === n ? <span className="remote__onair">화면에 떠 있음</span> : null}
+      </p>
+      <p className="remote__qtext">{q.question}</p>
+      <ol className="remote__qchoices">
+        {q.choices.map((c, i) => (
+          <li key={c} className={q.answer === i + 1 ? 'is-answer' : ''}>
+            {i + 1}. {c}
+          </li>
+        ))}
+      </ol>
+      <p className="remote__note">정답: {q.answer ? `${q.answer}번` : '미정 (자료에 없어요)'}</p>
+      <div className="remote__qnav">
+        <button type="button" className="btn remote__chip" disabled={n <= 1} onClick={() => (on !== null ? show(n - 1) : setN(n - 1))}>
+          ◀ 이전 문제
+        </button>
+        {on === n ? (
+          <button type="button" className="btn remote__chip" onClick={() => void send(null).catch(() => {})}>
+            문제 내리기
+          </button>
+        ) : (
+          <button type="button" className="btn remote__chip remote__chip--go" onClick={() => show(n)}>
+            문제 {n} 화면에 띄우기
+          </button>
+        )}
+        <button type="button" className="btn remote__chip" disabled={n >= total} onClick={() => (on !== null ? show(n + 1) : setN(n + 1))}>
+          다음 문제 ▶
+        </button>
+      </div>
+    </div>
   );
 }

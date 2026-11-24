@@ -1101,3 +1101,17 @@
   .seg__locked { flex-basis: 100%; }
   .remote { padding-bottom: 150px; }
 }
+
+/* 스톤 round extras: 4지선다 questions / 일심동체 제시어 (MC only). */
+.remote__extra { margin-top: 8px; padding: 10px 12px; display: grid; gap: 8px; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--game-stones) 40%, transparent); background: var(--bg-raised); }
+.remote__extrahead { margin: 0; font-weight: 800; font-size: 0.95rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.remote__onair { font-size: 0.78rem; font-weight: 700; padding: 1px 8px; border-radius: 999px; color: #fff; background: var(--game-stones); }
+.remote__qtext { margin: 0; font-size: 1.02rem; line-height: 1.5; font-weight: 600; }
+.remote__qchoices { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; font-size: 0.95rem; color: var(--text-dim); }
+.remote__qchoices .is-answer { color: var(--text); font-weight: 800; }
+.remote__qnav { display: flex; flex-wrap: wrap; gap: 8px; }
+.remote__qnav .remote__chip { flex: 1 1 auto; }
+.remote__chip--go { border-color: var(--game-stones); font-weight: 800; }
+.remote__words { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 1rem; line-height: 1.45; }
+.remote__words b { display: inline-block; min-width: 5.5em; color: var(--game-stones); }

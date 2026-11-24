@@ -227,6 +227,28 @@ describe('two empty panes', () => {
 });
 
 describe('projector overlays the master drives', () => {
+  it('puts a 4지선다 question up by number (text from the host, never the 보기) and takes it down', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    await emit(master, 'event:create', { title: 'x' });
+
+    const shown = once<EventSummary>(master, 'event:summary');
+    expect((await emit(master, 'projector:quiz', { n: 2 })).ok).toBe(true);
+    const s = await shown;
+    expect(s.projectorQuiz).toMatchObject({ n: 2, total: 15 });
+    expect(s.projectorQuiz!.question).toContain('다윗');
+    expect(JSON.stringify(s.projectorQuiz)).not.toContain('돌팔매');
+
+    const down = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:quiz', { n: null });
+    expect((await down).projectorQuiz).toBeNull();
+
+    for (const bad of [{ n: 0 }, { n: 16 }, { n: 1.5 }, { n: 'x' }]) {
+      expect((await emit(master, 'projector:quiz', bad)).ok).toBe(false);
+    }
+  });
+
   it('starts and stops a countdown, with the server clock to line screens up', async () => {
     const { base } = await boot();
     const { token } = await signIn(base);

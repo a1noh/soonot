@@ -110,6 +110,7 @@ export function recoverEvent(
     bingoCheck: null,
     // A countdown does not survive a restart either.
     projectorTimer: null,
+    projectorQuiz: null,
     // The cue list comes back; what was on air (a slide, a BGM) does not.
     show: readShow(row.show_json),
     games,

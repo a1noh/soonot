@@ -18,6 +18,7 @@ import { GAME_IDS, isGameId } from '../shared/lifecycle.js';
 import type { Registry } from '../event/registry.js';
 import { summarize } from '../event/event.js';
 import { isVideo, parseCues, safeUrl } from '../event/show.js';
+import { FOUR_CHOICE } from '../event/quiz.js';
 import type { Dispatch } from './dispatch.js';
 import type { Emit } from './emit.js';
 import { STATE_EVENT } from './emit.js';
@@ -439,6 +440,30 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
   });
 
   /**
+   * 3라운드 4지선다: `{ n }` puts question n (1-based) over the projector with only
+   * 1–4 showing; `{ n: null }` takes it down. The text comes from the host's own
+   * copy (event/quiz.ts), so no screen learns a question before it is asked.
+   */
+  socket.on('projector:quiz', (payload: unknown, ack: unknown) => {
+    try {
+      const raw = (payload as { n?: unknown } | null)?.n;
+      const event = registry.require();
+      if (raw === null || raw === undefined) {
+        event.projectorQuiz = null;
+      } else {
+        const n = Number(raw);
+        if (!Number.isInteger(n) || n < 1 || n > FOUR_CHOICE.length) throw new HostError('BAD_PAYLOAD');
+        event.projectorQuiz = { n, total: FOUR_CHOICE.length, question: FOUR_CHOICE[n - 1]!.question };
+      }
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /**
    * 진행 순서. `show:save` replaces the cue list (validated, persisted now);
    * `show:go` puts one cue on the projector — a slide over everything, or a
    * game screen — and starts its BGM; `show:clear` takes a slide down;
@@ -473,6 +498,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       // A step's timer is the step's: it starts as the step goes up, and ends
       // when you leave (a 5분 countdown must not follow you into the rounds).
       if (show.liveCue !== cue.id) {
+        event.projectorQuiz = null; // a quiz question is the 스톤 step's, like its timer
         event.projectorTimer =
           cue.timer > 0
             ? { label: cue.timerLabel || cue.title, totalMs: cue.timer * 1000, endsAt: Date.now() + cue.timer * 1000 }
@@ -642,6 +668,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       event.bingoPrize = false;
       event.bingoCheck = null;
       event.projectorTimer = null;
+      event.projectorQuiz = null;
       Object.assign(event.show, { liveCue: null, slide: null, bgm: null, screenTransition: 'fade', muted: false });
       deps.persistence?.saveEvent?.(event);
       broadcastSummary(deps);
@@ -667,6 +694,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       if (event.projectorLock === gameId) event.projectorLock = null;
       // A fresh bingo game has no winners — drop any lingering card spotlight.
       if (gameId === 'bingo') { event.bingoSpotlight = null; event.bingoPrize = false; event.bingoCheck = null; }
+      if (gameId === 'stones') event.projectorQuiz = null;
       deps.persistence?.enqueue({ gameId, state: fresh, action: { t: 'RESET' }, emits: [], at });
       broadcastSummary(deps);
       pushStateAll(deps.io, gameId, registry, 'everyone');

@@ -178,14 +178,16 @@ export interface RoundPlan {
   bgm: string;
   /** Empty: the MC plays the song by hand, so the background music stops. */
   bgmUrl: string;
+  /** Extra MC tools in the remote: the 4지선다 questions, or the 일심동체 제시어 (console/RoundExtras). */
+  extra?: 'quiz' | 'words';
 }
 export const ROUNDS: readonly RoundPlan[] = [
   { n: 1, name: '아이언맨의 비행 테스트', note: '코끼리코 비행기 · 빙고 1등이 스톤 선택 · 각 팀 2명, 가위바위보로 순서 · 코끼리코 꼭 10바퀴 · 날개 있게 접기 · 시작선 표시 · 나온 분들 참가 선물', timer: 20, timerLabel: '20초 제한', bgm: '코끼리코 도는 동안 (Monkeys Spinning Monkeys)', bgmUrl: '/media/bgm/monkeys-spinning-monkeys.mp3' },
   { n: 2, name: '가디언즈 오브 찬양', note: '찬양 맞추기 · 1라운드 1등 팀이 스톤 선택 · 1초 → 3초 들려주고 10초 상의 · 정답 후 그 찬양 약 10초 재생', timer: 10, timerLabel: '상의 시간', bgm: '찬양 음원 · 직접 틀기', bgmUrl: '' },
-  { n: 3, name: '닥터 스트레인지의 1,400만 분의 1', note: '4지선다 · 2라운드 꼴찌 팀이 스톤 선택 (누가 고르나요에서 바꾸기) · 문제는 MC가 읽고 보기는 1~4번만 · “하나, 둘, 셋!”에 번호 들기', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT },
+  { n: 3, name: '닥터 스트레인지의 1,400만 분의 1', note: '4지선다 · 2라운드 꼴찌 팀이 스톤 선택 (누가 고르나요에서 바꾸기) · 아래에서 문제 띄우기 (화면엔 번호 1~4만) · “하나, 둘, 셋!”에 번호 들기', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'quiz' },
   { n: 4, name: '호크아이의 매의 눈', note: '매의 눈 · 3라운드 1등 팀이 스톤 선택 · 두 명이 함께 나온 사진 · 사진마다 10초 상의', timer: 10, timerLabel: '상의 시간', bgm: '태양 「눈, 코, 입」 · 직접 틀기', bgmUrl: '' },
   { n: 5, name: '토르의 번개 같은 센스', note: '휘트니 휴스턴 · 4라운드 1등 팀이 스톤 선택 · 각 팀 1명, 가위바위보로 순서 · 노래는 연습 없이 한 번, 5초 지점부터 · 판독용 촬영 (목사님/효준) · “성공을 어찌해~”에서 효준 시범', timer: 0, timerLabel: '', bgm: 'I Will Always Love You · 직접 틀기', bgmUrl: '' },
-  { n: 6, name: '어벤져스 어셈블', note: '일심동체 · 마지막 스톤은 자동 · 각 팀 3명, 팀마다 제시어 5개 · 1등 동점이면 동점 팀끼리 제시어 몇 개 더', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT },
+  { n: 6, name: '어벤져스 어셈블', note: '일심동체 · 마지막 스톤은 자동 · 각 팀 3명, 팀마다 제시어 5개 (아래 목록, 화면엔 안 나와요) · 1등 동점이면 동점 팀끼리 제시어 몇 개 더', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'words' },
 ];
 
 /** The 결정전's countdown: the MC starts it from the remote once the teams are at the line. */
