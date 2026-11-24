@@ -167,7 +167,7 @@ function Podium({
           <div className={`prizebox${prizeOpen ? ' is-open' : ''}`}>
             <div className="prizebox__lid" aria-hidden="true">🎁</div>
             {prizeOpen ? (
-              <div className="prizebox__prize">🥇 1등 상품 · <b>소정의 상품</b></div>
+              <div className="prizebox__prize">🥇 1등 상품 · <b>첫 스톤 선택권</b></div>
             ) : (
               <div className="prizebox__hint">1등 미스터리 박스 🎁</div>
             )}

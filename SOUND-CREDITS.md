@@ -11,12 +11,10 @@ The projector shows the credit for 8 seconds whenever a track starts.
 |---|---|
 | Local Forecast - Elevator | 빙고 QR 안내 |
 | Heroic Age | MC 등장 영상 (after the video) |
-| Volatile Reaction | 빙고 5분 마지막 기회 |
+| Volatile Reaction | 빙고 종료 카운트다운 |
 | Carefree | 빙고 1등 공개 |
 | Five Armies | 어벤추수 땡스게임 메인 보드 |
-| Run Amok | 1라운드 · 아이언맨의 비행 테스트 |
-| Investigations | 3라운드 · 닥터 스트레인지의 1,400만 분의 1 |
-| Sneaky Snitch | 6라운드 · 어벤져스 어셈블 |
+| Monkeys Spinning Monkeys | 1라운드 · 코끼리코 비행기 (도는 동안) |
 | Clash Defiant | 최종 집계 · 타이브레이커 |
 | Life of Riley | 최종 시상 |
 | Inspired | 감사합니다 |
@@ -24,6 +22,9 @@ The projector shows the credit for 8 seconds whenever a track starts.
 Played by the MC by hand (commercial recordings, not bundled): the 찬양 clips (2라운드),
 태양 「눈, 코, 입」 (4라운드), Whitney Houston 「I Will Always Love You」 (5라운드).
 Those steps stop the background music.
+
+The **드럼 120 BPM** beat (3라운드 4지선다, 6라운드 일심동체) is our own, synthesised by
+`node scripts/make-drum-beat.mjs` (ffmpeg) into `master/media/bgm/drum-120-bpm.mp3`. No credit shown.
 
 ## Sound effects
 

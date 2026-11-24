@@ -44,19 +44,19 @@ describe('다음 ▶ in the 빙고 steps', () => {
   });
 
   it('5분 마지막 기회: timer (or skip) → 빙고 종료 → done', async () => {
-    const c = ctx('빙고 5분 마지막 기회', { bingo: bingo({ state: 'RUNNING' }) });
+    const c = ctx('빙고 종료 카운트다운', { bingo: bingo({ state: 'RUNNING' }) });
     const a = nextAction(c)!;
-    expect(a.label).toBe('5분 타이머 시작');
+    expect(a.label).toBe('5분 카운트다운 시작');
     await a.run!();
-    expect(c.setTimer).toHaveBeenCalledWith(300, '빙고 마지막 기회');
-    expect(a.skip!.label).toMatch(/타이머 없이/);
+    expect(c.setTimer).toHaveBeenCalledWith(300, '빙고 종료까지');
+    expect(a.skip!.label).toMatch(/카운트다운 없이/);
 
-    const timed = ctx('빙고 5분 마지막 기회', {
+    const timed = ctx('빙고 종료 카운트다운', {
       bingo: bingo({ state: 'RUNNING' }),
-      event: event({ projectorTimer: { label: '빙고 마지막 기회', totalMs: 300_000, endsAt: 0 } }),
+      event: event({ projectorTimer: { label: '빙고 종료까지', totalMs: 300_000, endsAt: 0 } }),
     });
     expect(nextAction(timed)!.label).toBe('빙고 종료');
-    expect(nextAction(ctx('빙고 5분 마지막 기회', { bingo: bingo({ state: 'ENDED' }) }))).toBeNull();
+    expect(nextAction(ctx('빙고 종료 카운트다운', { bingo: bingo({ state: 'ENDED' }) }))).toBeNull();
   });
 
   it('1등 공개: 발표 → (drumroll) → 2등 → 1등 → 함께 → 카드 → 랜덤 5명 → 상품 → done', async () => {
@@ -133,12 +133,12 @@ describe('◀ 이전 mirrors 다음 ▶ inside a step', () => {
   });
 
   it('5분 마지막 기회: 빙고 종료 is taken back (bingo runs again)', async () => {
-    const c = ctx('빙고 5분 마지막 기회', { bingo: bingo({ state: 'ENDED' }) });
+    const c = ctx('빙고 종료 카운트다운', { bingo: bingo({ state: 'ENDED' }) });
     const u = prevAction(c)!;
     expect(u.label).toMatch(/빙고 종료 취소/);
     await u.run();
     expect(c.send).toHaveBeenCalledWith('bingo', 'master:back', undefined);
-    expect(prevAction(ctx('빙고 5분 마지막 기회', { bingo: bingo({ state: 'RUNNING' }) }))).toBeNull();
+    expect(prevAction(ctx('빙고 종료 카운트다운', { bingo: bingo({ state: 'RUNNING' }) }))).toBeNull();
   });
 
   it('최종 집계 / 시상: 결정전, 게임 종료 and each podium place step back', () => {

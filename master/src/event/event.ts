@@ -40,7 +40,7 @@ export interface EventRecord {
    */
   bingoSpotlight: number | null;
   /** The 1등 mystery box on `/p` — false = closed 🎁, true = opened to reveal the prize
-   *  (소정의 상품). Operator-toggled during the bingo reveal. */
+   *  (첫 스톤 선택권). Operator-toggled during the bingo reveal. */
   bingoPrize: boolean;
   /**
    * The 랜덤 5명 확인 on the spotlighted winner's card: the cell indexes the

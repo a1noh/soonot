@@ -12,7 +12,7 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { EventSummary } from '../event/event.js';
-import { controlsOf, defaultCues, isVideo, ROUNDS, trackTitle, TRANSITIONS, type Cue, type Transition } from '../event/show.js';
+import { controlsOf, defaultCues, isVideo, ROUNDS, TIEBREAK_TIMER, trackTitle, TRANSITIONS, type Cue, type Transition } from '../event/show.js';
 import { GAME_IDS, type GameId } from '../shared/lifecycle.js';
 import { formatLeft, useCountdown } from '../shared/countdown.js';
 import { t } from '../shared/i18n.js';
@@ -310,16 +310,17 @@ function Remote({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sv?.played, sv?.pending?.number, sv?.state]);
 
-  // A round's timer starts as its game opens (repeat it with ⟲ for each match / song / photo).
+  // A round's timer never starts by itself: the rules are explained first, then
+  // the MC taps ⏱ as play starts (⟲ again for each match / song / photo). A new
+  // round only takes down the last round's countdown.
   const openRound = stonesDrive ? (sv?.pending?.number ?? null) : null;
   useEffect(() => {
     if (openRound === null) return;
-    const r = ROUNDS[openRound - 1];
-    if (r && r.timer > 0) void setTimer(r.timer, r.timerLabel).catch(() => {});
-    // A round without a timer must not inherit the last round's countdown.
-    else if (event.projectorTimer) void setTimer(null).catch(() => {});
+    if (event.projectorTimer) void setTimer(null).catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRound]);
+  // The 결정전 has its own 20초 (컵 놓기), offered only while one is being played.
+  const tiebreakOn = autoOf(live) === 'stones-final' && !!sv?.activeTiebreak;
 
   // Each round's music, as the game moves from round to round.
   useEffect(() => {
@@ -454,6 +455,8 @@ function Remote({
           ) : null}
           {stonesDrive && round && round.timer > 0 ? (
             <TimerButton event={event} cue={{ ...live, timer: round.timer, timerLabel: round.timerLabel }} setTimer={setTimer} />
+          ) : tiebreakOn ? (
+            <TimerButton event={event} cue={{ ...live, ...TIEBREAK_TIMER }} setTimer={setTimer} />
           ) : live.timer > 0 ? (
             <TimerButton event={event} cue={live} setTimer={setTimer} />
           ) : null}

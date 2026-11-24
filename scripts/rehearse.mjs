@@ -171,8 +171,8 @@ if (!playing || playing.paused) errors.push('the video did not play on 다음 �
 await shot('intro-playing');
 log('video before', JSON.stringify(waiting), 'after', JSON.stringify(playing));
 
-// ---- 3 빙고 5분 마지막 기회 ---------------------------------------------------------
-await press('빙고 5분 마지막 기회');
+// ---- 3 빙고 종료 카운트다운 ---------------------------------------------------------
+await press('빙고 종료 카운트다운');
 if (!(await m.$('.remote__timer.is-running'))) errors.push('the 5분 timer did not start by itself');
 if (!(await p.$('.ptimer'))) errors.push('the projector shows no 5분 timer');
 // (The last seconds tick and 시간 종료 buzzes: a short timer from the event bar first.)
@@ -181,7 +181,7 @@ await m.type('input[aria-label="직접 입력 (초)"]', '6');
 await click('.timer', '시작');
 await sleep(7500);
 await m.evaluate(() => { document.querySelector('.timer')?.removeAttribute('open'); });
-await press('5분 타이머 시작');
+await press('5분 카운트다운 시작');
 await shot('bingo-5min-timer');
 await press('빙고 종료');
 const timerLeft = await m.evaluate(() => document.querySelector('.remote__timer.is-running') !== null);
@@ -201,7 +201,11 @@ await shot('bingo-winner-card-check5');
 await press('1등 상품');
 await shot('bingo-prize');
 
-// ---- 5 메인 보드 · 6 자리 안내도 -----------------------------------------------------
+// ---- 5 게임 방식 · 6 자리 안내도 · 7 메인 보드 ------------------------------------------
+await press('게임 방식');
+await shot('rules-slide');
+await press('자리 안내도');
+await shot('seating-slide');
 await press('메인 보드');
 await press('스톤 게임 준비');
 await press('스톤 게임 시작');
@@ -209,10 +213,8 @@ const firstChooser = await m.$eval('.srm__steplabel b', (b) => b.textContent.tri
 log('first chooser:', firstChooser);
 if (!firstChooser.startsWith('빙고 1등')) errors.push(`round 1 chooser should be the 빙고 1등, was "${firstChooser}"`);
 await shot('stones-main-board');
-await press('자리 안내도');
-await shot('seating-slide');
 
-// ---- 7 스톤 게임 (one step): the room's choices are taps; the game is the path ----
+// ---- 8 스톤 게임 (one step): the room's choices are taps; the game is the path ----
 await press('스톤 게임');
 const roundNow = () => m.$eval('.remote__roundnow b', (b) => b.textContent.trim()).catch(() => '');
 if (await m.$('.remote__next')) errors.push('the 스톤 step still shows a 다음 button');
@@ -233,10 +235,14 @@ for (let r = 1; r <= 6; r++) {
     await click('.srm', '마지막 스톤 열기');
   }
   await shot(`round${r}-game-open`);
-  // Rounds 3, 5 and 6 have no timer: the last round's countdown must not carry over.
-  if ([3, 5, 6].includes(r) && (await p.$('.ptimer'))) {
-    const t = await p.$eval('.ptimer', (e) => e.textContent.trim());
-    if (!/시간 종료/.test(t) || r !== 3) errors.push(`round ${r} opened with a leftover timer: "${t}"`);
+  // No round's timer starts by itself (the rules come first), and none carries over.
+  if (await p.$('.ptimer')) errors.push(`round ${r} opened with a timer: "${await p.$eval('.ptimer', (e) => e.textContent.trim())}"`);
+  // Rounds 1, 2 and 4 have one: the MC starts it from the remote as play starts.
+  if ([1, 2, 4].includes(r)) {
+    await click('.remote__do', '타이머');
+    await sleep(600);
+    if (!(await p.$('.ptimer'))) errors.push(`round ${r}: ⏱ did not put the timer on the projector`);
+    if (r === 1) await shot('round1-timer-started');
   }
   if (r === 2) {
     const during = (await plays()).slice(mutedMark);
@@ -267,18 +273,22 @@ for (let r = 1; r <= 6; r++) {
     log('round 2 replayed → now', await roundNow());
   }
 }
-await waitStep(8); // the 6th stone moved the script on to 최종 집계
+await waitStep(9); // the 6th stone moved the script on to 최종 집계
 
-// ---- 13 최종 집계 · 타이브레이커 (1위 동점: 토르 · 블랙 위도우) ------------------------
+// ---- 9 최종 집계 · 타이브레이커 (1위 동점: 토르 · 블랙 위도우) ------------------------
 await press('스톤 게임 종료');
 await shot('final-tie-for-first');
 await press('1위 결정전');
+await click('.remote__do', '컵 놓기');
+await sleep(600);
+const tbTimer = await p.$eval('.ptimer', (e) => e.textContent.trim()).catch(() => '');
+if (!tbTimer.includes('컵 놓기')) errors.push(`the 결정전 20초 timer is not on the projector ("${tbTimer}")`);
 await click('.stn__order', '블랙 위도우').catch(async () => click('.remote__game', '블랙 위도우'));
 await click('.stn__order', '토르').catch(async () => click('.remote__game', '토르'));
 await click('.remote__game', '결과 확정');
 await shot('tiebreak-decided');
 
-// ---- 14 최종 시상 · 15 감사합니다 -------------------------------------------------
+// ---- 10 최종 시상 · 11 감사합니다 -------------------------------------------------
 await press('최종 시상');
 await press('순위 발표');
 await sleep(3200);

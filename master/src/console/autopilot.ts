@@ -28,7 +28,7 @@ export type { AutoKind };
 /** Set on the 대본's cues; lists saved before the field existed are matched by title. */
 export const AUTO_LABEL: Record<AutoKind, string> = {
   'bingo-open': '빙고 시작',
-  'bingo-last-call': '빙고 마지막 기회 → 종료',
+  'bingo-last-call': '빙고 종료 카운트다운 → 종료',
   'bingo-reveal': '빙고 순위 발표 · 1등 확인',
   'stones-start': '스톤 준비 · 시작',
   'stones-rounds': '스톤 라운드 (게임이 진행)',
@@ -37,7 +37,8 @@ export const AUTO_LABEL: Record<AutoKind, string> = {
 };
 const BY_TITLE: Record<string, AutoKind> = {
   '빙고 QR 안내': 'bingo-open',
-  '빙고 5분 마지막 기회': 'bingo-last-call',
+  '빙고 종료 카운트다운': 'bingo-last-call',
+  '빙고 5분 마지막 기회': 'bingo-last-call', // lists saved before 2026-11-24
   '빙고 1등 공개': 'bingo-reveal',
   '어벤추수 땡스게임 메인 보드': 'stones-start',
   '스톤 게임 · 1–6라운드': 'stones-rounds',
@@ -52,7 +53,7 @@ export function autoOf(cue: Cue | null | undefined): AutoKind | null {
 /** The plan of a step, for the little checklist under the title. */
 export const AUTO_PLAN: Record<AutoKind, readonly string[]> = {
   'bingo-open': ['빙고 준비', '빙고 게임 시작'],
-  'bingo-last-call': ['5분 타이머', '빙고 종료'],
+  'bingo-last-call': ['5분 카운트다운', '빙고 종료'],
   'bingo-reveal': ['순위 발표', '2등', '1등', '1·2·3등 함께', '1등 카드', '랜덤 5명', '1등 상품'],
   'stones-start': ['스톤 준비', '스톤 게임 시작'],
   'stones-rounds': ['1라운드', '2라운드', '3라운드', '4라운드', '5라운드', '6라운드'],
@@ -137,10 +138,10 @@ function bingoAction(auto: AutoKind, ctx: AutoContext): Action | null {
     if (auto === 'bingo-last-call' && ctx.cue.timer > 0 && !timerHere) {
       const label = ctx.cue.timerLabel || ctx.cue.title;
       return {
-        label: `${minutes(ctx.cue.timer)} 타이머 시작`,
-        plan: '5분 타이머',
+        label: `${minutes(ctx.cue.timer)} 카운트다운 시작`,
+        plan: '5분 카운트다운',
         run: () => ctx.setTimer(ctx.cue.timer, label),
-        skip: { label: '타이머 없이 바로 빙고 종료', run: end },
+        skip: { label: '카운트다운 없이 바로 빙고 종료', run: end },
       };
     }
     return { label: '빙고 종료', plan: '빙고 종료', run: end };

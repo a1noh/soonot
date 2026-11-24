@@ -283,7 +283,7 @@ describe('진행 순서 (slides, screens, BGM)', () => {
     await emit(master, 'event:create', { title: 'x' });
     const s0 = await created;
     // One path: 빙고 → 영상 → 스톤 (one step for all rounds) → 시상 → 감사합니다.
-    expect(s0.cues!.length).toBe(10);
+    expect(s0.cues!.length).toBe(11);
     expect(s0.cues!.filter((c) => /라운드/.test(c.title))).toHaveLength(1);
     expect(s0.cues!.some((c) => c.title.includes('MC 등장 영상'))).toBe(true);
     // The projector never learns the run of show (it names every round in order).
@@ -399,7 +399,7 @@ describe('진행 순서 (slides, screens, BGM)', () => {
     // A step with a timer starts it as it goes up; leaving the step ends it.
     const timed = once<EventSummary>(master, 'event:summary');
     await emit(master, 'show:go', { id: cues[2]!.id });
-    expect((await timed).projectorTimer).toMatchObject({ label: '빙고 마지막 기회', totalMs: 300_000 });
+    expect((await timed).projectorTimer).toMatchObject({ label: '빙고 종료까지', totalMs: 300_000 });
     const moved = once<EventSummary>(master, 'event:summary');
     await emit(master, 'show:go', { id: cues[3]!.id });
     expect((await moved).projectorTimer).toBeNull();

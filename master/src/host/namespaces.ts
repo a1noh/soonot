@@ -374,7 +374,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
     }
   });
 
-  /** Open/close the 1등 mystery box on `/p` (소정의 상품). `projector:`-prefixed so
+  /** Open/close the 1등 mystery box on `/p` (첫 스톤 선택권). `projector:`-prefixed so
    *  `onAny` skips it, like the spotlight. */
   socket.on('projector:prize', (payload: unknown, ack: unknown) => {
     try {

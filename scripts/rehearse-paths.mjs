@@ -88,9 +88,9 @@ async function bingoRunning(n = 6) {
   await joinBots(n);
   await press(); // 빙고 게임 시작
 }
-/** Stones set up and started on step 5 (bingo skipped: the guest chooser is absent). */
+/** Stones set up and started on step 7, the main board (bingo skipped: the guest chooser is absent). */
 async function stonesStarted() {
-  await jump(5);
+  await jump(7);
   await press(); // 스톤 게임 준비
   await press(); // 스톤 게임 시작
 }
@@ -160,12 +160,16 @@ await scenario('5분: 들어가면 타이머가 저절로 시작, 다음 ▶ 빙
   expect((await views())[1] === '종료됨', `빙고 상태 ${(await views())[1]}`);
 });
 
-await scenario('라운드: 게임이 열리면 그 라운드 타이머가 저절로, ⟲ 로 다시', async (expect) => {
+await scenario('라운드: 룰 설명 중엔 타이머 없음, ⏱ 를 눌러야 시작, ⟲ 로 다시', async (expect) => {
   await stonesStarted();
-  await jump(7);
+  await jump(8);
   const stone = await m.$eval('.srm__stones button:not(:disabled)', (b) => b.textContent.trim());
-  await click('.srm__stones', stone); // 1라운드 열림 → 20초
-  expect(!!(await m.$('.remote__timer.is-running')), '1라운드 20초 타이머가 저절로 시작되지 않았어요');
+  await click('.srm__stones', stone); // 1라운드 열림: 룰 설명부터
+  await sleep(600);
+  expect(!(await m.$('.remote__timer.is-running')), '1라운드 타이머가 룰 설명 중에 저절로 시작됐어요');
+  expect(!(await p.$('.ptimer')), '발표 화면에 타이머가 벌써 떠 있어요');
+  await click('.remote__do', '20초 타이머'); // 게임 시작
+  expect(!!(await m.$('.remote__timer.is-running')), '⏱ 20초가 안 돌아요');
   await click('.remote__do', '타이머 멈추기');
   const again = await m.$eval('.remote__timer', (b) => b.textContent).catch(() => '');
   expect(/20초 타이머/.test(again), `멈춘 뒤 버튼 "${again}"`);
@@ -184,26 +188,26 @@ await scenario('다른 장면으로 가면 그 장면의 타이머는 끝나요'
 
 await scenario('메인 보드에서 스톤을 고르면 라운드 장면으로 바로 넘어가요', async (expect) => {
   await stonesStarted();
-  expect((await step()) === 5, `step ${await step()}`);
+  expect((await step()) === 7, `step ${await step()}`);
   const stone = await m.$eval('.srm__stones button:not(:disabled)', (b) => b.textContent.trim());
   await click('.srm__stones', stone);
   await sleep(600);
-  expect((await step()) === 7, `스톤 선택 뒤 step ${await step()}`);
+  expect((await step()) === 8, `스톤 선택 뒤 step ${await step()}`);
   expect((await roundNow()) === '1라운드', `라운드 "${await roundNow()}"`);
 });
 
 await scenario('스톤 라운드 중엔 다음 버튼이 없고, → 키도 아무것도 안 해요', async (expect) => {
   await stonesStarted();
-  await jump(7);
+  await jump(8);
   expect(!(await m.$('.remote__next')), '다음 버튼이 보여요');
   await m.keyboard.press('ArrowRight');
   await sleep(600);
-  expect((await step()) === 7, `→ 뒤 step ${await step()}`);
+  expect((await step()) === 8, `→ 뒤 step ${await step()}`);
 });
 
 await scenario('라운드 중 ◀ 이전: 스톤 선택 취소 → 지난 라운드 결과 되돌리기', async (expect) => {
   await stonesStarted();
-  await jump(7);
+  await jump(8);
   await playRound(['토르']);
   const stone = await m.$eval('.srm__stones button:not(:disabled)', (b) => b.textContent.trim());
   await click('.srm__stones', stone); // 2라운드 진행 중
@@ -215,12 +219,12 @@ await scenario('라운드 중 ◀ 이전: 스톤 선택 취소 → 지난 라운
   expect(/1라운드 결과를 되돌릴까요/.test(await backQ()), `물음 "${await backQ()}"`);
   await click('.remote__back', '1라운드로 되돌리기');
   expect((await roundNow()) === '1라운드', `되돌린 뒤 "${await roundNow()}"`);
-  expect((await step()) === 7, `step ${await step()}`);
+  expect((await step()) === 8, `step ${await step()}`);
 });
 
 await scenario('라운드 진행 중 자리 안내로 ◀: “스톤도 처음으로” 또는 장면만 이동', async (expect) => {
   await stonesStarted();
-  await jump(7);
+  await jump(8);
   await playRound(['헐크']);
   await jump(6);
   expect(/스톤 게임도 처음/.test(await backQ()), `물음 "${await backQ()}"`);
@@ -230,10 +234,10 @@ await scenario('라운드 진행 중 자리 안내로 ◀: “스톤도 처음�
 
 await scenario('동점 없이 끝나면 결정전 없이 바로 시상으로', async (expect) => {
   await stonesStarted();
-  await jump(7);
+  await jump(8);
   for (const w of [['토르'], ['토르'], ['헐크'], ['아이언맨'], ['호크아이'], ['캡틴 아메리카']]) await playRound(w);
   await sleep(600);
-  expect((await step()) === 8, `6라운드 뒤 step ${await step()}`);
+  expect((await step()) === 9, `6라운드 뒤 step ${await step()}`);
   await press(); // 게임 종료
   expect(/다음 장면.*최종 시상/.test(await nextText()), `종료 뒤 다음 = "${await nextText()}"`);
   await press(); // → 최종 시상
@@ -242,18 +246,18 @@ await scenario('동점 없이 끝나면 결정전 없이 바로 시상으로', a
 
 await scenario('최종 집계에서 ◀: 먼저 게임 종료 취소, 한 번 더 ◀ 면 라운드로 (◀ = 다음의 거울)', async (expect) => {
   await stonesStarted();
-  await jump(7);
+  await jump(8);
   for (const w of [['토르'], ['토르'], ['헐크'], ['아이언맨'], ['호크아이'], ['캡틴 아메리카']]) await playRound(w);
   await sleep(600);
   await press(); // 게임 종료
   const label = await m.$eval('.remote__prev', (b) => b.textContent.replace(/\s+/g, ' ').trim());
   expect(/게임 종료 취소/.test(label), `◀ = "${label}"`);
   await back();
-  expect((await step()) === 8, `◀ 한 번 뒤 step ${await step()}`);
+  expect((await step()) === 9, `◀ 한 번 뒤 step ${await step()}`);
   expect((await views())[3] === '진행 중', `스톤 상태 ${(await views())[3]}`);
   expect(/스톤 게임 종료/.test(await nextText()), `다음 = "${await nextText()}"`);
   await back();
-  expect((await step()) === 7, `◀ 두 번 뒤 step ${await step()}`);
+  expect((await step()) === 8, `◀ 두 번 뒤 step ${await step()}`);
 });
 
 await scenario('↺ 전체 초기화 (게임 중간에): 0번으로, 모든 게임 준비, 화면 정리', async (expect) => {
