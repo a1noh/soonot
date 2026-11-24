@@ -418,13 +418,35 @@ describe('진행 순서 (slides, screens, BGM)', () => {
     const stop = once<EventSummary>(master, 'event:summary');
     await emit(master, 'show:music', { name: '태양 「눈, 코, 입」 · 직접 틀기', url: '' });
     expect((await stop).bgm).toMatchObject({ url: '', playing: false });
-    // A step with a timer starts it as it goes up; leaving the step ends it.
-    const timed = once<EventSummary>(master, 'event:summary');
+    // A step's timer never starts by itself (only ⏱); a screen step's body is its banner.
+    const sign = once<EventSummary>(master, 'event:summary');
     await emit(master, 'show:go', { id: cues[2]!.id });
-    expect((await timed).projectorTimer).toMatchObject({ label: '빙고 종료까지', totalMs: 300_000 });
+    const onSign = await sign;
+    expect(onSign.projectorTimer).toBeNull();
+    expect(onSign.banner).toBe('6시까지 와주세요! · 빙고는 6시에 마감돼요');
+    // A ⏱ started on the step ends when you leave it, and so does the banner.
+    await emit(master, 'projector:timer', { seconds: 300, label: '빙고 마감까지' });
     const moved = once<EventSummary>(master, 'event:summary');
     await emit(master, 'show:go', { id: cues[3]!.id });
-    expect((await moved).projectorTimer).toBeNull();
+    const after = await moved;
+    expect(after.projectorTimer).toBeNull();
+    expect(after.banner).toBeNull();
+  });
+
+  it('최종 시상: a prize beat per place (2위 / 1위), closed with null; nothing else accepted', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    await emit(master, 'event:create', { title: 'x' });
+    const open = once<EventSummary>(master, 'event:summary');
+    expect((await emit(master, 'projector:podiumPrize', { step: 3 })).ok).toBe(true);
+    expect((await open).podiumPrize).toBe(3);
+    const shut = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:podiumPrize', { step: null });
+    expect((await shut).podiumPrize).toBeNull();
+    for (const bad of [{ step: 1 }, { step: 4 }, { step: 'x' }]) {
+      expect((await emit(master, 'projector:podiumPrize', bad)).ok).toBe(false);
+    }
   });
 
   it('↺ 전체 초기화: games, 진행 순서 and the screen back to the start — same event, same cues', async () => {

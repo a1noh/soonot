@@ -78,6 +78,8 @@ export interface ShowState {
   /** The cue the master last sent to the projector. */
   liveCue: string | null;
   slide: SlideOnAir | null;
+  /** A screen step's body, shown as a banner across its game screen, or null. */
+  banner: string | null;
   bgm: BgmOnAir | null;
   /** How the projector moves between game screens (the last screen cue's choice). */
   screenTransition: Transition;
@@ -143,7 +145,7 @@ export function controlsOf(cue: Cue): GameId | null {
 const MUSIC: Record<string, string> = {
   '빙고 QR 안내': '/media/bgm/local-forecast-elevator.mp3',
   'MC 등장 영상 · 타이틀': '/media/bgm/heroic-age.mp3',
-  '빙고 종료 카운트다운': '/media/bgm/volatile-reaction.mp3',
+  '빙고 마감 안내': '/media/bgm/volatile-reaction.mp3',
   '빙고 1등 공개': '/media/bgm/carefree.mp3',
   '어벤추수 땡스게임 메인 보드': '/media/bgm/five-armies.mp3',
   '최종 집계 · 타이브레이커': '/media/bgm/clash-defiant.mp3',
@@ -153,7 +155,7 @@ const MUSIC: Record<string, string> = {
 /** The 대본's game steps, and what 다음 ▶ automates in each. */
 const AUTO: Record<string, AutoKind> = {
   '빙고 QR 안내': 'bingo-open',
-  '빙고 종료 카운트다운': 'bingo-last-call',
+  '빙고 마감 안내': 'bingo-last-call',
   '빙고 1등 공개': 'bingo-reveal',
   '어벤추수 땡스게임 메인 보드': 'stones-start',
   '스톤 게임 · 1–6라운드': 'stones-rounds',
@@ -185,8 +187,8 @@ export const ROUNDS: readonly RoundPlan[] = [
   { n: 1, name: '아이언맨의 비행 테스트', note: '코끼리코 비행기 · 빙고 1등이 스톤 선택 · 각 팀 2명, 가위바위보로 순서 · 코끼리코 꼭 10바퀴 · 날개 있게 접기 · 시작선 표시 · 나온 분들 참가 선물', timer: 20, timerLabel: '20초 제한', bgm: '코끼리코 도는 동안 (Monkeys Spinning Monkeys)', bgmUrl: '/media/bgm/monkeys-spinning-monkeys.mp3' },
   { n: 2, name: '가디언즈 오브 찬양', note: '찬양 맞추기 · 1라운드 1등 팀이 스톤 선택 · 1초 → 3초 들려주고 10초 상의 · 정답 후 그 찬양 약 10초 재생', timer: 10, timerLabel: '상의 시간', bgm: '찬양 음원 · 직접 틀기', bgmUrl: '' },
   { n: 3, name: '닥터 스트레인지의 1,400만 분의 1', note: '4지선다 · 2라운드 꼴찌 팀이 스톤 선택 (누가 고르나요에서 바꾸기) · 아래에서 문제 띄우기 (화면엔 번호 1~4만) · “하나, 둘, 셋!”에 번호 들기', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'quiz' },
-  { n: 4, name: '호크아이의 매의 눈', note: '매의 눈 · 3라운드 1등 팀이 스톤 선택 · 두 명이 함께 나온 사진 · 사진마다 10초 상의', timer: 10, timerLabel: '상의 시간', bgm: '태양 「눈, 코, 입」 · 직접 틀기', bgmUrl: '' },
-  { n: 5, name: '토르의 번개 같은 센스', note: '휘트니 휴스턴 · 4라운드 1등 팀이 스톤 선택 · 각 팀 1명, 가위바위보로 순서 · 노래는 연습 없이 한 번, 5초 지점부터 · 판독용 촬영 (목사님/효준) · “성공을 어찌해~”에서 효준 시범', timer: 0, timerLabel: '', bgm: 'I Will Always Love You · 직접 틀기', bgmUrl: '' },
+  { n: 4, name: '호크아이의 매의 눈', note: '매의 눈 · 3라운드 1등 팀이 스톤 선택 · 사진마다 10초 상의 (사진은 따로 틀기)', timer: 10, timerLabel: '상의 시간', bgm: '태양 「눈, 코, 입」 · 직접 틀기', bgmUrl: '' },
+  { n: 5, name: '토르의 번개 같은 센스', note: '휘트니 휴스턴 · 4라운드 1등 팀이 스톤 선택 · 각 팀 1명, 가위바위보로 순서 · 게임 전에 모두 한 번 같이 듣기 · 도전자는 연습 없이 한 번, 5초 지점부터 · 판독용 촬영 (목사님/효준) · “성공을 어케해~”에서 효준 시범', timer: 0, timerLabel: '', bgm: 'I Will Always Love You · 직접 틀기', bgmUrl: '' },
   { n: 6, name: '어벤져스 어셈블', note: '일심동체 · 마지막 스톤은 자동 · 각 팀 3명, 팀마다 제시어 5개 (아래 목록, 화면엔 안 나와요) · 1등 동점이면 동점 팀끼리 제시어 몇 개 더', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'words' },
 ];
 
@@ -222,7 +224,9 @@ function scriptCues(): Cue[] {
     // The intro video (39.6 s, ends on the title card). If the file is not on this
     // host the projector falls back to the placeholder title card.
     { title: 'MC 등장 영상 · 타이틀', body: '어벤추수 땡스게임', media: '/media/어벤추수-mc-intro-sfx.mp4', bgm: '웅장한 테마 (영상이 끝나면 이어져요)', transition: 'zoom', note: '5층 본당 · 시작을 누르면 영상 39초, 끝나면 BGM이 이어져요 · 효준/예진 인사' },
-    { kind: 'screen', screen: 'bingo', title: '빙고 종료 카운트다운', bgm: '긴장감 있는 카운트다운 음악', timer: 300, timerLabel: '빙고 종료까지', note: '5:55 PM에 띄우기 · 5분 카운트다운이 바로 시작돼요 · 추가 시간은 없어요 · 끝나면 다음 ▶ 빙고 종료' },
+    // The body is a banner across the bingo screen (a screen cue's body always is). The
+    // timer is only an option: it never starts by itself (⏱ on the remote if wanted).
+    { kind: 'screen', screen: 'bingo', title: '빙고 마감 안내', body: '6시까지 와주세요! · 빙고는 6시에 마감돼요', bgm: '긴장감 있는 카운트다운 음악', timer: 300, timerLabel: '빙고 마감까지', note: '화면에 “6시까지 와주세요” 안내 · 추가 시간은 없어요 · 타이머는 필요할 때만 ⏱ · 다음 ▶ = 빙고 종료' },
     { kind: 'screen', screen: 'bingo', title: '빙고 1등 공개', bgm: '축하 팡파르', note: '예진: 랜덤 5명 이름을 불러 확인 · 1등 상품은 첫 스톤 선택권 (상자는 마지막에 열려요)' },
     { title: '게임 방식 · 우승 조건', body: '스톤 6개 · 스톤마다 게임 하나 · 게임 1등 팀이 스톤 획득 · 스톤을 가장 많이 모은 팀이 우승!', note: '빙고 시상 직후 짧게 · 게임 참가자는 초콜릿 한 개씩 가져가요 · BGM은 앞 음악 계속' },
     { title: '팀 별 자리 안내도', body: '이름표 색상과 디자인에 맞춰 앉아주세요', note: '팀끼리 모이기 · 팀 대장 고르기 (타이브레이커 때 팀장이 나와요)' },
@@ -238,7 +242,7 @@ function scriptCues(): Cue[] {
 }
 
 export function defaultShow(): ShowState {
-  return { cues: defaultCues(), liveCue: null, slide: null, bgm: null, screenTransition: 'fade', muted: false };
+  return { cues: defaultCues(), liveCue: null, slide: null, banner: null, bgm: null, screenTransition: 'fade', muted: false };
 }
 
 const str = (v: unknown, max: number): string => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -285,11 +289,37 @@ export function parseCues(raw: unknown): Cue[] {
 }
 
 /** Read a stored show back; anything broken falls back to the defaults. */
+/**
+ * Earlier default 진행 순서 lists, by title. A stored list that is still exactly one
+ * of these (never edited by hand) is upgraded to today's defaults on load, keeping
+ * any file the user attached to a step that still exists.
+ */
+const OLD_DEFAULTS: readonly (readonly string[])[] = [
+  // 2026-11-21
+  ['빙고 QR 안내', 'MC 등장 영상 · 타이틀', '빙고 5분 마지막 기회', '빙고 1등 공개', '어벤추수 땡스게임 메인 보드', '팀 별 자리 안내도', '스톤 게임 · 1–6라운드', '최종 집계 · 타이브레이커', '최종 시상', '감사합니다'],
+  // 2026-11-24 (first 시뮬레이션 build)
+  ['빙고 QR 안내', 'MC 등장 영상 · 타이틀', '빙고 종료 카운트다운', '빙고 1등 공개', '게임 방식 · 우승 조건', '팀 별 자리 안내도', '어벤추수 땡스게임 메인 보드', '스톤 게임 · 1–6라운드', '최종 집계 · 타이브레이커', '최종 시상', '감사합니다'],
+];
+
+/** An untouched older default list becomes today's defaults (attached files carried over). */
+export function upgradeCues(cues: Cue[]): Cue[] {
+  const titles = cues.map((c) => c.title);
+  const old = OLD_DEFAULTS.some((d) => d.length === titles.length && d.every((t, i) => t === titles[i]));
+  if (!old) return cues;
+  const fresh = defaultCues();
+  const byTitle = new Map(cues.map((c) => [c.title, c]));
+  return fresh.map((c) => {
+    const was = byTitle.get(c.title);
+    const own = was && was.kind === 'slide' && c.kind === 'slide' && was.media && was.media !== c.media;
+    return own ? { ...c, media: was.media } : c;
+  });
+}
+
 export function readShow(json: string | null | undefined): ShowState {
   if (!json) return defaultShow();
   try {
     const parsed = JSON.parse(json) as { cues?: unknown };
-    return { ...defaultShow(), cues: parseCues(parsed.cues) };
+    return { ...defaultShow(), cues: upgradeCues(parseCues(parsed.cues)) };
   } catch {
     return defaultShow();
   }

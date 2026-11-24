@@ -440,6 +440,25 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
   });
 
   /**
+   * 최종 시상: the prize of the rank being revealed, as its own beat. `{ step }` opens
+   * the prize on that 스톤 reveal step (2 = 2위, 3 = 1위); `{ step: null }` closes it.
+   * The projector shows it only while the reveal is on that same step.
+   */
+  socket.on('projector:podiumPrize', (payload: unknown, ack: unknown) => {
+    try {
+      const raw = (payload as { step?: unknown } | null)?.step;
+      const step = raw === null || raw === undefined ? null : Number(raw);
+      if (step !== null && !(step === 2 || step === 3)) throw new HostError('BAD_PAYLOAD');
+      registry.require().podiumPrize = step;
+      broadcastSummary(deps);
+      reply(ack, { ok: true });
+    } catch (err) {
+      reply(ack, { ok: false, error: toWireError(err) });
+      socket.emit('error', toWireError(err));
+    }
+  });
+
+  /**
    * 3라운드 4지선다: `{ n }` puts question n (1-based) over the projector with only
    * 1–4 showing; `{ n: null }` takes it down. The text comes from the host's own
    * copy (event/quiz.ts), so no screen learns a question before it is asked.
@@ -495,22 +514,24 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       const cue = event.show.cues.find((c) => c.id === id);
       if (!cue) throw new HostError('BAD_PAYLOAD', '없는 장면이에요');
       const show = event.show;
-      // A step's timer is the step's: it starts as the step goes up, and ends
-      // when you leave (a 5분 countdown must not follow you into the rounds).
+      // A step's timer is the step's and never starts by itself (the 진행순서:
+      // timers only when a game really starts, ⏱ on the remote). Leaving a step
+      // ends its countdown, its quiz question and its prize beat.
       if (show.liveCue !== cue.id) {
-        event.projectorQuiz = null; // a quiz question is the 스톤 step's, like its timer
-        event.projectorTimer =
-          cue.timer > 0
-            ? { label: cue.timerLabel || cue.title, totalMs: cue.timer * 1000, endsAt: Date.now() + cue.timer * 1000 }
-            : null;
+        event.projectorQuiz = null;
+        event.projectorTimer = null;
+        event.podiumPrize = null;
       }
       show.liveCue = cue.id;
       if (cue.kind === 'screen' && cue.screen) {
         show.slide = null;
+        // A screen step's body is a banner across that game screen (e.g. 6시까지 와주세요).
+        show.banner = cue.body || null;
         show.screenTransition = cue.transition;
         event.projector = cue.screen;
         event.projectorLock = null;
       } else {
+        show.banner = null;
         // Up and ready, not playing: a video holds its first frame until 시작.
         show.slide = { cueId: cue.id, title: cue.title, body: cue.body, media: cue.media, transition: cue.transition, playing: false, startedAt: 0 };
       }
@@ -669,7 +690,8 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       event.bingoCheck = null;
       event.projectorTimer = null;
       event.projectorQuiz = null;
-      Object.assign(event.show, { liveCue: null, slide: null, bgm: null, screenTransition: 'fade', muted: false });
+      event.podiumPrize = null;
+      Object.assign(event.show, { liveCue: null, slide: null, banner: null, bgm: null, screenTransition: 'fade', muted: false });
       deps.persistence?.saveEvent?.(event);
       broadcastSummary(deps);
       for (const gameId of GAME_IDS) pushStateAll(deps.io, gameId, registry, 'everyone');
@@ -694,7 +716,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       if (event.projectorLock === gameId) event.projectorLock = null;
       // A fresh bingo game has no winners — drop any lingering card spotlight.
       if (gameId === 'bingo') { event.bingoSpotlight = null; event.bingoPrize = false; event.bingoCheck = null; }
-      if (gameId === 'stones') event.projectorQuiz = null;
+      if (gameId === 'stones') { event.projectorQuiz = null; event.podiumPrize = null; }
       deps.persistence?.enqueue({ gameId, state: fresh, action: { t: 'RESET' }, emits: [], at });
       broadcastSummary(deps);
       pushStateAll(deps.io, gameId, registry, 'everyone');

@@ -171,18 +171,24 @@ if (!playing || playing.paused) errors.push('the video did not play on 다음 �
 await shot('intro-playing');
 log('video before', JSON.stringify(waiting), 'after', JSON.stringify(playing));
 
-// ---- 3 빙고 종료 카운트다운 ---------------------------------------------------------
-await press('빙고 종료 카운트다운');
-if (!(await m.$('.remote__timer.is-running'))) errors.push('the 5분 timer did not start by itself');
-if (!(await p.$('.ptimer'))) errors.push('the projector shows no 5분 timer');
+// ---- 3 빙고 마감 안내: a sign across the bingo screen, no timer of its own -------------
+await press('빙고 마감 안내');
+await sleep(800);
+if (await m.$('.remote__timer.is-running')) errors.push('the 마감 안내 started a timer by itself');
+if (await p.$('.ptimer')) errors.push('the projector shows a timer on the 마감 안내');
+const sign = await p.$eval('.pbanner', (e) => e.textContent).catch(() => '');
+if (!sign.includes('6시까지')) errors.push(`the 마감 안내 banner is missing ("${sign}")`);
+await shot('bingo-closing-sign');
 // (The last seconds tick and 시간 종료 buzzes: a short timer from the event bar first.)
 await m.evaluate(() => { document.querySelector('.timer summary')?.click(); });
 await m.type('input[aria-label="직접 입력 (초)"]', '6');
 await click('.timer', '시작');
 await sleep(7500);
 await m.evaluate(() => { document.querySelector('.timer')?.removeAttribute('open'); });
-await press('5분 카운트다운 시작');
-await shot('bingo-5min-timer');
+// The optional ⏱ 5분 chip still works if the MC wants it.
+await click('.remote__do', '5분 타이머');
+await sleep(600);
+if (!(await p.$('.ptimer'))) errors.push('⏱ 5분 did not put a timer on the projector');
 await press('빙고 종료');
 const timerLeft = await m.evaluate(() => document.querySelector('.remote__timer.is-running') !== null);
 if (timerLeft) errors.push('빙고 종료 left the 5분 timer running');
@@ -192,7 +198,11 @@ await press('빙고 1등 공개');
 await press('순위 발표');
 await sleep(3200); // 두구두구 → 3등 (by itself)
 await press('2등 공개');
+await shot('bingo-2nd-hero');
 await press('1등 공개');
+const bingoHero = await p.$eval('.phero__name', (e) => e.textContent).catch(() => '');
+if (!bingoHero) errors.push('the bingo 1등 is not shown big');
+await shot('bingo-1st-hero');
 await press('함께');
 await shot('bingo-podium');
 await press('1등 카드');
@@ -313,7 +323,17 @@ await press('최종 시상');
 await press('순위 발표');
 await sleep(3200);
 await press('2위 공개');
+await shot('final-2nd-hero');
+await press('2위 상금');
+const prize2 = await p.$eval('.phero__prize', (e) => e.textContent).catch(() => '');
+if (!prize2.includes('50불')) errors.push(`2위 prize beat shows "${prize2}"`);
 await press('1위 공개');
+if (await p.$('.phero__prize')) errors.push('1위 opened with a prize already showing');
+await shot('final-1st-hero');
+await press('1위 상금');
+const prize1 = await p.$eval('.phero__prize', (e) => e.textContent).catch(() => '');
+if (!prize1.includes('100불')) errors.push(`1위 prize beat shows "${prize1}"`);
+await shot('final-1st-prize');
 await press('모두 함께');
 await shot('final-podium');
 await press('감사합니다');

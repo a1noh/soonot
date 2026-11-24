@@ -43,20 +43,22 @@ describe('다음 ▶ in the 빙고 steps', () => {
     expect(nextAction(ctx('빙고 QR 안내', { bingo: bingo({ state: 'RUNNING' }) }))).toBeNull();
   });
 
-  it('5분 마지막 기회: timer (or skip) → 빙고 종료 → done', async () => {
-    const c = ctx('빙고 종료 카운트다운', { bingo: bingo({ state: 'RUNNING' }) });
+  it('마감 안내: a sign, no countdown — 다음 ▶ is 빙고 종료 straight away (and ends a ⏱ if one runs)', async () => {
+    const c = ctx('빙고 마감 안내', { bingo: bingo({ state: 'RUNNING' }) });
     const a = nextAction(c)!;
-    expect(a.label).toBe('5분 카운트다운 시작');
+    expect(a.label).toBe('빙고 종료');
+    expect(a.skip).toBeUndefined();
     await a.run!();
-    expect(c.setTimer).toHaveBeenCalledWith(300, '빙고 종료까지');
-    expect(a.skip!.label).toMatch(/카운트다운 없이/);
+    expect(c.setTimer).not.toHaveBeenCalled();
+    expect(c.send).toHaveBeenCalledWith('bingo', 'master:end', undefined);
 
-    const timed = ctx('빙고 종료 카운트다운', {
+    const timed = ctx('빙고 마감 안내', {
       bingo: bingo({ state: 'RUNNING' }),
-      event: event({ projectorTimer: { label: '빙고 종료까지', totalMs: 300_000, endsAt: 0 } }),
+      event: event({ projectorTimer: { label: '빙고 마감까지', totalMs: 300_000, endsAt: 0 } }),
     });
-    expect(nextAction(timed)!.label).toBe('빙고 종료');
-    expect(nextAction(ctx('빙고 종료 카운트다운', { bingo: bingo({ state: 'ENDED' }) }))).toBeNull();
+    await nextAction(timed)!.run!();
+    expect(timed.setTimer).toHaveBeenCalledWith(null);
+    expect(nextAction(ctx('빙고 마감 안내', { bingo: bingo({ state: 'ENDED' }) }))).toBeNull();
   });
 
   it('1등 공개: 발표 → (drumroll) → 2등 → 1등 → 함께 → 카드 → 랜덤 5명 → 상품 → done', async () => {
@@ -98,14 +100,21 @@ describe('다음 ▶ in the 스톤 steps', () => {
     expect(final({ state: 'ENDED' })).toBeNull();
   });
 
-  it('최종 시상: 발표 → (drumroll) → 2위 → 1위 → 함께 → done', () => {
-    const podium = (o: Record<string, unknown>) => nextAction(ctx('최종 시상', { stones: stones(o) }));
+  it('최종 시상: 발표 → (drumroll) → 2위 → 2위 상금 → 1위 → 1위 상금 → 함께 → done', async () => {
+    const podium = (o: Record<string, unknown>, e: Partial<EventSummary> = {}) =>
+      nextAction(ctx('최종 시상', { stones: stones(o), event: event(e) }));
     expect(podium({ state: 'ENDED' })!.label).toMatch(/순위 발표/);
     expect(podium({ state: 'REVEAL', revealStep: 0 })!.wait).toMatch(/두구두구/);
     expect(podium({ state: 'REVEAL', revealStep: 1 })!.label).toBe('2위 공개');
-    expect(podium({ state: 'REVEAL', revealStep: 2 })!.label).toBe('1위 공개');
-    expect(podium({ state: 'REVEAL', revealStep: 3 })!.label).toMatch(/모두 함께/);
+    expect(podium({ state: 'REVEAL', revealStep: 2 })!.label).toBe('2위 상금 공개');
+    expect(podium({ state: 'REVEAL', revealStep: 2 }, { podiumPrize: 2 })!.label).toBe('1위 공개');
+    expect(podium({ state: 'REVEAL', revealStep: 3 }, { podiumPrize: 2 })!.label).toBe('1위 상금 공개');
+    expect(podium({ state: 'REVEAL', revealStep: 3 }, { podiumPrize: 3 })!.label).toMatch(/모두 함께/);
     expect(podium({ state: 'REVEAL', revealStep: 4 })).toBeNull();
+
+    const c = ctx('최종 시상', { stones: stones({ state: 'REVEAL', revealStep: 3 }) });
+    await nextAction(c)!.run!();
+    expect(c.send).toHaveBeenCalledWith('stones', 'projector:podiumPrize', { step: 3 });
   });
 });
 
@@ -132,13 +141,13 @@ describe('◀ 이전 mirrors 다음 ▶ inside a step', () => {
     expect(at({ state: 'ENDED' })).toBeNull();
   });
 
-  it('5분 마지막 기회: 빙고 종료 is taken back (bingo runs again)', async () => {
-    const c = ctx('빙고 종료 카운트다운', { bingo: bingo({ state: 'ENDED' }) });
+  it('마감 안내: 빙고 종료 is taken back (bingo runs again)', async () => {
+    const c = ctx('빙고 마감 안내', { bingo: bingo({ state: 'ENDED' }) });
     const u = prevAction(c)!;
     expect(u.label).toMatch(/빙고 종료 취소/);
     await u.run();
     expect(c.send).toHaveBeenCalledWith('bingo', 'master:back', undefined);
-    expect(prevAction(ctx('빙고 종료 카운트다운', { bingo: bingo({ state: 'RUNNING' }) }))).toBeNull();
+    expect(prevAction(ctx('빙고 마감 안내', { bingo: bingo({ state: 'RUNNING' }) }))).toBeNull();
   });
 
   it('최종 집계 / 시상: 결정전, 게임 종료 and each podium place step back', () => {
@@ -147,6 +156,8 @@ describe('◀ 이전 mirrors 다음 ▶ inside a step', () => {
     expect(prevAction(ctx('최종 집계 · 타이브레이커', { stones: st({ canUndoTiebreak: true }) }))!.label).toBe('결정전 결과 되돌리기');
     expect(prevAction(ctx('최종 집계 · 타이브레이커', { stones: st({}) }))!.label).toBe('게임 종료 취소');
     expect(prevAction(ctx('최종 시상', { stones: st({ state: 'REVEAL', revealStep: 3 }) }))!.label).toBe('1위 공개 취소');
+    expect(prevAction(ctx('최종 시상', { stones: st({ state: 'REVEAL', revealStep: 3 }), event: event({ podiumPrize: 3 }) }))!.label).toBe('1위 상금 닫기');
+    expect(prevAction(ctx('최종 시상', { stones: st({ state: 'REVEAL', revealStep: 2 }), event: event({ podiumPrize: 2 }) }))!.label).toBe('2위 상금 닫기');
     expect(prevAction(ctx('최종 시상', { stones: st({}) }))).toBeNull();
   });
 });

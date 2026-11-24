@@ -348,6 +348,13 @@ describe('스톤 on the projector', () => {
     act(() => {
       sock.fire('room:state', { gameId: 'stones', view: board({ state: 'REVEAL', revealStep: 3 }) });
     });
+    // One place at a time: the 1위 team's name fills the screen, no list yet.
+    expect(screen.getByRole('heading', { name: '아이언맨' })).toBeTruthy();
+    expect(screen.getByText(/어벤추수 땡스게임 1위/)).toBeTruthy();
+    expect(screen.queryByText(/어벤추수 땡스게임 순위 발표/)).toBeNull();
+    act(() => {
+      sock.fire('room:state', { gameId: 'stones', view: board({ state: 'REVEAL', revealStep: 4 }) });
+    });
     expect(screen.getByText(/어벤추수 땡스게임 순위 발표/)).toBeTruthy();
     expect(screen.getByText('스톤 1개')).toBeTruthy();
   });
@@ -402,7 +409,7 @@ describe('스톤 on the projector', () => {
     expect(screen.queryByText('스톤을 하나 고르세요')).toBeNull();
   });
 
-  it('puts the prizes on the podium: 1등 and 2등 rows, then a line for every team', () => {
+  it('shows each prize as its own beat under the big name, then all of them with a line for every team', () => {
     render(<App />);
     const sock = sockets[0]!;
     const prizes = { first: '100불 상금', second: '50불 상금', everyone: '70불 커피 기프트카드' };
@@ -410,7 +417,11 @@ describe('스톤 on the projector', () => {
       sock.fire('event:summary', summary);
       sock.fire('room:state', { gameId: 'stones', view: board({ state: 'REVEAL', revealStep: 3, prizes }) });
     });
-    expect(screen.getByText('100불 상금')).toBeTruthy();
+    expect(screen.queryByText(/100불 상금/)).toBeNull(); // the name first
+    act(() => {
+      sock.fire('event:summary', { ...summary, podiumPrize: 3 });
+    });
+    expect(screen.getByText(/100불 상금/)).toBeTruthy();
     expect(screen.queryByText(/모든 팀에게/)).toBeNull(); // only once the whole podium is up
     act(() => {
       sock.fire('room:state', { gameId: 'stones', view: board({ state: 'REVEAL', revealStep: 4, prizes }) });

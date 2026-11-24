@@ -114,6 +114,7 @@ function Podium({
   winners,
   prizeOpen,
   footnote,
+  prizeStep,
 }: {
   ranked: readonly RankEntry[];
   step: number;
@@ -124,8 +125,33 @@ function Podium({
   winners?: readonly WinnerCard[];
   /** bingo only — the 1등 mystery box: undefined = no box, false = closed 🎁, true = opened. */
   prizeOpen?: boolean;
+  /** 스톤 only — the reveal step whose prize is shown big under the name (최종 시상). */
+  prizeStep?: number | null;
 }) {
   const shown = podiumAt(ranked, step);
+  // One place at a time (3위/2위/1위): that name fills the screen, the list waits for 모두 함께.
+  if (step >= 1 && step <= 3 && shown.length === 1) {
+    const e = shown[0]!;
+    const [name, tag] = e.label.split(' #');
+    const unit = theme === 'bingo' ? '등' : '위';
+    const prize = prizeStep === step && e.prize ? e.prize : null;
+    return (
+      <Stage kind="podium" theme={theme}>
+        <div key={`${e.id}-${step}`} className={`phero medal--${e.medal ?? 3}${prize ? ' has-prize' : ''}`}>
+          <p className="phero__rank">
+            {['🥇', '🥈', '🥉'][(e.medal ?? 3) - 1]} {title} {e.medal}{unit}
+          </p>
+          <h1 className="phero__name">{name}</h1>
+          {tag ? <p className="phero__tag">#{tag}</p> : null}
+          {prize ? (
+            <p key="prize" className="phero__prize">
+              🎁 {prize}
+            </p>
+          ) : null}
+        </div>
+      </Stage>
+    );
+  }
   const champ = winners && winners[0]; // 1등's matched people, once fully revealed
   // The matched list shows after the full reveal — and steps aside when the prize opens,
   // so the podium always fits one screen (a 1등 can have matched up to 25 people).
@@ -163,7 +189,7 @@ function Podium({
         ) : null}
         {footnote && step >= 4 ? <p className="podium__footnote">{footnote}</p> : null}
         {/* 1등 mystery box — appears once 1등 is on screen; operator opens it. */}
-        {prizeOpen !== undefined && step >= 3 ? (
+        {prizeOpen !== undefined && step >= 4 ? (
           <div className={`prizebox${prizeOpen ? ' is-open' : ''}`}>
             <div className="prizebox__lid" aria-hidden="true">🎁</div>
             {prizeOpen ? (
@@ -545,6 +571,7 @@ export function App() {
             title={sView.title || '스톤'}
             theme="stones"
             footnote={sView.prizes?.everyone ? `모든 팀에게 · ${sView.prizes.everyone}` : undefined}
+            prizeStep={summary.podiumPrize}
           />
         );
       }
@@ -628,11 +655,23 @@ export function App() {
       />
       <BgmPlayer bgm={summary?.bgm ?? null} hold={videoOn} onBlocked={() => setSoundBlocked(true)} />
       {videoOn ? null : <MusicCredit bgm={summary?.bgm ?? null} muted={!!summary?.muted} />}
+      {summary?.banner && !summary.slide ? <ScreenBanner key={summary.banner} text={summary.banner} /> : null}
       {summary?.projectorQuiz ? <QuizOverlay key={summary.projectorQuiz.n} quiz={summary.projectorQuiz} /> : null}
       {summary ? <TimerOverlay timer={summary.projectorTimer} serverNow={summary.serverNow} /> : null}
       <SoundPrompt needed={soundBlocked} />
       <FullscreenButton />
     </>
+  );
+}
+
+/** A screen step's body across the game screen; " · " splits a big line from a smaller one. */
+function ScreenBanner({ text }: { text: string }) {
+  const [main, ...rest] = text.split(' · ');
+  return (
+    <div className="pbanner" role="status">
+      <p className="pbanner__main">{main}</p>
+      {rest.length ? <p className="pbanner__sub">{rest.join(' · ')}</p> : null}
+    </div>
   );
 }
 

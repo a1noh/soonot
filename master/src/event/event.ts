@@ -51,6 +51,8 @@ export interface EventRecord {
   projectorTimer: ProjectorTimer | null;
   /** A 4지선다 question over the projector (number 1–4 only, never the 보기), or null. */
   projectorQuiz: ProjectorQuiz | null;
+  /** 최종 시상: the 스톤 reveal step whose prize is shown big (2 = 2위, 3 = 1위), or null. */
+  podiumPrize: number | null;
   /** 진행 순서: the script's slides, screens and BGM, and what is on air now. */
   show: ShowState;
   readonly games: Record<GameId, GameHandle>;
@@ -108,6 +110,7 @@ export function createEvent(input: CreateEventInput): EventRecord {
     bingoCheck: null,
     projectorTimer: null,
     projectorQuiz: null,
+    podiumPrize: null,
     show: defaultShow(),
     games,
     createdAt: now,
@@ -139,6 +142,9 @@ export interface EventSummary {
   bingoCheck: number[] | null;
   projectorTimer: ProjectorTimer | null;
   projectorQuiz: ProjectorQuiz | null;
+  podiumPrize: number | null;
+  /** A banner across the game screen (a screen step's body), or null. */
+  banner: string | null;
   /** A slide over the projector, or null for the game screen. */
   slide: SlideOnAir | null;
   /** The BGM the projector plays (or, with no file, a placeholder for the MC). */
@@ -183,6 +189,8 @@ export function summarize(
     bingoCheck: event.bingoCheck,
     projectorTimer: event.projectorTimer,
     projectorQuiz: event.projectorQuiz,
+    podiumPrize: event.podiumPrize,
+    banner: event.show.banner,
     slide: event.show.slide,
     bgm: event.show.bgm,
     screenTransition: event.show.screenTransition,

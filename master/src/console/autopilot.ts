@@ -28,7 +28,7 @@ export type { AutoKind };
 /** Set on the 대본's cues; lists saved before the field existed are matched by title. */
 export const AUTO_LABEL: Record<AutoKind, string> = {
   'bingo-open': '빙고 시작',
-  'bingo-last-call': '빙고 종료 카운트다운 → 종료',
+  'bingo-last-call': '빙고 마감 안내 → 종료',
   'bingo-reveal': '빙고 순위 발표 · 1등 확인',
   'stones-start': '스톤 준비 · 시작',
   'stones-rounds': '스톤 라운드 (게임이 진행)',
@@ -37,7 +37,8 @@ export const AUTO_LABEL: Record<AutoKind, string> = {
 };
 const BY_TITLE: Record<string, AutoKind> = {
   '빙고 QR 안내': 'bingo-open',
-  '빙고 종료 카운트다운': 'bingo-last-call',
+  '빙고 마감 안내': 'bingo-last-call',
+  '빙고 종료 카운트다운': 'bingo-last-call', // lists saved on 2026-11-24
   '빙고 5분 마지막 기회': 'bingo-last-call', // lists saved before 2026-11-24
   '빙고 1등 공개': 'bingo-reveal',
   '어벤추수 땡스게임 메인 보드': 'stones-start',
@@ -53,12 +54,12 @@ export function autoOf(cue: Cue | null | undefined): AutoKind | null {
 /** The plan of a step, for the little checklist under the title. */
 export const AUTO_PLAN: Record<AutoKind, readonly string[]> = {
   'bingo-open': ['빙고 준비', '빙고 게임 시작'],
-  'bingo-last-call': ['5분 카운트다운', '빙고 종료'],
+  'bingo-last-call': ['빙고 종료'],
   'bingo-reveal': ['순위 발표', '2등', '1등', '1·2·3등 함께', '1등 카드', '랜덤 5명', '1등 상품'],
   'stones-start': ['스톤 준비', '스톤 게임 시작'],
   'stones-rounds': ['1라운드', '2라운드', '3라운드', '4라운드', '5라운드', '6라운드'],
   'stones-final': ['스톤 게임 종료', '1위 결정전'],
-  'stones-podium': ['순위 발표', '2위', '1위', '모두 함께'],
+  'stones-podium': ['순위 발표', '2위', '2위 상금', '1위', '1위 상금', '모두 함께'],
 };
 
 export interface Action {
@@ -134,16 +135,7 @@ function bingoAction(auto: AutoKind, ctx: AutoContext): Action | null {
       if (ctx.event.projectorTimer) await ctx.setTimer(null);
       return send('master:end');
     };
-    const timerHere = ctx.cue.timer > 0 && ctx.event.projectorTimer?.label === (ctx.cue.timerLabel || ctx.cue.title);
-    if (auto === 'bingo-last-call' && ctx.cue.timer > 0 && !timerHere) {
-      const label = ctx.cue.timerLabel || ctx.cue.title;
-      return {
-        label: `${minutes(ctx.cue.timer)} 카운트다운 시작`,
-        plan: '5분 카운트다운',
-        run: () => ctx.setTimer(ctx.cue.timer, label),
-        skip: { label: '카운트다운 없이 바로 빙고 종료', run: end },
-      };
-    }
+    // The 마감 안내 is a sign, not a countdown: its timer is only the optional ⏱ chip.
     return { label: '빙고 종료', plan: '빙고 종료', run: end };
   }
   if (auto === 'bingo-last-call') return null; // ENDED / REVEAL: on to the 1등 공개 step
@@ -214,14 +206,15 @@ function stonesAction(auto: AutoKind, ctx: AutoContext): Action | null {
   const step = s.revealStep;
   if (step === 0) return { label: '', plan: '순위 발표', wait: '두구두구… 곧 3위가 나와요' };
   if (step === 1) return { label: '2위 공개', plan: '2위', run: () => send('master:reveal', { step: 2 }) };
+  // Each prize is its own beat: the name first, then its prize big under it.
+  const prizeUp = (n: 2 | 3) => send('projector:podiumPrize', { step: n });
+  if (step === 2 && ctx.event.podiumPrize !== 2) return { label: '2위 상금 공개', plan: '2위 상금', run: () => prizeUp(2) };
   if (step === 2) return { label: '1위 공개', plan: '1위', run: () => send('master:reveal', { step: 3 }) };
+  if (step === 3 && ctx.event.podiumPrize !== 3) return { label: '1위 상금 공개', plan: '1위 상금', run: () => prizeUp(3) };
   if (step === 3) return { label: '모두 함께 보기 · 상품', plan: '모두 함께', run: () => send('master:reveal', { step: 4 }) };
   return null;
 }
 
-function minutes(s: number): string {
-  return s % 60 === 0 && s >= 60 ? `${s / 60}분` : `${s}초`;
-}
 
 /**
  * ◀ 이전 — the mirror of 다음 ▶: inside a step it takes back the step's last
@@ -252,7 +245,14 @@ export function prevAction(ctx: AutoContext): { label: string; run: () => Promis
     return { label: '게임 종료 취소', run: () => stones('master:resumeFromEnded') };
   }
   if (auto === 'stones-podium' && s?.state === 'REVEAL') {
+    if ((s.revealStep === 2 || s.revealStep === 3) && ctx.event.podiumPrize === s.revealStep) {
+      return { label: `${s.revealStep === 3 ? '1위' : '2위'} 상금 닫기`, run: () => stones('projector:podiumPrize', { step: null }) };
+    }
     const label = { 4: '함께 보기 취소', 3: '1위 공개 취소', 2: '2위 공개 취소' }[s.revealStep as 2 | 3 | 4] ?? '순위 발표 취소';
+    // Back from 1위 lands on 2위 as it was left: with its prize showing.
+    if (s.revealStep === 3) {
+      return { label, run: async () => { await stones('master:back'); await stones('projector:podiumPrize', { step: 2 }); } };
+    }
     return { label, run: () => stones('master:back') };
   }
   return null;
