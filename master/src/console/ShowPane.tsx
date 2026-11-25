@@ -13,7 +13,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { EventSummary } from '../event/event.js';
 import { FOUR_CHOICE } from '../event/quiz.js';
-import { MediaRoundPanel, WordsPanel } from './RoundMedia.js';
+import { MediaRoundPanel, TrackPanel, WordsPanel } from './RoundMedia.js';
 import { controlsOf, defaultCues, isVideo, ROUNDS, TIEBREAK_TIMER, trackTitle, TRANSITIONS, type Cue, type Transition } from '../event/show.js';
 import { GAME_IDS, type GameId } from '../shared/lifecycle.js';
 import { formatLeft, useCountdown } from '../shared/countdown.js';
@@ -459,10 +459,16 @@ function Remote({
           {stonesDrive && round?.extra && sv?.pending?.number === round.n && game ? (
             round.extra === 'words' ? (
               <WordsPanel event={event} send={(p) => game.send('stones', 'projector:card', p)} />
+            ) : round.extra === 'track' ? (
+              <TrackPanel event={event} send={(p) => game.send('stones', 'projector:card', p)} />
             ) : round.extra === 'songs' || round.extra === 'faces' ? (
               <MediaRoundPanel key={round.extra} dir={round.extra} event={event} send={(p) => game.send('stones', 'projector:card', p)} />
             ) : (
-              <RoundExtras event={event} send={(n) => game.send('stones', 'projector:quiz', { n })} />
+              <RoundExtras
+                event={event}
+                send={(n) => game.send('stones', 'projector:quiz', { n })}
+                open={(n, k, close) => game.send('stones', 'projector:quiz', close ? { n, close: k } : { n, open: k })}
+              />
             )
           ) : null}
           {plan ? (
@@ -1059,8 +1065,9 @@ function CueEditor({
  * projector (only 1–4 show there), step through them, take it down; the MC sees
  * the 보기 here. 일심동체: each team's 5 제시어, never on the projector.
  */
-function RoundExtras({ event, send }: { event: EventSummary; send(n: number | null): Promise<unknown> }) {
+function RoundExtras({ event, send, open }: { event: EventSummary; send(n: number | null): Promise<unknown>; open(n: number, k: number, close: boolean): Promise<unknown> }) {
   const on = event.projectorQuiz?.n ?? null;
+  const opened = on !== null ? (event.projectorQuiz?.opened ?? []) : [];
   const [n, setN] = useState(on ?? 1);
   useEffect(() => {
     if (on !== null) setN(on);
@@ -1081,7 +1088,25 @@ function RoundExtras({ event, send }: { event: EventSummary; send(n: number | nu
           </li>
         ))}
       </ol>
-      <p className="remote__note">정답: {q.answer ? `${q.answer}번` : '미정 (자료에 없어요)'}</p>
+      <p className="remote__note">정답: {q.answer ? `${q.answer}번 · ${q.choices[q.answer - 1]}` : '미정 (자료에 없어요)'}</p>
+      {on === n ? (
+        <div className="remote__qnav remote__qopen" aria-label="팀이 든 번호 열기">
+          {[1, 2, 3, 4].map((k) => {
+            const isOpen = opened.some((o) => o.k === k);
+            return (
+              <button
+                key={k}
+                type="button"
+                className={`btn remote__chip${isOpen ? ' is-open' : ''}${q.answer === k ? ' is-answer' : ''}`}
+                onClick={() => void open(n, k, isOpen).catch(() => {})}
+              >
+                {isOpen ? `${k} 닫기` : `${k} 열기`}
+                {q.answer === k ? ' ★' : ''}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
       <div className="remote__qnav">
         <button type="button" className="btn remote__chip" disabled={n <= 1} onClick={() => (on !== null ? show(n - 1) : setN(n - 1))}>
           ◀ 이전 문제

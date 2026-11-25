@@ -203,7 +203,7 @@ export function createHost(options: HostOptions): Host {
     let files: { name: string; url: string; size: number }[] = [];
     // ?dir=songs|faces lists a round's folder (찬양 clips, 눈코입 photos).
     const dir = String(req.query['dir'] ?? '');
-    if (dir && !['bgm', 'songs', 'faces'].includes(dir)) return void res.status(400).json({ ok: false });
+    if (dir && !['bgm', 'songs', 'faces', 'rounds'].includes(dir)) return void res.status(400).json({ ok: false });
     const folder = dir ? join(config.mediaDir, dir) : config.mediaDir;
     if (existsSync(folder)) {
       files = readdirSync(folder)
@@ -223,7 +223,7 @@ export function createHost(options: HostOptions): Host {
     }
     // One optional subfolder, from a fixed list (the show's music lives in /media/bgm/).
     const dir = String(req.query['dir'] ?? '');
-    if (dir && !['bgm', 'songs', 'faces'].includes(dir)) return void res.status(400).json({ ok: false, message: '폴더가 맞지 않아요' });
+    if (dir && !['bgm', 'songs', 'faces', 'rounds'].includes(dir)) return void res.status(400).json({ ok: false, message: '폴더가 맞지 않아요' });
     const folder = dir ? join(config.mediaDir, dir) : config.mediaDir;
     mkdirSync(folder, { recursive: true });
     const finalPath = join(folder, name);

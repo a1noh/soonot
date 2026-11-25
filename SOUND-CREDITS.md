@@ -35,3 +35,14 @@ The **드럼 120 BPM** beat (3라운드 4지선다, 6라운드 일심동체) is 
 
 `어벤추수-mc-intro.mp4` (made for this event) uses an Avengers theme recorder-orchestra
 cover chosen by the organiser. It is not in git.
+
+## Round audio from YouTube (church-internal use)
+
+By the organiser's decision (2026-11-25), these are taken from YouTube for this church-internal event only. They are
+not in git and are not redistributed:
+- `master/media/rounds/whitney.mp3`: "Whitney Houston Drum Challenge - I will always love you"
+  (https://youtu.be/v-O-FyLdy_E), the whole 18 s clip; the challenge plays it from 5 s.
+- `master/media/songs/*.mp3`: the first ~45 s of each 찬양 on the team's list (official / lyric uploads where they
+  exist), for 가디언즈 오브 찬양.
+
+The 눈코입 photos (`master/media/faces/`) come from the team's Google Drive folder.

@@ -492,6 +492,12 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
         const i = int(p['i'], 0, words.length - 1);
         const kicker = team === -1 ? `어벤져스 어셈블 · 동점 연장 · ${i + 1}/${words.length}` : `어벤져스 어셈블 · ${team + 1}번째 팀 · 제시어 ${i + 1}/${words.length}`;
         event.projectorCard = { kind: 'word', kicker, text: words[i]! };
+      } else if (p['kind'] === 'track') {
+        // 토르의 번개 같은 센스: I Will Always Love You (media/rounds/whitney.mp3), whole or from 5 s.
+        const file = deps.mediaDir ? join(deps.mediaDir, 'rounds', 'whitney.mp3') : '';
+        if (!file || !existsSync(file)) throw new HostError('BAD_PAYLOAD', '휘트니 음원이 없어요 (media/rounds/whitney.mp3)');
+        const from = p['from'] === 5 ? 5 : 0;
+        event.projectorCard = { kind: 'track', title: 'I Will Always Love You', url: '/media/rounds/whitney.mp3', from, startedAt: Date.now() };
       } else if (p['kind'] === 'face' || p['kind'] === 'song') {
         const dir: RoundDir = p['kind'] === 'face' ? 'faces' : 'songs';
         const items = files(dir);
@@ -522,14 +528,27 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
    */
   socket.on('projector:quiz', (payload: unknown, ack: unknown) => {
     try {
-      const raw = (payload as { n?: unknown } | null)?.n;
+      const p = (payload ?? {}) as { n?: unknown; open?: unknown; close?: unknown };
+      const raw = p.n;
       const event = registry.require();
       if (raw === null || raw === undefined) {
         event.projectorQuiz = null;
       } else {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 1 || n > FOUR_CHOICE.length) throw new HostError('BAD_PAYLOAD');
-        event.projectorQuiz = { n, total: FOUR_CHOICE.length, question: FOUR_CHOICE[n - 1]!.question };
+        const q = FOUR_CHOICE[n - 1]!;
+        // Same question: keep what is opened; another question starts closed.
+        const kept = event.projectorQuiz?.n === n ? event.projectorQuiz.opened : [];
+        let opened = kept;
+        // { open: k } shows option k (what a team held up): wrong → crossed out, right → 정답.
+        if (p.open !== undefined) {
+          const k = Number(p.open);
+          if (!Number.isInteger(k) || k < 1 || k > 4) throw new HostError('BAD_PAYLOAD');
+          if (!opened.some((o) => o.k === k)) opened = [...opened, { k, text: q.choices[k - 1]!, correct: q.answer === k }];
+        }
+        // { close: k } takes it back (◀).
+        if (p.close !== undefined) opened = opened.filter((o) => o.k !== Number(p.close));
+        event.projectorQuiz = { n, total: FOUR_CHOICE.length, question: q.question, opened };
       }
       broadcastSummary(deps);
       reply(ack, { ok: true });

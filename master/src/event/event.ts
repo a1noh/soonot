@@ -65,13 +65,16 @@ export interface EventRecord {
 export type ProjectorCard =
   | { kind: 'word'; kicker: string; text: string }
   | { kind: 'face'; n: number; total: number; url: string; zoomUrl: string | null; name: string; revealed: boolean }
-  | { kind: 'song'; n: number; total: number; url: string; title: string; phase: 'play1' | 'play3' | 'answer'; startedAt: number };
+  | { kind: 'song'; n: number; total: number; url: string; title: string; phase: 'play1' | 'play3' | 'answer'; startedAt: number }
+  | { kind: 'track'; title: string; url: string; from: number; startedAt: number };
 
 export interface ProjectorQuiz {
   /** 1-based question number, and how many there are. */
   n: number;
   total: number;
   question: string;
+  /** The numbers the MC has opened (what the teams held up), in order. Text only once opened. */
+  opened: { k: number; text: string; correct: boolean }[];
 }
 
 export interface ProjectorTimer {

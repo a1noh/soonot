@@ -25,6 +25,7 @@ import { formatLeft, useCountdown } from '../shared/countdown.js';
 import { BgmPlayer, MusicCredit, SlideLayer, SoundPrompt } from './ShowLayer.js';
 import { useGameSfx } from './useSfx.js';
 import { isMuted, playSfx } from './sound.js';
+import confetti from 'canvas-confetti';
 import '../shared/harvest.css';
 import './projector.css';
 import './harvest-stage.css';
@@ -706,7 +707,31 @@ function CardOverlay({ card }: { card: NonNullable<EventSummary['projectorCard']
       </div>
     );
   }
+  if (card.kind === 'track') return <TrackCard card={card} />;
   return <SongCard card={card} />;
+}
+
+/** 토르의 번개 같은 센스: the song plays once (whole, or from 5 s) while the card shows its name. */
+function TrackCard({ card }: { card: Extract<NonNullable<EventSummary['projectorCard']>, { kind: 'track' }> }) {
+  const audio = useRef<HTMLAudioElement>(null);
+  const [playing, setPlaying] = useState(false);
+  useEffect(() => {
+    const a = audio.current;
+    if (!a) return undefined;
+    a.muted = isMuted();
+    a.currentTime = card.from;
+    void a.play().then(() => setPlaying(true)).catch(() => {});
+    return () => a.pause();
+  }, [card.startedAt, card.from]);
+  return (
+    <div className="pcard pcard--track" role="dialog" aria-label={card.title}>
+      <audio ref={audio} src={card.url} preload="auto" onEnded={() => setPlaying(false)} />
+      <p className="pcard__kicker">토르의 번개 같은 센스 · 타이밍 맞추기{card.from ? ` · ${card.from}초부터` : ''}</p>
+      <div className={`pcard__listen${playing ? ' is-playing' : ''}`}>
+        <span aria-hidden="true">🥁</span> {card.title}
+      </div>
+    </div>
+  );
 }
 
 function SongCard({ card }: { card: Extract<NonNullable<EventSummary['projectorCard']>, { kind: 'song' }> }) {
@@ -784,24 +809,58 @@ function ScreenBanner({ text }: { text: string }) {
  * only as numbers (진행순서: 보기는 번호 1~4번만). Teams hold up a finger on “하나, 둘, 셋!”.
  */
 function QuizOverlay({ quiz }: { quiz: NonNullable<EventSummary['projectorQuiz']> }) {
+  // A newly opened number: a wrong one buzzes and is crossed out; the right one celebrates.
+  const seen = useRef<{ n: number; ks: number[] } | null>(null);
+  useEffect(() => {
+    const ks = quiz.opened.map((o) => o.k);
+    const before = seen.current;
+    seen.current = { n: quiz.n, ks };
+    if (!before || before.n !== quiz.n) return;
+    const fresh = quiz.opened.filter((o) => !before.ks.includes(o.k));
+    for (const o of fresh) {
+      if (o.correct) {
+        playSfx('fanfare');
+        celebrate();
+      } else playSfx('buzzer');
+    }
+  }, [quiz.n, quiz.opened]);
+  const solved = quiz.opened.some((o) => o.correct);
   return (
-    <div className="pquiz" role="dialog" aria-label={`문제 ${quiz.n}`}>
+    <div className={`pquiz${solved ? ' is-solved' : ''}`} role="dialog" aria-label={`문제 ${quiz.n}`}>
       <div className="pquiz__card">
         <p className="pquiz__kicker">
           닥터 스트레인지의 1,400만 분의 1 · <b>문제 {quiz.n}</b> / {quiz.total}
         </p>
         <h1 className="pquiz__q">{quiz.question}</h1>
-        <ol className="pquiz__choices" aria-label="보기는 번호만">
-          {[1, 2, 3, 4].map((k) => (
-            <li key={k} className="pquiz__choice">
-              <span className="pquiz__num">{k}</span>
-              <span className="pquiz__hidden" aria-hidden="true">???</span>
-            </li>
-          ))}
+        <ol className="pquiz__choices" aria-label="보기">
+          {[1, 2, 3, 4].map((k) => {
+            const o = quiz.opened.find((x) => x.k === k);
+            return (
+              <li key={k} className={`pquiz__choice${o ? (o.correct ? ' is-right' : ' is-wrong') : ''}`}>
+                <span className="pquiz__num">{k}</span>
+                {o ? (
+                  <span key="text" className="pquiz__text">{o.text}</span>
+                ) : (
+                  <span className="pquiz__hidden" aria-hidden="true">???</span>
+                )}
+                {o?.correct ? <span className="pquiz__badge">정답!</span> : null}
+              </li>
+            );
+          })}
         </ol>
       </div>
     </div>
   );
+}
+
+/** 정답! — confetti from both lower corners over the whole screen. */
+function celebrate() {
+  const colors = ['#ffd76a', '#ffffff', '#c9b5ff', '#7cf3b0', '#ff8fb1'];
+  const shot = (x: number, angle: number) =>
+    void confetti({ particleCount: 140, angle, spread: 70, startVelocity: 70, origin: { x, y: 1 }, colors, zIndex: 60, ticks: 260, disableForReducedMotion: true });
+  shot(0.1, 60);
+  shot(0.9, 120);
+  window.setTimeout(() => void confetti({ particleCount: 120, spread: 360, startVelocity: 35, origin: { x: 0.5, y: 0.4 }, colors, zIndex: 60, shapes: ['star'], scalar: 1.4, disableForReducedMotion: true }), 350);
 }
 
 /**

@@ -6,7 +6,7 @@
  *
  * Safe to run twice (same names overwrite). Uploads only what the 대본 uses.
  */
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 
 const BASE = (process.argv[2] ?? 'https://soonot-hanmadang.fly.dev').replace(/\/$/, '');
 const PASSCODE = process.env.PASSCODE ?? 'soonot';
@@ -14,6 +14,10 @@ const PASSCODE = process.env.PASSCODE ?? 'soonot';
 const files = [
   { path: 'master/media/어벤추수-mc-intro-sfx.mp4', dir: '' },
   ...readdirSync('master/media/bgm').filter((f) => f.endsWith('.mp3')).map((f) => ({ path: `master/media/bgm/${f}`, dir: 'bgm' })),
+  // The rounds' own media: 찬양 clips, 눈코입 photos, the 휘트니 song.
+  ...['songs', 'faces', 'rounds'].flatMap((dir) =>
+    existsSync(`master/media/${dir}`) ? readdirSync(`master/media/${dir}`).filter((f) => !f.startsWith('.')).map((f) => ({ path: `master/media/${dir}/${f}`, dir })) : [],
+  ),
 ];
 
 const auth = await fetch(`${BASE}/master/auth`, {

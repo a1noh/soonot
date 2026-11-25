@@ -187,14 +187,14 @@ export interface RoundPlan {
   /** Empty: the MC plays the song by hand, so the background music stops. */
   bgmUrl: string;
   /** Extra MC tools in the remote: the 4지선다 questions, or the 일심동체 제시어 (console/RoundExtras). */
-  extra?: 'quiz' | 'words' | 'songs' | 'faces';
+  extra?: 'quiz' | 'words' | 'songs' | 'faces' | 'track';
 }
 export const ROUNDS: readonly RoundPlan[] = [
   { n: 1, name: '아이언맨의 비행 테스트', note: '코끼리코 비행기 · 빙고 1등이 스톤 선택 · 각 팀 2명, 가위바위보로 순서 · 코끼리코 꼭 10바퀴 · 날개 있게 접기 · 시작선 표시 · 나온 분들 참가 선물', timer: 20, timerLabel: '20초 제한', bgm: '코끼리코 도는 동안 (Monkeys Spinning Monkeys)', bgmUrl: '/media/bgm/monkeys-spinning-monkeys.mp3' },
   { n: 2, name: '가디언즈 오브 찬양', note: '찬양 맞추기 · 1라운드 1등 팀이 스톤 선택 · 아래에서 3·2·1 → 1초 (어려우면 3초) → 10초 상의 → 정답 + 10초', timer: 10, timerLabel: '상의 시간', bgm: '찬양 음원 (아래에서 재생)', bgmUrl: '', extra: 'songs' },
   { n: 3, name: '닥터 스트레인지의 1,400만 분의 1', note: '4지선다 · 2라운드 꼴찌 팀이 스톤 선택 (누가 고르나요에서 바꾸기) · 아래에서 문제 띄우기 (화면엔 번호 1~4만) · “하나, 둘, 셋!”에 번호 들기', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'quiz' },
   { n: 4, name: '호크아이의 매의 눈', note: '매의 눈 · 3라운드 1등 팀이 스톤 선택 · 아래에서 사진 띄우기 → 10초 상의 → 정답 공개', timer: 10, timerLabel: '상의 시간', bgm: '태양 「눈, 코, 입」 · 직접 틀기', bgmUrl: '', extra: 'faces' },
-  { n: 5, name: '토르의 번개 같은 센스', note: '휘트니 휴스턴 · 4라운드 1등 팀이 스톤 선택 · 각 팀 1명, 가위바위보로 순서 · 게임 전에 모두 한 번 같이 듣기 · 도전자는 연습 없이 한 번, 5초 지점부터 · 판독용 촬영 (목사님/효준) · “성공을 어케해~”에서 효준 시범', timer: 0, timerLabel: '', bgm: 'I Will Always Love You · 직접 틀기', bgmUrl: '' },
+  { n: 5, name: '토르의 번개 같은 센스', note: '휘트니 휴스턴 · 4라운드 1등 팀이 스톤 선택 · 각 팀 1명, 가위바위보로 순서 · 아래 ▶ 처음부터로 모두 한 번 같이 듣고, 도전자는 ▶ 5초부터 한 번씩 · 판독용 촬영 (목사님/효준) · “성공을 어케해~”에서 효준 시범', timer: 0, timerLabel: '', bgm: 'I Will Always Love You (아래에서 재생)', bgmUrl: '', extra: 'track' },
   { n: 6, name: '어벤져스 어셈블', note: '일심동체 · 마지막 스톤은 자동 · 각 팀 3명, 팀마다 제시어 5개 (아래에서 누르면 화면에 크게) · 1등 동점이면 동점 팀끼리 제시어 몇 개 더', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'words' },
 ];
 

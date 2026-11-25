@@ -249,6 +249,48 @@ describe('projector overlays the master drives', () => {
     }
   });
 
+  it('4지선다: opens what a team held up — wrong crossed out, right is 정답; text only once opened; ◀ closes', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    await emit(master, 'event:create', { title: 'x' });
+
+    const up = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:quiz', { n: 1 });
+    expect((await up).projectorQuiz!.opened).toEqual([]);
+
+    const wrong = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:quiz', { n: 1, open: 2 });
+    expect((await wrong).projectorQuiz!.opened).toEqual([{ k: 2, text: '볼드모트', correct: false }]);
+
+    const right = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:quiz', { n: 1, open: 4 });
+    const q = (await right).projectorQuiz!;
+    expect(q.opened.map((o) => [o.k, o.correct])).toEqual([[2, false], [4, true]]);
+    expect(JSON.stringify(q)).not.toContain('타노스'); // option 1 was never opened
+
+    const closed = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:quiz', { n: 1, close: 4 });
+    expect((await closed).projectorQuiz!.opened.map((o) => o.k)).toEqual([2]);
+
+    const next = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:quiz', { n: 2 });
+    expect((await next).projectorQuiz!.opened).toEqual([]); // a new question starts closed
+    expect((await emit(master, 'projector:quiz', { n: 2, open: 5 })).ok).toBe(false);
+  });
+
+  it('휘트니: the track card plays whole or from 5 s, once the file is there', async () => {
+    const { base } = await boot();
+    const { token } = await signIn(base);
+    const master = await connect(base, '/master', token!);
+    await emit(master, 'event:create', { title: 'x' });
+    expect((await emit(master, 'projector:card', { kind: 'track', from: 5 })).ok).toBe(false); // no file yet
+    await fetch(`${base}/master/media?dir=rounds&name=whitney.mp3`, { method: 'POST', headers: { cookie: `${COOKIE_NAME}=${token}` }, body: 'x' });
+    const on = once<EventSummary>(master, 'event:summary');
+    expect((await emit(master, 'projector:card', { kind: 'track', from: 5 })).ok).toBe(true);
+    expect((await on).projectorCard).toMatchObject({ kind: 'track', from: 5, url: '/media/rounds/whitney.mp3' });
+  });
+
   it('round cards: 제시어 from the host copy; 눈코입 / 찬양 from the uploaded folders; off', async () => {
     const { base } = await boot();
     const { token } = await signIn(base);

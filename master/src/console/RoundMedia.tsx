@@ -48,6 +48,32 @@ export function WordsPanel({ event, send }: { event: EventSummary; send: Send })
   );
 }
 
+/** 토르의 번개 같은 센스: I Will Always Love You — once for everyone, then once per challenger (from 5 s). */
+export function TrackPanel({ event, send }: { event: EventSummary; send: Send }) {
+  const on = event.projectorCard?.kind === 'track';
+  const [msg, setMsg] = useState<string | null>(null);
+  const go = (payload: Record<string, unknown>) => void send(payload).catch((e: Error) => setMsg(e.message));
+  return (
+    <div className="remote__extra" aria-label="휘트니 휴스턴">
+      <p className="remote__extrahead">
+        🥁 I Will Always Love You {on ? <span className="remote__onair">재생 중 / 화면에 떠 있음</span> : null}
+      </p>
+      <div className="remote__qnav">
+        <button type="button" className="btn remote__chip remote__chip--go" onClick={() => go({ kind: 'track', from: 0 })}>
+          ▶ 처음부터 (모두 같이 듣기)
+        </button>
+        <button type="button" className="btn remote__chip remote__chip--go" onClick={() => go({ kind: 'track', from: 5 })}>
+          ▶ 5초부터 (도전)
+        </button>
+        <button type="button" className="btn remote__chip" disabled={!on} onClick={() => void send({ off: true }).catch(() => {})}>
+          ■ 멈춤 · 내리기
+        </button>
+      </div>
+      {msg ? <p className="remote__note">{msg}</p> : null}
+    </div>
+  );
+}
+
 function useRoundFiles(dir: RoundDir): { items: RoundItem[]; reload(): void; upload(files: FileList): Promise<string | null> } {
   const [items, setItems] = useState<RoundItem[]>([]);
   const reload = useCallback(() => {

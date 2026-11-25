@@ -566,3 +566,30 @@ body:has(.stage--theme-stones) .ptimer {
 .pcard__listen span { display: inline-block; }
 .pcard__listen.is-playing span { animation: ptimerPulse 0.5s ease-in-out infinite; color: #ffd76a; }
 @media (prefers-reduced-motion: reduce) { .pcard, .pcard__word, .pcard__photo, .pcard__count { animation: none; } }
+
+/* 4지선다: an opened number shows its option — wrong is crossed out, right glows (정답!). */
+.pquiz__choice { position: relative; }
+.pquiz__text { font-size: clamp(16px, 3.4vmin, 50px); font-weight: 800; line-height: 1.2; word-break: keep-all; color: #fff;
+  animation: pquizFlip 450ms cubic-bezier(0.2, 1.3, 0.4, 1) both; }
+.pquiz__choice.is-wrong { opacity: 0.55; filter: grayscale(0.6); }
+.pquiz__choice.is-wrong .pquiz__num { color: rgba(255, 255, 255, 0.5); }
+.pquiz__choice.is-wrong::after { content: ''; position: absolute; left: 8%; right: 8%; top: 50%; height: 0.9vmin; min-height: 5px;
+  border-radius: 999px; background: #ff5a5a; transform-origin: left center; transform: rotate(-12deg) scaleX(0);
+  animation: pquizStrike 420ms 200ms cubic-bezier(0.2, 0.9, 0.3, 1) forwards; box-shadow: 0 0 2vmin rgba(255, 90, 90, 0.6); }
+.pquiz__choice.is-right { background: rgba(255, 215, 106, 0.22); border-color: #ffd76a;
+  box-shadow: 0 0 0 0.5vmin rgba(255, 215, 106, 0.5), 0 0 6vmin rgba(255, 215, 106, 0.55);
+  animation: pquizWin 900ms cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+.pquiz__choice.is-right .pquiz__text { color: #ffd76a; }
+.pquiz__badge { position: absolute; top: -2.6vmin; left: 50%; transform: translateX(-50%); padding: 0.4vmin 2vmin; border-radius: 999px;
+  background: #ffd76a; color: #1a1206; font-weight: 900; font-size: clamp(14px, 3vmin, 44px); white-space: nowrap;
+  animation: pheroPrize 650ms cubic-bezier(0.2, 1.6, 0.4, 1) both; }
+@keyframes pquizFlip { from { opacity: 0; transform: rotateX(90deg); } to { opacity: 1; transform: none; } }
+@keyframes pquizStrike { to { transform: rotate(-12deg) scaleX(1); } }
+@keyframes pquizWin { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .pquiz__text, .pquiz__choice.is-right, .pquiz__badge { animation: none; } .pquiz__choice.is-wrong::after { animation: none; transform: rotate(-12deg); } }
+
+/* 눈코입: the team's question picture (eyes · nose · mouth panels) and answer photo, both shown whole. */
+.pcard__photo:not(.is-zoomed) { width: auto; aspect-ratio: auto; max-width: 86vw; max-height: 60vh; background: transparent; border: 0; box-shadow: none; }
+.pcard__photo:not(.is-zoomed) img { width: auto; height: auto; max-width: 86vw; max-height: 60vh; object-fit: contain;
+  border-radius: 2vmin; box-shadow: 0 2vmin 6vmin rgba(0, 0, 0, 0.6); }
+.pcard--track .pcard__listen { font-size: clamp(32px, 8vmin, 120px); }

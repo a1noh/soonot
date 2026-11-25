@@ -18,7 +18,7 @@ import { execFileSync } from 'node:child_process';
 
 const BASE = process.argv[2] ?? 'http://localhost:3100';
 /** Test files for the 찬양 / 눈코입 uploads (made with ffmpeg on first run). */
-const FIX = { song: 'scripts/shots/fixtures/01 테스트 찬양.mp3', face: 'scripts/shots/fixtures/01 테스트 인물.jpg' };
+const FIX = { song: 'scripts/shots/fixtures/99 테스트 찬양.mp3', face: 'scripts/shots/fixtures/99 테스트 인물.jpg' };
 mkdirSync('scripts/shots/fixtures', { recursive: true });
 if (!existsSync(FIX.song)) execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'sine=frequency=523:duration=12', '-c:a', 'libmp3lame', FIX.song]);
 if (!existsSync(FIX.face)) execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', 'testsrc=size=640x640:duration=1', '-frames:v', '1', FIX.face]);
@@ -268,19 +268,31 @@ for (let r = 1; r <= 6; r++) {
       await click('.remote__qnav', '정답 + 10초');
       await sleep(900);
       const t = await p.$eval('.pcard__answer', (e) => e.textContent).catch(() => '');
-      if (!t.includes('테스트 찬양')) errors.push(`찬양 정답 shows "${t}"`);
+      const want = (await m.$eval('.remote__extra .remote__qtext', (e) => e.textContent).catch(() => '')).replace(/^\d+\.\s*/, '').trim();
+      if (!t || t !== want) errors.push(`찬양 정답 shows "${t}", the remote says "${want}"`);
       await shot('round2-song-answer');
     } else {
       await click('.remote__qnav', '사진 띄우기');
       await sleep(900);
-      if (!(await p.$('.pcard__photo.is-zoomed'))) errors.push('눈코입: the zoomed photo is not on the projector');
+      if (!(await p.$('.pcard__photo img'))) errors.push('눈코입: no question picture on the projector');
       await shot('round4-face-zoom');
       await click('.remote__qnav', '정답 공개');
       await sleep(900);
       const t = await p.$eval('.pcard__answer', (e) => e.textContent).catch(() => '');
-      if (!t.includes('테스트 인물')) errors.push(`눈코입 정답 shows "${t}"`);
+      const want = (await m.$eval('.remote__extra .remote__qtext', (e) => e.textContent).catch(() => '')).replace(/^\d+\.\s*/, '').trim();
+      if (!t || t !== want) errors.push(`눈코입 정답 shows "${t}", the remote says "${want}"`);
       await shot('round4-face-answer');
     }
+  }
+  // 휘트니: the song plays from 5 s on the projector.
+  if (r === 5) {
+    await click('.remote__qnav', '5초부터');
+    await sleep(1500);
+    if (!(await p.$('.pcard--track'))) errors.push('휘트니: no track card on the projector');
+    const t = await p.$eval('.pcard--track audio', (a) => ({ t: a.currentTime, paused: a.paused })).catch(() => null);
+    if (!t || t.paused || t.t < 5) errors.push(`휘트니: not playing from 5 s (${JSON.stringify(t)})`);
+    await shot('round5-whitney');
+    await click('.remote__qnav', '멈춤');
   }
   // 일심동체: a 제시어 goes up big from the remote.
   if (r === 6) {
@@ -299,6 +311,15 @@ for (let r = 1; r <= 6; r++) {
     if (!q.includes('문제 1')) errors.push(`round 3: the question is not on the projector ("${q.slice(0, 40)}")`);
     if (q.includes('골리앗')) errors.push('round 3: the projector shows the 보기');
     await shot('round3-quiz-question');
+    // Teams held up 2 (wrong: 볼드모트) and 4 (right: 골리앗).
+    await click('.remote__qopen', '2 열기');
+    await sleep(900);
+    if (!(await p.$('.pquiz__choice.is-wrong'))) errors.push('4지선다: a wrong number is not crossed out');
+    await click('.remote__qopen', '4 열기');
+    await sleep(1200);
+    const right = await p.$eval('.pquiz__choice.is-right', (e) => e.textContent).catch(() => '');
+    if (!right.includes('골리앗') || !right.includes('정답')) errors.push(`4지선다: the right answer shows "${right}"`);
+    await shot('round3-quiz-answer');
     await click('.remote__qnav', '다음 문제');
     await sleep(500);
     if (!(await p.$eval('.pquiz', (e) => e.textContent).catch(() => '')).includes('문제 2')) errors.push('round 3: 다음 문제 did not move the projector');

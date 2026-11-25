@@ -1120,3 +1120,6 @@
 .remote__word { min-height: 40px; padding: 4px 12px; font-weight: 700; }
 .remote__word.is-on { background: var(--game-stones); border-color: var(--game-stones); color: #fff; }
 .remote__upload { justify-self: start; cursor: pointer; }
+.remote__qopen .remote__chip { min-width: 4.5em; font-weight: 800; }
+.remote__qopen .remote__chip.is-open { opacity: 0.6; }
+.remote__qopen .remote__chip.is-answer { border-color: #d4a72c; }
