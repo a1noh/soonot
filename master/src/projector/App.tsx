@@ -157,7 +157,9 @@ function Podium({
             {shown.map((e) => (
               <li key={e.id} className={`podium__row${e.medal ? ` medal--${e.medal}` : ''}${e.self ? ' is-self' : ''}`}>
                 {e.medal ? <span className="podium__medal">{['🥇', '🥈', '🥉'][e.medal - 1]}</span> : <span className="podium__medal" />}
-                <span className="podium__label">{e.label}</span>
+                <span className="podium__label" style={e.color ? { color: e.color } : undefined}>
+                  {e.label}
+                </span>
                 <span className="podium__detail">{e.detail}</span>
                 {e.prize ? <span className="podium__prize">{e.prize}</span> : null}
               </li>
@@ -199,7 +201,9 @@ function PodiumHero({
         <p className="phero__rank">
           {['🥇', '🥈', '🥉'][medal - 1]} {heading}
         </p>
-        <h1 className="phero__name">{name}</h1>
+        <h1 className="phero__name" style={entry.color ? { color: entry.color } : undefined}>
+          {name}
+        </h1>
         {tag ? <p className="phero__tag">#{tag}</p> : null}
         {prize ? (
           <p key="prize" className="phero__prize">
@@ -443,6 +447,7 @@ function stonesRank(view: StonesView): RankEntry[] {
   return view.standings.map((s, i) => ({
     id: s.teamId,
     label: s.teamName,
+    color: s.color,
     detail: `스톤 ${s.stoneIds.length}개${view.secretStone?.teamId === s.teamId ? ` + ✨${view.secretStone.name}` : ''}`,
     ...(prize(s.rank) ? { prize: prize(s.rank) } : {}),
     ...(i < 3 ? { medal: (i + 1) as 1 | 2 | 3 } : {}),
@@ -692,7 +697,7 @@ function CardOverlay({ card }: { card: NonNullable<EventSummary['projectorCard']
     return (
       <div className="pcard pcard--face" role="dialog" aria-label={`눈코입 ${card.n}`}>
         <p className="pcard__kicker">
-          호크아이의 매의 눈 · <b>{card.n}</b> / {card.total}
+          호크아이의 매의 눈 · {card.example ? <b>연습</b> : <><b>{card.n}</b> / {card.total}</>}
         </p>
         {card.revealed ? (
           <div key="full" className="pcard__photo is-full">
@@ -744,6 +749,7 @@ function SongCard({ card }: { card: Extract<NonNullable<EventSummary['projectorC
     const timers: number[] = [];
     const later = (ms: number, f: () => void) => timers.push(window.setTimeout(f, ms));
     a.pause();
+    a.load(); // the 정답 may switch to the 후렴 clip
     a.currentTime = 0;
     a.volume = 1;
     a.muted = isMuted();
@@ -776,7 +782,7 @@ function SongCard({ card }: { card: Extract<NonNullable<EventSummary['projectorC
   }, [card.n, card.phase, card.startedAt]);
   return (
     <div className="pcard pcard--song" role="dialog" aria-label={`찬양 ${card.n}`}>
-      <audio ref={audio} src={card.url} preload="auto" />
+      <audio ref={audio} src={card.phase === 'answer' && card.chorusUrl ? card.chorusUrl : card.url} preload="auto" />
       <p className="pcard__kicker">
         가디언즈 오브 찬양 · <b>{card.n}</b> / {card.total}
       </p>
@@ -809,45 +815,31 @@ function ScreenBanner({ text }: { text: string }) {
  * only as numbers (진행순서: 보기는 번호 1~4번만). Teams hold up a finger on “하나, 둘, 셋!”.
  */
 function QuizOverlay({ quiz }: { quiz: NonNullable<EventSummary['projectorQuiz']> }) {
-  // A newly opened number: a wrong one buzzes and is crossed out; the right one celebrates.
-  const seen = useRef<{ n: number; ks: number[] } | null>(null);
+  // 정답 공개: the answer pops up with confetti and a fanfare (only as it appears, not on reload).
+  const seen = useRef<string | null>(null);
   useEffect(() => {
-    const ks = quiz.opened.map((o) => o.k);
+    const cur = `${quiz.n}:${quiz.answer ? quiz.answer.k : ''}`;
     const before = seen.current;
-    seen.current = { n: quiz.n, ks };
-    if (!before || before.n !== quiz.n) return;
-    const fresh = quiz.opened.filter((o) => !before.ks.includes(o.k));
-    for (const o of fresh) {
-      if (o.correct) {
-        playSfx('fanfare');
-        celebrate();
-      } else playSfx('buzzer');
+    seen.current = cur;
+    if (before !== null && quiz.answer && before !== cur) {
+      playSfx('fanfare');
+      celebrate();
     }
-  }, [quiz.n, quiz.opened]);
-  const solved = quiz.opened.some((o) => o.correct);
+  }, [quiz.n, quiz.answer]);
   return (
-    <div className={`pquiz${solved ? ' is-solved' : ''}`} role="dialog" aria-label={`문제 ${quiz.n}`}>
+    <div className={`pquiz${quiz.answer ? ' is-solved' : ''}`} role="dialog" aria-label={quiz.label}>
       <div className="pquiz__card">
         <p className="pquiz__kicker">
-          닥터 스트레인지의 1,400만 분의 1 · <b>문제 {quiz.n}</b> / {quiz.total}
+          닥터 스트레인지의 1,400만 분의 1 · <b>{quiz.label}</b>
         </p>
         <h1 className="pquiz__q">{quiz.question}</h1>
-        <ol className="pquiz__choices" aria-label="보기">
-          {[1, 2, 3, 4].map((k) => {
-            const o = quiz.opened.find((x) => x.k === k);
-            return (
-              <li key={k} className={`pquiz__choice${o ? (o.correct ? ' is-right' : ' is-wrong') : ''}`}>
-                <span className="pquiz__num">{k}</span>
-                {o ? (
-                  <span key="text" className="pquiz__text">{o.text}</span>
-                ) : (
-                  <span className="pquiz__hidden" aria-hidden="true">???</span>
-                )}
-                {o?.correct ? <span className="pquiz__badge">정답!</span> : null}
-              </li>
-            );
-          })}
-        </ol>
+        {quiz.answer ? (
+          <div key={quiz.answer.k} className="pquiz__answer">
+            <span className="pquiz__badge">정답!</span>
+            <span className="pquiz__anum">{quiz.answer.k}번</span>
+            <span className="pquiz__atext">{quiz.answer.text}</span>
+          </div>
+        ) : null}
       </div>
     </div>
   );

@@ -9,10 +9,11 @@
  * counts; otherwise a small prompt asks for one tap and everything plays.
  */
 import { useEffect, useRef, useState } from 'react';
+import type React from 'react';
 import { isVideo, musicCredit, type BgmOnAir, type SlideOnAir } from '../event/show.js';
 import { isMuted, onMutedChange } from './sound.js';
 import { Gem } from '@soonot/stones/src/client/Gem.js';
-import { DEFAULT_STONES, STONE_COLORS } from '@soonot/stones/src/shared/constants.js';
+import { DEFAULT_STONES, DEFAULT_TEAMS, STONE_COLORS, TEAM_COLORS } from '@soonot/stones/src/shared/constants.js';
 import './show.css';
 
 /** 🔇 소리 끄기 from the console, as a React value. */
@@ -178,6 +179,7 @@ function SlideBody({
   }, [live]);
 
   if (slide.layout === 'rules') return <RulesSlide slide={slide} />;
+  if (slide.layout === 'seating') return <SeatingSlide slide={slide} />;
   if (!slide.media || broken) {
     return (
       <div className="slide__ph">
@@ -344,6 +346,38 @@ function RulesSlide({ slide }: { slide: SlideOnAir }) {
           </li>
         ))}
       </ol>
+    </div>
+  );
+}
+
+/**
+ * 팀 별 자리 안내도, as on 예진's chart: FRONT at the top, two columns of teams (left 아이언맨 ·
+ * 캡틴 아메리카 · 블랙 위도우, right 헐크 · 토르 · 호크아이), each in its colour with ten seats.
+ */
+function SeatingSlide({ slide }: { slide: SlideOnAir }) {
+  return (
+    <div className="seating">
+      <h1 className="seating__title">{slide.title}</h1>
+      {slide.body ? <p className="seating__hint">{slide.body}</p> : null}
+      <div className="seating__room">
+        <p className="seating__front">FRONT · 무대</p>
+        <ol className="seating__grid">
+          {DEFAULT_TEAMS.map((name, i) => {
+            const color = TEAM_COLORS[i % TEAM_COLORS.length]!;
+            return (
+              <li key={name} className="seating__team" style={{ '--team': color, animationDelay: `${0.1 + i * 0.1}s` } as React.CSSProperties}>
+                <span className="seating__name">{name}</span>
+                <span className="seating__seats" aria-hidden="true">
+                  {Array.from({ length: 10 }, (_, k) => (
+                    <i key={k} />
+                  ))}
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+        <p className="seating__back">BACK</p>
+      </div>
     </div>
   );
 }

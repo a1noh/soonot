@@ -467,7 +467,7 @@ function Remote({
               <RoundExtras
                 event={event}
                 send={(n) => game.send('stones', 'projector:quiz', { n })}
-                open={(n, k, close) => game.send('stones', 'projector:quiz', close ? { n, close: k } : { n, open: k })}
+                reveal={(n, on) => game.send('stones', 'projector:quiz', { n, reveal: on })}
               />
             )
           ) : null}
@@ -1065,9 +1065,9 @@ function CueEditor({
  * projector (only 1–4 show there), step through them, take it down; the MC sees
  * the 보기 here. 일심동체: each team's 5 제시어, never on the projector.
  */
-function RoundExtras({ event, send, open }: { event: EventSummary; send(n: number | null): Promise<unknown>; open(n: number, k: number, close: boolean): Promise<unknown> }) {
+function RoundExtras({ event, send, reveal }: { event: EventSummary; send(n: number | null): Promise<unknown>; reveal(n: number, on: boolean): Promise<unknown> }) {
   const on = event.projectorQuiz?.n ?? null;
-  const opened = on !== null ? (event.projectorQuiz?.opened ?? []) : [];
+  const shown = on !== null && !!event.projectorQuiz?.answer;
   const [n, setN] = useState(on ?? 1);
   useEffect(() => {
     if (on !== null) setN(on);
@@ -1078,7 +1078,7 @@ function RoundExtras({ event, send, open }: { event: EventSummary; send(n: numbe
   return (
     <div className="remote__extra" aria-label="4지선다 문제">
       <p className="remote__extrahead">
-        ❓ 문제 {n} / {total} {on === n ? <span className="remote__onair">화면에 떠 있음</span> : null}
+        ❓ {q.label} ({n} / {total}) {on === n ? <span className="remote__onair">{shown ? '정답 공개 중' : '화면에 질문만'}</span> : null}
       </p>
       <p className="remote__qtext">{q.question}</p>
       <ol className="remote__qchoices">
@@ -1088,42 +1088,33 @@ function RoundExtras({ event, send, open }: { event: EventSummary; send(n: numbe
           </li>
         ))}
       </ol>
-      <p className="remote__note">정답: {q.answer ? `${q.answer}번 · ${q.choices[q.answer - 1]}` : '미정 (자료에 없어요)'}</p>
-      {on === n ? (
-        <div className="remote__qnav remote__qopen" aria-label="팀이 든 번호 열기">
-          {[1, 2, 3, 4].map((k) => {
-            const isOpen = opened.some((o) => o.k === k);
-            return (
-              <button
-                key={k}
-                type="button"
-                className={`btn remote__chip${isOpen ? ' is-open' : ''}${q.answer === k ? ' is-answer' : ''}`}
-                onClick={() => void open(n, k, isOpen).catch(() => {})}
-              >
-                {isOpen ? `${k} 닫기` : `${k} 열기`}
-                {q.answer === k ? ' ★' : ''}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
+      <p className="remote__note">정답 (진행자만): {q.answer ? `${q.answer}번 · ${q.choices[q.answer - 1]}` : '미정'}</p>
       <div className="remote__qnav">
         <button type="button" className="btn remote__chip" disabled={n <= 1} onClick={() => (on !== null ? show(n - 1) : setN(n - 1))}>
-          ◀ 이전 문제
+          ◀ 이전
         </button>
-        {on === n ? (
-          <button type="button" className="btn remote__chip" onClick={() => void send(null).catch(() => {})}>
-            문제 내리기
+        {on !== n ? (
+          <button type="button" className="btn remote__chip remote__chip--go" onClick={() => show(n)}>
+            {q.label} 화면에 띄우기
+          </button>
+        ) : shown ? (
+          <button type="button" className="btn remote__chip" onClick={() => void reveal(n, false).catch(() => {})}>
+            정답 가리기
           </button>
         ) : (
-          <button type="button" className="btn remote__chip remote__chip--go" onClick={() => show(n)}>
-            문제 {n} 화면에 띄우기
+          <button type="button" className="btn remote__chip remote__chip--go" onClick={() => void reveal(n, true).catch(() => {})}>
+            정답 공개 ★
           </button>
         )}
         <button type="button" className="btn remote__chip" disabled={n >= total} onClick={() => (on !== null ? show(n + 1) : setN(n + 1))}>
-          다음 문제 ▶
+          다음 ▶
         </button>
       </div>
+      {on !== null ? (
+        <button type="button" className="btn btn--ghost btn--sm" onClick={() => void send(null).catch(() => {})}>
+          문제 내리기
+        </button>
+      ) : null}
     </div>
   );
 }

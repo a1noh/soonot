@@ -593,3 +593,11 @@ body:has(.stage--theme-stones) .ptimer {
 .pcard__photo:not(.is-zoomed) img { width: auto; height: auto; max-width: 86vw; max-height: 60vh; object-fit: contain;
   border-radius: 2vmin; box-shadow: 0 2vmin 6vmin rgba(0, 0, 0, 0.6); }
 .pcard--track .pcard__listen { font-size: clamp(32px, 8vmin, 120px); }
+
+/* 4지선다 정답 공개: just the answer, big, under the question. */
+.pquiz__answer { position: relative; display: flex; align-items: center; justify-content: center; gap: 3vmin; flex-wrap: wrap;
+  padding: 3vmin 6vmin; border-radius: 3vmin; background: rgba(255, 215, 106, 0.16); border: 0.4vmin solid #ffd76a;
+  box-shadow: 0 0 6vmin rgba(255, 215, 106, 0.5); animation: pquizWin 900ms cubic-bezier(0.2, 1.5, 0.4, 1) both; }
+.pquiz__answer .pquiz__badge { top: -3vmin; }
+.pquiz__anum { font-weight: 900; font-size: clamp(40px, 11vmin, 170px); color: #ffd76a; line-height: 1; }
+.pquiz__atext { font-weight: 900; font-size: clamp(30px, 8vmin, 120px); color: #fff; line-height: 1.1; word-break: keep-all; }

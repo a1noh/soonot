@@ -47,7 +47,7 @@ const sig = () =>
     const cls = stage ? [...stage.classList].filter((c) => c.startsWith('stage--') || c.startsWith('is-')).join(' ') : '';
     const slide = document.querySelector('.slide:not(.is-leaving)');
     // A slide covers the whole screen: what is behind it is not seen by the room.
-    if (slide) return `slide:${slide.querySelector('.slide__title')?.textContent ?? (slide.querySelector('video') ? 'video' : 'media')}${t('.ptimer__label') ? ` · timer:${t('.ptimer__label')}` : ''}`;
+    if (slide) return `slide:${slide.querySelector('.slide__title, h1')?.textContent ?? (slide.querySelector('video') ? 'video' : 'media')}${t('.ptimer__label') ? ` · timer:${t('.ptimer__label')}` : ''}`;
     return [
       cls,
       slide ? `slide:${slide.querySelector('.slide__title')?.textContent ?? (slide.querySelector('video') ? 'video' : 'media')}` : '',

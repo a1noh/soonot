@@ -616,3 +616,7 @@
 .stage.stage--tally > .tally { position: absolute !important; inset: 0; width: auto; align-content: center; }
 .stage--tally .tally__ring { height: 30vmin; margin: 4vmin 0 3vmin; }
 .stage--tally .tally__ring { height: 40vmin; margin: 3vmin 0 1vmin; } .stage--tally .tally { gap: 1.6vmin; }
+
+/* 팀 이름은 팀 색으로 (예진): the name text carries the team's colour, lifted a little for the dark screen. */
+.ranks__name { color: color-mix(in srgb, var(--team) 82%, white); }
+.tally__team { color: color-mix(in srgb, var(--team) 70%, white); }

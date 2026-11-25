@@ -2,14 +2,17 @@ export const MIN_TEAMS = 2;
 export const MAX_TEAMS = 8;
 export const MAX_STONES = 8;
 
-/** Same team palette as 윷놀이, so a team keeps its colour across games. */
+/**
+ * The teams' colours, in DEFAULT_TEAMS order, as on the 자리 배치도 and the name tags:
+ * 아이언맨 빨강 · 헐크 초록 · 캡틴 아메리카 파랑 · 토르 노랑 · 블랙위도우 보라 · 호크아이 갈색.
+ */
 export const TEAM_COLORS: readonly string[] = [
-  '#C0392B',
-  '#1F6FB2',
-  '#1E8449',
-  '#B7791F',
-  '#6C3483',
-  '#117A73',
+  '#E5484D', // 아이언맨 · red
+  '#3DAE5C', // 헐크 · green
+  '#3D7BFF', // 캡틴 아메리카 · blue
+  '#F2C230', // 토르 · yellow
+  '#9D5CD6', // 블랙 위도우 · purple
+  '#A9764F', // 호크아이 · brown
   '#A04000',
   '#2C3E50',
 ];
@@ -70,13 +73,13 @@ export const DEFAULT_GAMES: readonly { name: string; players: string; instructio
     name: '가디언즈 오브 찬양',
     players: '모두',
     instructions:
-      '찬양 맞추기! 찬양을 1초, 그다음 3초 들려드려요. 10초 상의 후 “팀 이름!”을 외치면 가장 먼저 손든 팀이 정확한 제목을 맞혀요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
+      '찬양 맞추기! 찬양 전주를 1초, 그다음 3초 들려드려요. 아는 팀은 손을 들고 찬양 제목을 맞혀요. 가장 많이 맞힌 팀이 스톤을 얻어요.',
   },
   {
     name: '닥터 스트레인지의 1,400만 분의 1',
     players: '모두',
     instructions:
-      '미스터리 4지선다! 보기 내용은 비밀, 1~4번 중 정답 번호만 맞혀요. “하나, 둘, 셋!”에 팀별로 정한 번호를 손가락으로 동시에 들어요. 100% 운, 가장 많이 맞힌 팀이 스톤을 얻어요.',
+      '블라인드 사지선다! 질문만 보여드리고, 정답이 몇 번에 있는지는 몰라요. 알 것 같다면 손을 들고 번호를 외쳐요. 100% 운, 가장 많이 맞힌 팀이 스톤을 얻어요.',
   },
   {
     name: '호크아이의 매의 눈',
@@ -94,7 +97,7 @@ export const DEFAULT_GAMES: readonly { name: string; players: string; instructio
     name: '어벤져스 어셈블',
     players: '3명',
     instructions:
-      '일심동체 텔레파시! 한 팀씩 나와 팀마다 다른 제시어 5개에 도전해요. “하나, 둘, 셋!”에 세 명이 똑같은 포즈를 취하면 성공. 가장 많이 성공한 팀이 스톤을 얻고, 1등이 동점이면 동점 팀끼리 제시어 몇 개 더!',
+      '일심동체 텔레파시! 팀에서 3명씩, 화면에 뜬 제시어를 보고 떠오르는 포즈를 동시에! 세 명 모두 같은 포즈면 성공. 제시어는 5개씩, 가장 많이 성공한 팀이 마지막 스톤을 가져가요.',
   },
 ];
 

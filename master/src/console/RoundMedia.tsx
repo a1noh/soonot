@@ -7,18 +7,19 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import type { EventSummary } from '../event/event.js';
-import { ONE_MIND } from '../event/quiz.js';
-import { roundItems, type RoundDir, type RoundItem } from '../event/roundItems.js';
+import { ONE_MIND, type Word } from '../event/quiz.js';
+import { showItems, type RoundDir, type ShowItem } from '../event/roundItems.js';
 
 type Send = (payload: Record<string, unknown>) => Promise<unknown>;
 
 export function WordsPanel({ event, send }: { event: EventSummary; send: Send }) {
   const card = event.projectorCard?.kind === 'word' ? event.projectorCard : null;
-  const row = (team: number, words: readonly string[], label: string) => (
+  const row = (team: number, words: readonly Word[], label: string) => (
     <li key={team}>
       <b>{label}</b>
       <span className="remote__wordrow">
-        {words.map((w, i) => {
+        {words.map((word, i) => {
+          const w = word.text;
           const on = card?.text === w;
           return (
             <button
@@ -27,7 +28,7 @@ export function WordsPanel({ event, send }: { event: EventSummary; send: Send })
               className={`btn remote__word${on ? ' is-on' : ''}`}
               onClick={() => void send(on ? { off: true } : { kind: 'word', team, i }).catch(() => {})}
             >
-              {w}
+              <small className={`remote__level remote__level--${word.level}`}>{word.level}</small> {w}
             </button>
           );
         })}
@@ -42,7 +43,8 @@ export function WordsPanel({ event, send }: { event: EventSummary; send: Send })
       </p>
       <ol className="remote__words">
         {ONE_MIND.teams.map((words, i) => row(i, words, `${i + 1}번째 팀`))}
-        {row(-1, ONE_MIND.tie, '동점 연장')}
+        {row(-2, ONE_MIND.spare, '여분')}
+        {row(-1, ONE_MIND.tie, '타이 브레이크 (가장 웃긴 사람)')}
       </ol>
     </div>
   );
@@ -74,12 +76,12 @@ export function TrackPanel({ event, send }: { event: EventSummary; send: Send })
   );
 }
 
-function useRoundFiles(dir: RoundDir): { items: RoundItem[]; reload(): void; upload(files: FileList): Promise<string | null> } {
-  const [items, setItems] = useState<RoundItem[]>([]);
+function useRoundFiles(dir: RoundDir): { items: ShowItem[]; reload(): void; upload(files: FileList): Promise<string | null> } {
+  const [items, setItems] = useState<ShowItem[]>([]);
   const reload = useCallback(() => {
     void fetch(`/master/media?dir=${dir}`, { credentials: 'include' })
       .then((r) => r.json() as Promise<{ files?: { name: string }[] }>)
-      .then((j) => setItems(roundItems(dir, (j.files ?? []).map((f) => f.name))))
+      .then((j) => setItems(showItems(dir, (j.files ?? []).map((f) => f.name))))
       .catch(() => {});
   }, [dir]);
   useEffect(reload, [reload]);
@@ -100,9 +102,12 @@ export function MediaRoundPanel({ dir, event, send }: { dir: RoundDir; event: Ev
   const [msg, setMsg] = useState<string | null>(null);
   const card = event.projectorCard;
   const mine = card && ((dir === 'songs' && card.kind === 'song') || (dir === 'faces' && card.kind === 'face')) ? card : null;
+  // Follow what is on screen, by name (a face card's number leaves out the 연습 photo).
+  const onName = mine ? (mine.kind === 'face' ? mine.name : mine.kind === 'song' ? mine.title : null) : null;
   useEffect(() => {
-    if (mine && 'n' in mine) setN(mine.n);
-  }, [mine]);
+    const i = onName ? items.findIndex((x) => x.name === onName) : -1;
+    if (i >= 0) setN(i + 1);
+  }, [onName, items]);
   const it = items[n - 1];
   const go = (payload: Record<string, unknown>) => void send(payload).catch((e: Error) => setMsg(e.message));
   const songs = dir === 'songs';
@@ -121,7 +126,8 @@ export function MediaRoundPanel({ dir, event, send }: { dir: RoundDir; event: Ev
       ) : (
         <>
           <p className="remote__qtext">
-            {n}. {it?.name}
+            {it?.example ? '연습' : songs ? n : n - (items[0]?.example ? 1 : 0)}. {it?.name}
+            {it?.missing ? <span className="remote__missing"> · {songs ? '음원' : '사진'} 없음 (올려주세요)</span> : null}
           </p>
           <div className="remote__qnav">
             {songs ? (

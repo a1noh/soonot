@@ -15,6 +15,8 @@ export interface RankEntry {
   /** A prize to show beside this place on the podium (스톤: '100불 상금'). */
   prize?: string;
   medal?: 1 | 2 | 3;
+  /** The team's colour (스톤): the name is drawn in it. */
+  color?: string;
   /** Renders the "나의 순위" band (bingo §9). Set per viewer by `project`. */
   self?: boolean;
 }

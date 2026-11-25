@@ -64,17 +64,18 @@ export interface EventRecord {
 
 export type ProjectorCard =
   | { kind: 'word'; kicker: string; text: string }
-  | { kind: 'face'; n: number; total: number; url: string; zoomUrl: string | null; name: string; revealed: boolean }
-  | { kind: 'song'; n: number; total: number; url: string; title: string; phase: 'play1' | 'play3' | 'answer'; startedAt: number }
+  | { kind: 'face'; n: number; total: number; url: string; zoomUrl: string | null; name: string; revealed: boolean; example: boolean }
+  | { kind: 'song'; n: number; total: number; url: string; chorusUrl: string | null; title: string; phase: 'play1' | 'play3' | 'answer'; startedAt: number }
   | { kind: 'track'; title: string; url: string; from: number; startedAt: number };
 
 export interface ProjectorQuiz {
-  /** 1-based question number, and how many there are. */
+  /** 1-based index into the list (1 = the 예시), how many there are, and its label ('예시' / '문제 3'). */
   n: number;
   total: number;
+  label: string;
   question: string;
-  /** The numbers the MC has opened (what the teams held up), in order. Text only once opened. */
-  opened: { k: number; text: string; correct: boolean }[];
+  /** Only the question shows; 정답 공개 adds the answer (number and text). Never sent before. */
+  answer: { k: number; text: string } | null;
 }
 
 export interface ProjectorTimer {

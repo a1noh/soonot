@@ -9,6 +9,8 @@
  *     유재석.PNG + 유재석 정답.PNG / 유재석_정답.png (the team's own: answer = 정답)
  *   A face with only one picture zooms into its middle for the question.
  */
+import { FACES, SONGS } from './roundOrder.js';
+
 export const ROUND_DIRS = ['songs', 'faces'] as const;
 export type RoundDir = (typeof ROUND_DIRS)[number];
 
@@ -55,4 +57,40 @@ export function roundItems(dir: RoundDir, files: readonly string[]): RoundItem[]
       const question = g.answer ? (g.plain ?? g.zoom ?? null) : (g.zoom ?? null);
       return { name: nameOf(key), url: media(dir, answer), zoomUrl: question && question !== answer ? media(dir, question) : null };
     });
+}
+
+/** What the MC's remote lists: the team's order (event/roundOrder.ts) applied to the files there. */
+export interface ShowItem extends RoundItem {
+  /** songs: the 10 s 후렴 clip the 정답 plays (else the intro plays on). */
+  chorusUrl: string | null;
+  /** faces: the 연습 (practice) photo. */
+  example: boolean;
+  /** No file for this one yet: the remote shows it greyed out, the projector never gets it. */
+  missing: boolean;
+}
+
+const key = (s: string) => s.normalize('NFC').replace(/[^\p{L}\p{N}]/gu, '');
+
+export function showItems(dir: RoundDir, files: readonly string[]): ShowItem[] {
+  if (dir === 'songs') {
+    const byBase = new Map(files.filter((f) => AUDIO.test(f)).map((f) => [key(base(f)), f]));
+    return SONGS.map((s, i) => {
+      const nn = String(i + 1).padStart(2, '0');
+      const intro = byBase.get(key(`찬양 ${nn} ${s.title}`));
+      const chorus = byBase.get(key(`찬양 ${nn} ${s.title} 후렴`));
+      return {
+        name: `${s.title} · ${s.artist}`,
+        url: intro ? media(dir, intro) : '',
+        zoomUrl: null,
+        chorusUrl: chorus ? media(dir, chorus) : null,
+        example: false,
+        missing: !intro,
+      };
+    });
+  }
+  const found = new Map(roundItems('faces', files).map((it) => [key(it.name), it]));
+  return FACES.map((f) => {
+    const it = found.get(key(f.name));
+    return { name: f.name, url: it?.url ?? '', zoomUrl: it?.zoomUrl ?? null, chorusUrl: null, example: !!f.example, missing: !it };
+  });
 }

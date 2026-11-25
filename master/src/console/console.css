@@ -1123,3 +1123,10 @@
 .remote__qopen .remote__chip { min-width: 4.5em; font-weight: 800; }
 .remote__qopen .remote__chip.is-open { opacity: 0.6; }
 .remote__qopen .remote__chip.is-answer { border-color: #d4a72c; }
+
+.remote__level { display: inline-block; min-width: 1.6em; padding: 0 4px; border-radius: 6px; font-size: 0.72rem; font-weight: 800; text-align: center; }
+.remote__level--하 { background: #1e8449; color: #fff; }
+.remote__level--중 { background: #b7791f; color: #fff; }
+.remote__level--상 { background: #c0392b; color: #fff; }
+.remote__level--타이 { background: #6c3483; color: #fff; }
+.remote__missing { color: var(--text-dim); font-weight: 600; font-size: 0.9em; }

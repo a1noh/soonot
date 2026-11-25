@@ -49,7 +49,7 @@ export interface Cue {
   /** A designed slide instead of the title card: 'rules' = the 게임 방식 screen (numbered lines from the body + the 6 stones). */
   layout: SlideLayout;
 }
-export type SlideLayout = '' | 'rules';
+export type SlideLayout = '' | 'rules' | 'seating';
 
 /** The slide on the projector right now — only what the room is allowed to see. */
 export interface SlideOnAir {
@@ -191,11 +191,11 @@ export interface RoundPlan {
 }
 export const ROUNDS: readonly RoundPlan[] = [
   { n: 1, name: '아이언맨의 비행 테스트', note: '코끼리코 비행기 · 빙고 1등이 스톤 선택 · 각 팀 2명, 가위바위보로 순서 · 코끼리코 꼭 10바퀴 · 날개 있게 접기 · 시작선 표시 · 나온 분들 참가 선물', timer: 20, timerLabel: '20초 제한', bgm: '코끼리코 도는 동안 (Monkeys Spinning Monkeys)', bgmUrl: '/media/bgm/monkeys-spinning-monkeys.mp3' },
-  { n: 2, name: '가디언즈 오브 찬양', note: '찬양 맞추기 · 1라운드 1등 팀이 스톤 선택 · 아래에서 3·2·1 → 1초 (어려우면 3초) → 10초 상의 → 정답 + 10초', timer: 10, timerLabel: '상의 시간', bgm: '찬양 음원 (아래에서 재생)', bgmUrl: '', extra: 'songs' },
-  { n: 3, name: '닥터 스트레인지의 1,400만 분의 1', note: '4지선다 · 2라운드 꼴찌 팀이 스톤 선택 (누가 고르나요에서 바꾸기) · 아래에서 문제 띄우기 (화면엔 번호 1~4만) · “하나, 둘, 셋!”에 번호 들기', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'quiz' },
-  { n: 4, name: '호크아이의 매의 눈', note: '매의 눈 · 3라운드 1등 팀이 스톤 선택 · 아래에서 사진 띄우기 → 10초 상의 → 정답 공개', timer: 10, timerLabel: '상의 시간', bgm: '태양 「눈, 코, 입」 · 직접 틀기', bgmUrl: '', extra: 'faces' },
+  { n: 2, name: '가디언즈 오브 찬양', note: '찬양 맞추기 · 1라운드 1등 팀이 스톤 선택 · 아래에서 3·2·1 → 1초 (어려우면 3초) → 아는 팀이 손들고 제목 → 정답 (후렴 10초)', timer: 0, timerLabel: '', bgm: '찬양 음원 (아래에서 재생)', bgmUrl: '', extra: 'songs' },
+  { n: 3, name: '닥터 스트레인지의 1,400만 분의 1', note: '4지선다 (블라인드) · 2라운드 꼴찌 팀이 스톤 선택 (누가 고르나요에서 바꾸기) · 아래에서 예시부터 띄우기 (화면엔 질문만) · 아는 팀이 손들고 번호 외치기 → 정답 공개', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'quiz' },
+  { n: 4, name: '호크아이의 매의 눈', note: '매의 눈 · 3라운드 1등 팀이 스톤 선택 · 연습(타노스) 먼저, 그다음 본 게임 · 아래에서 사진 띄우기 → 10초 상의 → 정답 공개', timer: 10, timerLabel: '상의 시간', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'faces' },
   { n: 5, name: '토르의 번개 같은 센스', note: '휘트니 휴스턴 · 4라운드 1등 팀이 스톤 선택 · 각 팀 1명, 가위바위보로 순서 · 아래 ▶ 처음부터로 모두 한 번 같이 듣고, 도전자는 ▶ 5초부터 한 번씩 · 판독용 촬영 (목사님/효준) · “성공을 어케해~”에서 효준 시범', timer: 0, timerLabel: '', bgm: 'I Will Always Love You (아래에서 재생)', bgmUrl: '', extra: 'track' },
-  { n: 6, name: '어벤져스 어셈블', note: '일심동체 · 마지막 스톤은 자동 · 각 팀 3명, 팀마다 제시어 5개 (아래에서 누르면 화면에 크게) · 1등 동점이면 동점 팀끼리 제시어 몇 개 더', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'words' },
+  { n: 6, name: '어벤져스 어셈블', note: '일심동체 · 마지막 스톤은 자동 · 각 팀 3명, 팀마다 제시어 5개 (하 2 · 중 2 · 상 1, 아래에서 누르면 화면에 크게) · 동점이면 타이 브레이크 (가장 웃긴 사람에게 점수)', timer: 0, timerLabel: '', bgm: '드럼 120 BPM 비트', bgmUrl: DRUM_BEAT, extra: 'words' },
 ];
 
 /** The 결정전's countdown: the MC starts it from the remote once the teams are at the line. */
@@ -235,7 +235,7 @@ function scriptCues(): Cue[] {
     { title: 'MC 등장 영상 · 타이틀', body: '어벤추수 땡스게임', media: '/media/어벤추수-mc-intro-sfx.mp4', bgm: '웅장한 테마 (영상이 끝나면 이어져요)', transition: 'zoom', note: '모두 모이면 ▶ · 영상 39초, 끝나면 BGM이 이어져요 · 효준/예진 인사' },
     { kind: 'screen', screen: 'bingo', title: '빙고 1등 공개', bgm: '웅장한 팡파르 (두구두구 → 빠밤)', note: '열면서 빙고 종료 · 3등 → 2등 → 1등 → 1등 카드 → 랜덤 5명 → 상품 (첫 스톤 선택권)' },
     { title: '게임 방식 · 우승 조건', body: '6개의 스톤 존재! · 각 스톤의 게임을 이기는 팀에게 스톤 지급! · 스톤을 가장 많이 모은 팀 우승!!', layout: 'rules', bgm: '웅장한 어벤져스 느낌 (코너 전환)', note: '빙고 시상 직후 짧게 · 게임 참가자는 초콜릿 한 개씩 가져가요' },
-    { title: '팀 별 자리 안내도', body: '이름표 색상과 디자인에 맞춰 앉아주세요', note: '팀끼리 모이기 · 팀 대장 고르기 (타이브레이커 때 팀장이 나와요)' },
+    { title: '팀 별 자리 안내도', body: '이름표 색깔대로 앉아주세요', layout: 'seating', note: '팀끼리 모이기 · 팀 대장 고르기 (타이브레이커 때 팀장이 나와요)' },
     { kind: 'screen', screen: 'stones', title: '어벤추수 땡스게임 메인 보드', bgm: '웅장한 어벤져스 테마', transition: 'zoom', note: '효준: 스톤 6가지 소개 · 빙고 1등이 첫 스톤을 골라요 (고르면 라운드로 넘어가요)' },
     // The whole 스톤 game is ONE step: the game drives the rounds (pick → play → winner),
     // and the remote shows the round's name, note, timer and music from ROUNDS below.
@@ -290,7 +290,7 @@ export function parseCues(raw: unknown): Cue[] {
       timerLabel: str(c['timerLabel'], 40),
       controls: kind === 'slide' && GAME_IDS.includes(c['controls'] as GameId) ? (c['controls'] as GameId) : null,
       auto: AUTO_KINDS.includes(c['auto'] as AutoKind) ? (c['auto'] as AutoKind) : null,
-      layout: c['layout'] === 'rules' ? 'rules' : '',
+      layout: c['layout'] === 'rules' || c['layout'] === 'seating' ? c['layout'] : '',
     };
   });
 }
@@ -313,7 +313,8 @@ const OLD_DEFAULTS: readonly (readonly string[])[] = [
 /** An untouched older default list becomes today's defaults (attached files carried over). */
 export function upgradeCues(cues: Cue[]): Cue[] {
   const titles = cues.map((c) => c.title);
-  const old = OLD_DEFAULTS.some((d) => d.length === titles.length && d.every((t, i) => t === titles[i]));
+  const now = defaultCues().map((c) => c.title);
+  const old = [...OLD_DEFAULTS, now].some((d) => d.length === titles.length && d.every((t, i) => t === titles[i]));
   if (!old) return cues;
   const fresh = defaultCues();
   const byTitle = new Map(cues.map((c) => [c.title, c]));

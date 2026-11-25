@@ -248,7 +248,7 @@ for (let r = 1; r <= 6; r++) {
   // No round's timer starts by itself (the rules come first), and none carries over.
   if (await p.$('.ptimer')) errors.push(`round ${r} opened with a timer: "${await p.$eval('.ptimer', (e) => e.textContent.trim())}"`);
   // Rounds 1, 2 and 4 have one: the MC starts it from the remote as play starts.
-  if ([1, 2, 4].includes(r)) {
+  if ([1, 4].includes(r)) { // 2 (찬양) has no 상의 timer any more
     await click('.remote__do', '타이머');
     await sleep(600);
     if (!(await p.$('.ptimer'))) errors.push(`round ${r}: ⏱ did not put the timer on the projector`);
@@ -272,6 +272,9 @@ for (let r = 1; r <= 6; r++) {
       if (!t || t !== want) errors.push(`찬양 정답 shows "${t}", the remote says "${want}"`);
       await shot('round2-song-answer');
     } else {
+      // 1 = 타노스 (연습): no photo on the test server, so go on to the first real one.
+      await click('.remote__qnav', '다음 ▶');
+      await sleep(300);
       await click('.remote__qnav', '사진 띄우기');
       await sleep(900);
       if (!(await p.$('.pcard__photo img'))) errors.push('눈코입: no question picture on the projector');
@@ -296,33 +299,31 @@ for (let r = 1; r <= 6; r++) {
   }
   // 일심동체: a 제시어 goes up big from the remote.
   if (r === 6) {
-    await click('.remote__wordrow', '야구');
+    await click('.remote__wordrow', '만세');
     await sleep(800);
     const w = await p.$eval('.pcard__word', (e) => e.textContent).catch(() => '');
-    if (w !== '야구') errors.push(`제시어 on screen: "${w}"`);
+    if (w !== '만세') errors.push(`제시어 on screen: "${w}"`);
     await shot('round6-word');
-    await click('.remote__wordrow', '야구'); // tap again: down
+    await click('.remote__wordrow', '만세'); // tap again: down
   }
-  // 4지선다: a question goes up with only 1–4 on the projector; the 보기 stay on the remote.
+  // 4지선다: only the question on the projector; 정답 공개 shows just the answer.
   if (r === 3) {
-    await click('.remote__qnav', '문제 1 화면에 띄우기');
+    await click('.remote__qnav', '예시 화면에 띄우기');
     await sleep(700);
     const q = await p.$eval('.pquiz', (e) => e.textContent).catch(() => '');
-    if (!q.includes('문제 1')) errors.push(`round 3: the question is not on the projector ("${q.slice(0, 40)}")`);
-    if (q.includes('골리앗')) errors.push('round 3: the projector shows the 보기');
+    if (!q.includes('예시')) errors.push(`round 3: the 예시 is not on the projector ("${q.slice(0, 40)}")`);
+    if (/골리앗|볼드모트|[1-4]번/.test(q)) errors.push('round 3: the projector shows options or the answer before 정답 공개');
     await shot('round3-quiz-question');
-    // Teams held up 2 (wrong: 볼드모트) and 4 (right: 골리앗).
-    await click('.remote__qopen', '2 열기');
-    await sleep(900);
-    if (!(await p.$('.pquiz__choice.is-wrong'))) errors.push('4지선다: a wrong number is not crossed out');
-    await click('.remote__qopen', '4 열기');
+    await click('.remote__qnav', '정답 공개');
     await sleep(1200);
-    const right = await p.$eval('.pquiz__choice.is-right', (e) => e.textContent).catch(() => '');
-    if (!right.includes('골리앗') || !right.includes('정답')) errors.push(`4지선다: the right answer shows "${right}"`);
+    const a = await p.$eval('.pquiz__answer', (e) => e.textContent).catch(() => '');
+    if (!a.includes('4번') || !a.includes('골리앗')) errors.push(`4지선다: the answer shows "${a}"`);
+    if ((await p.$eval('.pquiz', (e) => e.textContent).catch(() => '')).includes('볼드모트')) errors.push('4지선다: other options are on screen');
     await shot('round3-quiz-answer');
-    await click('.remote__qnav', '다음 문제');
-    await sleep(500);
-    if (!(await p.$eval('.pquiz', (e) => e.textContent).catch(() => '')).includes('문제 2')) errors.push('round 3: 다음 문제 did not move the projector');
+    await click('.remote__qnav', '다음 ▶');
+    await sleep(600);
+    const q2 = await p.$eval('.pquiz', (e) => e.textContent).catch(() => '');
+    if (!q2.includes('문제 1') || q2.includes('정답!')) errors.push('round 3: 다음 did not move to 문제 1 (hidden)');
   }
 
   if (r === 2) {

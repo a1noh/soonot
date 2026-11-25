@@ -236,7 +236,7 @@ describe('projector overlays the master drives', () => {
     const shown = once<EventSummary>(master, 'event:summary');
     expect((await emit(master, 'projector:quiz', { n: 2 })).ok).toBe(true);
     const s = await shown;
-    expect(s.projectorQuiz).toMatchObject({ n: 2, total: 15 });
+    expect(s.projectorQuiz).toMatchObject({ n: 2, total: 19, label: '문제 1' });
     expect(s.projectorQuiz!.question).toContain('다윗');
     expect(JSON.stringify(s.projectorQuiz)).not.toContain('돌팔매');
 
@@ -244,12 +244,12 @@ describe('projector overlays the master drives', () => {
     await emit(master, 'projector:quiz', { n: null });
     expect((await down).projectorQuiz).toBeNull();
 
-    for (const bad of [{ n: 0 }, { n: 16 }, { n: 1.5 }, { n: 'x' }]) {
+    for (const bad of [{ n: 0 }, { n: 20 }, { n: 1.5 }, { n: 'x' }]) {
       expect((await emit(master, 'projector:quiz', bad)).ok).toBe(false);
     }
   });
 
-  it('4지선다: opens what a team held up — wrong crossed out, right is 정답; text only once opened; ◀ closes', async () => {
+  it('4지선다: only the question; 정답 공개 adds just the answer; ◀ hides it; a new question starts hidden', async () => {
     const { base } = await boot();
     const { token } = await signIn(base);
     const master = await connect(base, '/master', token!);
@@ -257,26 +257,22 @@ describe('projector overlays the master drives', () => {
 
     const up = once<EventSummary>(master, 'event:summary');
     await emit(master, 'projector:quiz', { n: 1 });
-    expect((await up).projectorQuiz!.opened).toEqual([]);
+    const q = (await up).projectorQuiz!;
+    expect(q).toMatchObject({ label: '예시', total: 19, answer: null });
+    expect(JSON.stringify(q)).not.toContain('골리앗');
 
-    const wrong = once<EventSummary>(master, 'event:summary');
-    await emit(master, 'projector:quiz', { n: 1, open: 2 });
-    expect((await wrong).projectorQuiz!.opened).toEqual([{ k: 2, text: '볼드모트', correct: false }]);
+    const shown = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:quiz', { n: 1, reveal: true });
+    expect((await shown).projectorQuiz!.answer).toEqual({ k: 4, text: '골리앗' });
+    expect(JSON.stringify((await shown).projectorQuiz)).not.toContain('볼드모트'); // never the other options
 
-    const right = once<EventSummary>(master, 'event:summary');
-    await emit(master, 'projector:quiz', { n: 1, open: 4 });
-    const q = (await right).projectorQuiz!;
-    expect(q.opened.map((o) => [o.k, o.correct])).toEqual([[2, false], [4, true]]);
-    expect(JSON.stringify(q)).not.toContain('타노스'); // option 1 was never opened
+    const hidden = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:quiz', { n: 1, reveal: false });
+    expect((await hidden).projectorQuiz!.answer).toBeNull();
 
-    const closed = once<EventSummary>(master, 'event:summary');
-    await emit(master, 'projector:quiz', { n: 1, close: 4 });
-    expect((await closed).projectorQuiz!.opened.map((o) => o.k)).toEqual([2]);
-
-    const next = once<EventSummary>(master, 'event:summary');
-    await emit(master, 'projector:quiz', { n: 2 });
-    expect((await next).projectorQuiz!.opened).toEqual([]); // a new question starts closed
-    expect((await emit(master, 'projector:quiz', { n: 2, open: 5 })).ok).toBe(false);
+    const last = once<EventSummary>(master, 'event:summary');
+    await emit(master, 'projector:quiz', { n: 19, reveal: true });
+    expect((await last).projectorQuiz).toMatchObject({ label: '문제 18', answer: { k: 1, text: '삼손' } });
   });
 
   it('휘트니: the track card plays whole or from 5 s, once the file is there', async () => {
@@ -300,11 +296,11 @@ describe('projector overlays the master drives', () => {
 
     const word = once<EventSummary>(master, 'event:summary');
     expect((await emit(master, 'projector:card', { kind: 'word', team: 0, i: 1 })).ok).toBe(true);
-    expect((await word).projectorCard).toMatchObject({ kind: 'word', text: '야구' });
+    expect((await word).projectorCard).toMatchObject({ kind: 'word', text: '만세', kicker: expect.stringContaining('하') });
 
     // Nothing uploaded yet: a clear error, nothing on screen.
     expect((await emit(master, 'projector:card', { kind: 'face', n: 1 })).ok).toBe(false);
-    for (const [dir, name] of [['faces', '02 유재석.jpg'], ['faces', '02 유재석-zoom.jpg'], ['faces', '01 아이유.png'], ['songs', '01 제이어스 - 내 모습 이대로.mp3']]) {
+    for (const [dir, name] of [['faces', '02 유재석.jpg'], ['faces', '02 유재석-zoom.jpg'], ['faces', '01 아이유.png'], ['songs', '찬양 02 내 모습 이대로.mp3'], ['songs', '찬양 02 내 모습 이대로 후렴.mp3']]) {
       const up = await fetch(`${base}/master/media?dir=${dir}&name=${encodeURIComponent(name!)}`, { method: 'POST', headers: { cookie }, body: 'x' });
       expect(up.status).toBe(200);
     }
@@ -312,17 +308,19 @@ describe('projector overlays the master drives', () => {
     expect(list.files).toHaveLength(3);
 
     const face = once<EventSummary>(master, 'event:summary');
+    // The team's order: 1 = 타노스 (연습, no photo yet → refused), 2 = 유재석 (the first counted photo).
+    expect((await emit(master, 'projector:card', { kind: 'face', n: 1 })).ok).toBe(false);
     await emit(master, 'projector:card', { kind: 'face', n: 2, revealed: false });
-    expect((await face).projectorCard).toMatchObject({ kind: 'face', n: 2, total: 2, name: '유재석', revealed: false, zoomUrl: expect.stringContaining('zoom') });
+    expect((await face).projectorCard).toMatchObject({ kind: 'face', n: 1, total: 15, name: '유재석', revealed: false, example: false, zoomUrl: expect.stringContaining('zoom') });
 
     const song = once<EventSummary>(master, 'event:summary');
-    await emit(master, 'projector:card', { kind: 'song', n: 1, phase: 'answer' });
-    expect((await song).projectorCard).toMatchObject({ kind: 'song', title: '제이어스 - 내 모습 이대로', phase: 'answer' });
+    await emit(master, 'projector:card', { kind: 'song', n: 2, phase: 'answer' });
+    expect((await song).projectorCard).toMatchObject({ kind: 'song', title: '내 모습 이대로 · 제이어스', phase: 'answer', chorusUrl: expect.stringContaining(encodeURIComponent('후렴')) });
 
     const off = once<EventSummary>(master, 'event:summary');
     await emit(master, 'projector:card', { off: true });
     expect((await off).projectorCard).toBeNull();
-    for (const bad of [{ kind: 'word', team: 9, i: 0 }, { kind: 'song', n: 5 }, { kind: 'x' }]) {
+    for (const bad of [{ kind: 'word', team: 9, i: 0 }, { kind: 'song', n: 1 }, { kind: 'song', n: 19 }, { kind: 'x' }]) {
       expect((await emit(master, 'projector:card', bad)).ok).toBe(false);
     }
   });

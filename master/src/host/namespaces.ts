@@ -19,7 +19,7 @@ import type { Registry } from '../event/registry.js';
 import { summarize } from '../event/event.js';
 import { isVideo, parseCues, safeUrl } from '../event/show.js';
 import { FOUR_CHOICE, ONE_MIND } from '../event/quiz.js';
-import { roundItems, type RoundDir } from '../event/roundItems.js';
+import { showItems, type RoundDir } from '../event/roundItems.js';
 import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Dispatch } from './dispatch.js';
@@ -482,16 +482,21 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
       };
       const files = (dir: RoundDir) => {
         const folder = deps.mediaDir ? join(deps.mediaDir, dir) : '';
-        return roundItems(dir, folder && existsSync(folder) ? readdirSync(folder) : []);
+        return showItems(dir, folder && existsSync(folder) ? readdirSync(folder) : []);
       };
       if (p['off'] === true) {
         event.projectorCard = null;
       } else if (p['kind'] === 'word') {
-        const team = int(p['team'], -1, ONE_MIND.teams.length - 1);
-        const words = team === -1 ? ONE_MIND.tie : ONE_MIND.teams[team]!;
+        // team 0–5, -1 = 타이 브레이크, -2 = 여분 (spare)
+        const team = int(p['team'], -2, ONE_MIND.teams.length - 1);
+        const words = team === -1 ? ONE_MIND.tie : team === -2 ? ONE_MIND.spare : ONE_MIND.teams[team]!;
         const i = int(p['i'], 0, words.length - 1);
-        const kicker = team === -1 ? `어벤져스 어셈블 · 동점 연장 · ${i + 1}/${words.length}` : `어벤져스 어셈블 · ${team + 1}번째 팀 · 제시어 ${i + 1}/${words.length}`;
-        event.projectorCard = { kind: 'word', kicker, text: words[i]! };
+        const w = words[i]!;
+        const kicker =
+          team === -1
+            ? `어벤져스 어셈블 · 타이 브레이크 · 가장 웃긴 사람에게 점수!`
+            : `어벤져스 어셈블 · ${team === -2 ? '여분' : `${team + 1}번째 팀`} · 제시어 ${team >= 0 ? `${i + 1}/${words.length} · ` : ''}${w.level}`;
+        event.projectorCard = { kind: 'word', kicker, text: w.text };
       } else if (p['kind'] === 'track') {
         // 토르의 번개 같은 센스: I Will Always Love You (media/rounds/whitney.mp3), whole or from 5 s.
         const file = deps.mediaDir ? join(deps.mediaDir, 'rounds', 'whitney.mp3') : '';
@@ -500,15 +505,19 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
         event.projectorCard = { kind: 'track', title: 'I Will Always Love You', url: '/media/rounds/whitney.mp3', from, startedAt: Date.now() };
       } else if (p['kind'] === 'face' || p['kind'] === 'song') {
         const dir: RoundDir = p['kind'] === 'face' ? 'faces' : 'songs';
+        // The team's order (event/roundOrder.ts); an item with no file yet cannot go up.
         const items = files(dir);
-        if (items.length === 0) throw new HostError('BAD_PAYLOAD', dir === 'faces' ? '눈코입 사진을 먼저 올려주세요' : '찬양 음원을 먼저 올려주세요');
         const n = int(p['n'], 1, items.length);
         const it = items[n - 1]!;
+        if (it.missing) throw new HostError('BAD_PAYLOAD', `${it.name}: ${dir === 'faces' ? '사진' : '음원'}이 아직 없어요`);
+        // The 연습 (practice) photo doesn't count in "1 / 15".
+        const counted = items.filter((x) => !x.example).length;
+        const shownN = items.slice(0, n).filter((x) => !x.example).length;
         if (p['kind'] === 'face') {
-          event.projectorCard = { kind: 'face', n, total: items.length, url: it.url, zoomUrl: it.zoomUrl, name: it.name, revealed: p['revealed'] === true };
+          event.projectorCard = { kind: 'face', n: shownN, total: counted, url: it.url, zoomUrl: it.zoomUrl, name: it.name, revealed: p['revealed'] === true, example: it.example };
         } else {
           const phase = p['phase'] === 'play3' ? 'play3' : p['phase'] === 'answer' ? 'answer' : 'play1';
-          event.projectorCard = { kind: 'song', n, total: items.length, url: it.url, title: it.name, phase, startedAt: Date.now() };
+          event.projectorCard = { kind: 'song', n, total: items.length, url: it.url, chorusUrl: it.chorusUrl, title: it.name, phase, startedAt: Date.now() };
         }
       } else {
         throw new HostError('BAD_PAYLOAD');
@@ -528,7 +537,7 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
    */
   socket.on('projector:quiz', (payload: unknown, ack: unknown) => {
     try {
-      const p = (payload ?? {}) as { n?: unknown; open?: unknown; close?: unknown };
+      const p = (payload ?? {}) as { n?: unknown; reveal?: unknown };
       const raw = p.n;
       const event = registry.require();
       if (raw === null || raw === undefined) {
@@ -537,18 +546,11 @@ function attachMaster(socket: Socket, deps: NamespaceDeps): void {
         const n = Number(raw);
         if (!Number.isInteger(n) || n < 1 || n > FOUR_CHOICE.length) throw new HostError('BAD_PAYLOAD');
         const q = FOUR_CHOICE[n - 1]!;
-        // Same question: keep what is opened; another question starts closed.
-        const kept = event.projectorQuiz?.n === n ? event.projectorQuiz.opened : [];
-        let opened = kept;
-        // { open: k } shows option k (what a team held up): wrong → crossed out, right → 정답.
-        if (p.open !== undefined) {
-          const k = Number(p.open);
-          if (!Number.isInteger(k) || k < 1 || k > 4) throw new HostError('BAD_PAYLOAD');
-          if (!opened.some((o) => o.k === k)) opened = [...opened, { k, text: q.choices[k - 1]!, correct: q.answer === k }];
-        }
-        // { close: k } takes it back (◀).
-        if (p.close !== undefined) opened = opened.filter((o) => o.k !== Number(p.close));
-        event.projectorQuiz = { n, total: FOUR_CHOICE.length, question: q.question, opened };
+        // Only the question; { reveal: true } adds the answer (정답 공개), { reveal: false } hides it (◀).
+        const same = event.projectorQuiz?.n === n;
+        const reveal = p.reveal === undefined ? same && !!event.projectorQuiz?.answer : p.reveal === true;
+        const answer = reveal && q.answer ? { k: q.answer, text: q.choices[q.answer - 1]! } : null;
+        event.projectorQuiz = { n, total: FOUR_CHOICE.length, label: q.label, question: q.question, answer };
       }
       broadcastSummary(deps);
       reply(ack, { ok: true });
