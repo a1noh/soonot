@@ -19,4 +19,17 @@ describe('older default lists pick up today\'s 진행 순서', () => {
     const edited = old([...v1121.slice(0, 9), '마무리 인사']);
     expect(readShow(JSON.stringify({ cues: edited })).cues.map((c) => c.title)).toEqual(edited.map((c) => c.title));
   });
+
+  it('gives a reordered list the designed 자리 배치도 and 게임 방식 screens, keeping its order and text', () => {
+    // As on the live site (2026-11-25): 자리 안내도 moved before 게임 방식 with 순서 편집, both plain cards.
+    const cues = defaultCues().map((c) => ({ ...c, layout: '' as const }));
+    const i = cues.findIndex((c) => c.title === '게임 방식 · 우승 조건');
+    [cues[i], cues[i + 1]] = [cues[i + 1]!, cues[i]!];
+    cues[0] = { ...cues[0]!, body: '직접 고친 문구' };
+    const read = readShow(JSON.stringify({ cues })).cues;
+    expect(read.map((c) => c.title)).toEqual(cues.map((c) => c.title));
+    expect(read.find((c) => c.title === '팀 별 자리 안내도')!.layout).toBe('seating');
+    expect(read.find((c) => c.title === '게임 방식 · 우승 조건')!.layout).toBe('rules');
+    expect(read[0]!.body).toBe('직접 고친 문구');
+  });
 });

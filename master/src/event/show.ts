@@ -315,7 +315,12 @@ export function upgradeCues(cues: Cue[]): Cue[] {
   const titles = cues.map((c) => c.title);
   const now = defaultCues().map((c) => c.title);
   const old = [...OLD_DEFAULTS, now].some((d) => d.length === titles.length && d.every((t, i) => t === titles[i]));
-  if (!old) return cues;
+  if (!old) {
+    // A list edited by hand (e.g. steps reordered) keeps its order and text, but a step that is a
+    // designed screen by default (자리 배치도, 게임 방식) and still a plain title card gets that design.
+    const layouts = new Map(defaultCues().filter((c) => c.layout).map((c) => [c.title, c.layout] as const));
+    return cues.map((c) => (!c.layout && layouts.has(c.title) ? { ...c, layout: layouts.get(c.title)! } : c));
+  }
   const fresh = defaultCues();
   const byTitle = new Map(cues.map((c) => [c.title, c]));
   return fresh.map((c) => {
