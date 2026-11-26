@@ -70,7 +70,7 @@ async function shot(name) {
   await p.screenshot({ path: `${OUT}${n}-${name}-projector.png` });
   const fit = await p.evaluate(() => {
     const d = document.documentElement;
-    const over = [...document.querySelectorAll('h1, h2, .podium__row, .tally__team, .ranks, .tb__team, .slide__title, .ptimer, .joinchip, .bingo, .board')]
+    const over = [...document.querySelectorAll('h1, h2, .podium__row, .tally__team, .ranks, .tb__team, .slide__title, .ptimer, .joinchip, .bingo, .board, .lboard, .pquiz, .pcard, .seating__room, .phero, .rules')]
       .filter((el) => {
         const r = el.getBoundingClientRect();
         return r.width > 0 && (r.right > innerWidth + 2 || r.bottom > innerHeight + 2 || r.left < -2);

@@ -601,3 +601,12 @@ body:has(.stage--theme-stones) .ptimer {
 .pquiz__answer .pquiz__badge { top: -3vmin; }
 .pquiz__anum { font-weight: 900; font-size: clamp(40px, 11vmin, 170px); color: #ffd76a; line-height: 1; }
 .pquiz__atext { font-weight: 900; font-size: clamp(30px, 8vmin, 120px); color: #fff; line-height: 1.1; word-break: keep-all; }
+
+/* ---- 화면 맞춤 (fit.ts): the page shrunk into the part of the screen that is visible ---- */
+html.is-fit, html.is-fit body { background: #000; overflow: hidden; }
+html.is-fit #root { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; overflow: hidden; background: var(--stage); }
+.fitbox { position: fixed; top: 0; left: 0; z-index: 2147483647; pointer-events: none; box-sizing: border-box;
+  border: 4px dashed #ff3b6b; opacity: 0; transition: opacity 200ms; }
+.fitbox.is-on { opacity: 1; }
+.fitbox__label { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); white-space: nowrap;
+  padding: 8px 14px; border-radius: 10px; background: rgba(0, 0, 0, 0.8); color: #fff; font: 700 18px/1.2 system-ui, sans-serif; }
